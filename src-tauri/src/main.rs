@@ -3,9 +3,10 @@
     windows_subsystem = "windows"
 )]
 
-use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager};
+use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
+use reqwest::Client;
 
 struct AppState {
     api_key: TokioMutex<String>,
@@ -36,7 +37,7 @@ struct Config {
 async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Result<AiResponse, String> {
     println!("ask ai");
 
-    let client = reqwest::Client::new();
+    let client = Client::new();
     let api_key = state.api_key.lock().await;
     let backend = state.backend.lock().await;
 
@@ -97,7 +98,38 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
 }
 
 fn main() {
+    let quit = CustomMenuItem::new("quit".to_string(), "Quit");
+    let show = CustomMenuItem::new("show".to_string(), "Show");
+    let tray_menu = SystemTrayMenu::new()
+        .add_item(show)
+        .add_item(quit);
+    let system_tray = SystemTray::new().with_menu(tray_menu);
+
     tauri::Builder::default()
+        .system_tray(system_tray)
+        .on_system_tray_event(|app, event| match event {
+            SystemTrayEvent::LeftClick {
+                position: _,
+                size: _,
+                ..
+            } => {
+                let window = app.get_window("main").unwrap();
+                window.show().unwrap();
+                window.set_focus().unwrap();
+            }
+            SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
+                "quit" => {
+                    app.exit(0);
+                }
+                "show" => {
+                    let window = app.get_window("main").unwrap();
+                    window.show().unwrap();
+                    window.set_focus().unwrap();
+                }
+                _ => {}
+            },
+            _ => {}
+        })
         .setup(|app| {
             // Check if the window already exists
             if app.get_window("main").is_none() {
@@ -107,19 +139,30 @@ fn main() {
                     "main",
                     WindowUrl::App("index.html".into())
                 )
-                .title("AI Search")
-                .inner_size(600.0, 60.0)
-                .center()
-                .build()?;
+                    .title("AI Search")
+                    .inner_size(600.0, 60.0)
+                    .center()
+                    .build()?;
 
+                let window_clone = window.clone();
                 // Register global shortcut
-                app.handle().global_shortcut_manager().register("Super+Y", move || {
-                    let window_clone = window.clone();
+                app.handle().global_shortcut_manager().register("Super+F12", move || {
+                    println!("trigger global shortcut");
+                    let window_clone = window_clone.clone();
                     tauri::async_runtime::spawn(async move {
-                        window_clone.set_focus().unwrap();
+                        println!("window should show!!!!");
                         window_clone.show().unwrap();
+                        window_clone.set_focus().unwrap();
                     });
                 })?;
+
+                // Hide window when closed or minimized
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { .. } = event {
+                        window_clone.hide().unwrap();
+                    }
+                });
             }
 
             Ok(())
