@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu};
+use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use reqwest::Client;
@@ -35,8 +35,6 @@ struct Config {
 
 #[tauri::command]
 async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Result<AiResponse, String> {
-    println!("ask ai");
-
     let client = Client::new();
     let api_key = state.api_key.lock().await;
     let backend = state.backend.lock().await;
@@ -46,8 +44,6 @@ async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Result
         "ollama" => "http://localhost:11434/v1/chat/completions",
         _ => return Err("Invalid backend".to_string()),
     };
-
-    println!("url is {url}");
 
     let model = request.model.unwrap_or_else(|| "qwen2".to_string());
     let temperature = request.temperature.unwrap_or(1.0);
@@ -105,64 +101,34 @@ fn main() {
         .add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
 
-    tauri::Builder::default()
+    let mut app = tauri::Builder::default()
         .system_tray(system_tray)
         .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::LeftClick {
-                position: _,
-                size: _,
-                ..
-            } => {
-                let window = app.get_window("main").unwrap();
-                window.show().unwrap();
-                window.set_focus().unwrap();
+            SystemTrayEvent::LeftClick { .. } => {
+                if let Some(window) = app.get_window("main") {
+                    window.show().unwrap();
+                    window.set_focus().unwrap();
+                }
             }
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "quit" => {
                     app.exit(0);
                 }
                 "show" => {
-                    let window = app.get_window("main").unwrap();
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
+                    if let Some(window) = app.get_window("main") {
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    }
                 }
                 _ => {}
             },
             _ => {}
         })
         .setup(|app| {
-            // Check if the window already exists
+            let app_handle = app.handle();
+
             if app.get_window("main").is_none() {
-                // Create the main window
-                let window = WindowBuilder::new(
-                    app,
-                    "main",
-                    WindowUrl::App("index.html".into())
-                )
-                    .title("AI Search")
-                    .inner_size(600.0, 60.0)
-                    .center()
-                    .build()?;
-
-                let window_clone = window.clone();
-                // Register global shortcut
-                app.handle().global_shortcut_manager().register("Super+F12", move || {
-                    println!("trigger global shortcut");
-                    let window_clone = window_clone.clone();
-                    tauri::async_runtime::spawn(async move {
-                        println!("window should show!!!!");
-                        window_clone.show().unwrap();
-                        window_clone.set_focus().unwrap();
-                    });
-                })?;
-
-                // Hide window when closed or minimized
-                let window_clone = window.clone();
-                window.on_window_event(move |event| {
-                    if let WindowEvent::CloseRequested { .. } = event {
-                        window_clone.hide().unwrap();
-                    }
-                });
+                create_window(&app_handle)
             }
 
             Ok(())
@@ -172,6 +138,59 @@ fn main() {
             backend: TokioMutex::new("openai".to_string()),
         })
         .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    app.run(|app_handle, e| match e {
+        RunEvent::Ready => {
+            let app_handle = app_handle.clone();
+            // Register global shortcut
+            app_handle.global_shortcut_manager().register("CmdOrCtrl+Shift+I", move || {
+                println!("CmdOrCtrl+Shift+I pressed");
+                if app_handle.get_window("main").is_none() {
+                    println!("Creating window");
+
+                    create_window(&app_handle)
+                } else if let Some(window) = app_handle.get_window("main") {
+                    println!("Showing window");
+                    if window.is_minimized().unwrap_or(false) {
+                        window.unminimize().unwrap();
+                    }
+                    window.show().unwrap();
+                    window.set_focus().unwrap();
+                }
+            }).expect("Failed to register global shortcut");
+        }
+        RunEvent::ExitRequested { api, .. } => {
+            api.prevent_exit();
+        }
+        _ => {}
+    })
+}
+
+fn create_window(app: &AppHandle) {
+    match WindowBuilder::new(
+        app,
+        "main",
+        WindowUrl::App("index.html".into())
+    )
+        .title("Tea")
+        .inner_size(600.0, 200.0)
+        .fullscreen(false)
+        .resizable(false)
+        .decorations(false)
+        .transparent(true)
+        .center()
+        .build() {
+        Ok(window) => {
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::CloseRequested { .. } = event {
+                    window_clone.hide().unwrap();
+                }
+            });
+        },
+        Err(e) => eprintln!("Failed to build window: {}", e),
+    }
+
 }

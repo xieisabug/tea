@@ -1,7 +1,11 @@
-# Tauri + React + Typescript
+# Tea
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+一个支持插件的高自由度对话客户端 
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+# TODO
+- [ ] 快捷键能够快速呼出，并且能够读取选中的文本
+- [ ] 正常聊天
+- [ ] 支持bang，比如 !g 就是用gpt回答， !c 就是用claude回答，!o 就是本地ollama 
+- [ ] 多llm配置
+- [ ] 高自由度配置prompt
+- [ ] 支持插件系统，并且编写第一个插件（多llm同时回答对比）

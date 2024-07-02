@@ -20,17 +20,6 @@
         "open": true
       }
     },
-    "windows": [
-      {
-        "fullscreen": false,
-        "height": 200,
-        "resizable": false,
-        "title": "AI Assistant",
-        "width": 600,
-        "decorations": false,
-        "transparent": true
-      }
-    ],
     "security": {
       "csp": null
     },
