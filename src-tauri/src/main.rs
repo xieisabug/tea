@@ -3,6 +3,8 @@
     windows_subsystem = "windows"
 )]
 
+mod db;
+
 use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
