@@ -103,7 +103,7 @@ fn main() {
         .add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
 
-    let mut app = tauri::Builder::default()
+    let app = tauri::Builder::default()
         .system_tray(system_tray)
         .on_system_tray_event(|app, event| match event {
             SystemTrayEvent::LeftClick { .. } => {
@@ -171,7 +171,7 @@ fn main() {
 }
 
 fn create_window(app: &AppHandle) {
-    match WindowBuilder::new(
+    let window_builder = WindowBuilder::new(
         app,
         "main",
         WindowUrl::App("index.html".into())
@@ -181,9 +181,12 @@ fn create_window(app: &AppHandle) {
         .fullscreen(false)
         .resizable(false)
         .decorations(false)
-        .transparent(true)
-        .center()
-        .build() {
+        .center();
+
+    #[cfg(not(target_os = "macos"))]
+    let window_builder = window_builder.transparent(true);
+
+    match window_builder.build() {
         Ok(window) => {
             let window_clone = window.clone();
             window.on_window_event(move |event| {
@@ -194,5 +197,4 @@ fn create_window(app: &AppHandle) {
         },
         Err(e) => eprintln!("Failed to build window: {}", e),
     }
-
 }
