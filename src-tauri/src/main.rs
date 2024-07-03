@@ -9,6 +9,7 @@ use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEven
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use reqwest::Client;
+use crate::db::Database;
 
 struct AppState {
     api_key: TokioMutex<String>,
@@ -95,13 +96,31 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
     })
 }
 
-fn main() {
+#[tauri::command]
+async fn get_llm() -> Result<Vec<(String, String)>, String> {
+    let db = Database::new().map_err(|e| e.to_string())?;
+    db.get_llm().map_err(|e| e.to_string())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     let show = CustomMenuItem::new("show".to_string(), "Show");
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
         .add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
+
+    let db = Database::new()?;
+    db.create_table()?;
+
+    match db.add_llm("Ollama", "openai_api") {
+        Ok(()) => println!("add ollama success"),
+        Err(err) => eprintln!("error : {}", err)
+    };
+    match db.add_llm("OpenAI", "openai_api") {
+        Ok(()) => println!("add ollama success"),
+        Err(err) => eprintln!("error : {}", err)
+    };
 
     let app = tauri::Builder::default()
         .system_tray(system_tray)
@@ -139,7 +158,7 @@ fn main() {
             api_key: TokioMutex::new(String::new()),
             backend: TokioMutex::new("openai".to_string()),
         })
-        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config])
+        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
@@ -162,12 +181,16 @@ fn main() {
                     window.set_focus().unwrap();
                 }
             }).expect("Failed to register global shortcut");
+
+
         }
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
         }
         _ => {}
-    })
+    });
+
+    Ok(())
 }
 
 fn create_window(app: &AppHandle) {

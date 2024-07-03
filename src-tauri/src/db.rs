@@ -1,5 +1,5 @@
 // src-tauri/src/database.rs
-use duckdb::{Connection, Result};
+use rusqlite::{Connection, Result};
 
 pub struct Database {
     conn: Connection,
@@ -7,7 +7,7 @@ pub struct Database {
 
 impl Database {
     pub fn new() -> Result<Self> {
-        let conn = Connection::open_in_memory()?;
+        let conn = Connection::open("./dev.db")?;
         Ok(Database { conn })
     }
 
@@ -19,23 +19,23 @@ impl Database {
         Ok(())
     }
 
-    pub fn add_user(&self, name: &str) -> Result<()> {
+    pub fn add_llm(&self, name: &str, api_type: &str) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO users (name) VALUES (?)",
-            &[name],
+            "INSERT INTO llm (name, api_type) VALUES (?, ?)",
+            &[name, api_type],
         )?;
         Ok(())
     }
 
-    pub fn get_users(&self) -> Result<Vec<(i32, String)>> {
-        let mut stmt = self.conn.prepare("SELECT id, name FROM users")?;
-        let users = stmt.query_map([], |row| {
+    pub fn get_llm(&self) -> Result<Vec<(String, String)>> {
+        let mut stmt = self.conn.prepare("SELECT name, api_type FROM llm")?;
+        let llms = stmt.query_map([], |row| {
             Ok((row.get(0)?, row.get(1)?))
         })?;
 
         let mut result = Vec::new();
-        for user in users {
-            result.push(user?);
+        for llm in llms {
+            result.push(llm?);
         }
         Ok(result)
     }

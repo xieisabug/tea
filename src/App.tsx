@@ -16,9 +16,14 @@ function App() {
     const [response, setResponse] = useState<string>('');
     const [showConfig, setShowConfig] = useState<boolean>(false);
     const [config, setConfig] = useState<Config>({ api_key: '', backend: 'openai' });
+    const [LLM, setLLM] = useState<Array<Object>>([]);
 
     useEffect(() => {
         invoke<Config>('get_config').then(setConfig);
+    }, []);
+
+    useEffect(() => {
+        invoke<Array<Object>>('get_llm').then(setLLM);
     }, []);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,8 +66,9 @@ function App() {
                         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                             setConfig({ ...config, backend: e.target.value })}
                     >
-                        <option value="openai">OpenAI</option>
-                        <option value="ollama">Ollama</option>
+                        {LLM.map(i => {
+                            return <option value="openai">{i.toString()}</option>
+                        })}
                     </select>
                     <input
                         type="password"
