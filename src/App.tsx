@@ -7,24 +7,31 @@ interface Config {
     backend: string;
 }
 
+interface LLMProvider {
+    id: string;
+    name: string;
+}
+
 interface AiResponse {
     text: string;
 }
-
 function App() {
     const [query, setQuery] = useState<string>('');
     const [response, setResponse] = useState<string>('');
     const [showConfig, setShowConfig] = useState<boolean>(false);
     const [config, setConfig] = useState<Config>({ api_key: '', backend: 'openai' });
-    const [LLM, setLLM] = useState<Array<Object>>([]);
+    const [LLMProviders, setLLMProviders] = useState<Array<LLMProvider>>([]);
+    const [models, setModels] = useState<Array<string>>([]);
 
     useEffect(() => {
         invoke<Config>('get_config').then(setConfig);
+        invoke<Array<LLMProvider>>('get_llm_providers').then(setLLMProviders);
     }, []);
 
-    useEffect(() => {
-        invoke<Array<Object>>('get_llm').then(setLLM);
-    }, []);
+    const handleRefreshModels = async () => {
+        const updatedModels = await invoke<Array<string>>('get_models', { provider: config.backend });
+        setModels(updatedModels);
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -61,22 +68,37 @@ function App() {
             ) : (
                 <div className="config-container">
                     <h2>AI Backend Configuration</h2>
-                    <select
-                        value={config.backend}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                            setConfig({ ...config, backend: e.target.value })}
-                    >
-                        {LLM.map(i => {
-                            return <option value="openai">{i.toString()}</option>
-                        })}
-                    </select>
-                    <input
-                        type="password"
-                        value={config.api_key}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setConfig({ ...config, api_key: e.target.value })}
-                        placeholder="API Key"
-                    />
+                    <div>
+                        <label>大模型提供商:</label>
+                        <select
+                            value={config.backend}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                setConfig({ ...config, backend: e.target.value })}
+                        >
+                            {LLMProviders.map((provider, index) => (
+                                <option key={index} value={provider.id}>{provider.name}</option>
+                            ))}
+                        </select>
+                        <button onClick={handleRefreshModels}>Refresh</button>
+                    </div>
+                    <div>
+                        <label>API Key:</label>
+                        <input
+                            type="password"
+                            value={config.api_key}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                setConfig({ ...config, api_key: e.target.value })}
+                            placeholder="API Key"
+                        />
+                    </div>
+                    <div>
+                        <label>模型列表:</label>
+                        <select>
+                            {models.map((model, index) => (
+                                <option key={index} value={model}>{model}</option>
+                            ))}
+                        </select>
+                    </div>
                     <button onClick={handleSaveConfig}>Save</button>
                     <button onClick={() => setShowConfig(false)}>Cancel</button>
                 </div>
