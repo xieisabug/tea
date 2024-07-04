@@ -1,16 +1,16 @@
-use rusqlite::{Connection, Result, params};
+use rusqlite::{Connection, params};
 
-pub struct Database {
+pub struct LLMDatabase {
     conn: Connection,
 }
 
-impl Database {
-    pub fn new() -> Result<Self> {
+impl LLMDatabase {
+    pub fn new() -> rusqlite::Result<Self> {
         let conn = Connection::open("./dev.db")?;
-        Ok(Database { conn })
+        Ok(LLMDatabase { conn })
     }
 
-    pub fn create_table(&self) -> Result<()> {
+    pub fn create_table(&self) -> rusqlite::Result<()> {
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS llm_provider (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,15 +18,6 @@ impl Database {
                     api_type TEXT NOT NULL,
                     description TEXT,
                     is_official BOOLEAN NOT NULL DEFAULT 0,
-                    created_time DATETIME DEFAULT CURRENT_TIMESTAMP
-                );",
-            [],
-        )?;
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS system_config (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    key TEXT NOT NULL UNIQUE,
-                    value TEXT NOT NULL,
                     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
                 );",
             [],
@@ -46,24 +37,11 @@ impl Database {
                 );",
             [],
         )?;
-
-        let system_version = self.get_config("system_version")?;
-        if system_version.is_empty() {
-            self.conn.execute(
-                "INSERT INTO system_config (key, value) VALUES ('system_version', '0.1')",
-                [],
-            )?;
-
-            self.init_llm_provider()?;
-            self.debug()?;
-        } else {
-            // TODO 以后的升级逻辑都放到这里
-            println!("system_version: {}", system_version);
-        }
         Ok(())
     }
 
-    pub fn add_llm_provider(&self, name: &str, api_type: &str, description: &str, is_official: bool) -> Result<()> {
+
+    pub fn add_llm_provider(&self, name: &str, api_type: &str, description: &str, is_official: bool) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO llm_provider (name, api_type, description, is_official) VALUES (?, ?, ?, ?)",
             params![name, api_type, description, is_official],
@@ -71,7 +49,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_llm_providers(&self) -> Result<Vec<(i64, String, String, String, bool)>> {
+    pub fn get_llm_providers(&self) -> rusqlite::Result<Vec<(i64, String, String, String, bool)>> {
         let mut stmt = self.conn.prepare("SELECT id, name, api_type, description, is_official FROM llm_provider")?;
         let llm_providers = stmt.query_map([], |row| {
             Ok((
@@ -90,7 +68,7 @@ impl Database {
         Ok(result)
     }
 
-    pub fn delete_llm_provider(&self, id: i64) -> Result<()> {
+    pub fn delete_llm_provider(&self, id: i64) -> rusqlite::Result<()> {
         self.conn.execute(
             "DELETE FROM llm_provider WHERE id = ?",
             params![id],
@@ -98,37 +76,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn add_system_config(&self, key: &str, value: &str) -> Result<()> {
-        self.conn.execute(
-            "INSERT INTO system_config (key, value) VALUES (?, ?)",
-            params![key, value],
-        )?;
-        Ok(())
-    }
-
-    pub fn get_config(&self, key: &str) -> Result<String> {
-        let mut stmt = self.conn.prepare("SELECT value FROM system_config WHERE key = ?")?;
-        let mut rows = stmt.query_map(params![key], |row| {
-            Ok(row.get(0)?)
-        })?;
-
-        if let Some(row) = rows.next() {
-            let value = row?; // Handle potential error
-            Ok(value)
-        } else {
-            Ok(String::new())
-        }
-    }
-
-    pub fn delete_system_config(&self, key: &str) -> Result<()> {
-        self.conn.execute(
-            "DELETE FROM system_config WHERE key = ?",
-            params![key],
-        )?;
-        Ok(())
-    }
-
-    pub fn add_llm_model(&self, name: &str, llm_provider_id: i64, code: &str, description: &str, vision_support: bool, audio_support: bool, video_support: bool) -> Result<()> {
+    pub fn add_llm_model(&self, name: &str, llm_provider_id: i64, code: &str, description: &str, vision_support: bool, audio_support: bool, video_support: bool) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO llm_model (name, llm_provider_id, code, description, vision_support, audio_support, video_support) VALUES (?, ?, ?, ?, ?, ?, ?)",
             params![name, llm_provider_id, code, description, vision_support, audio_support, video_support],
@@ -136,7 +84,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_all_llm_models(&self) -> Result<Vec<(i64, String, i64, String, String, bool, bool, bool)>> {
+    pub fn get_all_llm_models(&self) -> rusqlite::Result<Vec<(i64, String, i64, String, String, bool, bool, bool)>> {
         let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model")?;
         let llm_models = stmt.query_map([], |row| {
             Ok((
@@ -158,7 +106,7 @@ impl Database {
         Ok(result)
     }
 
-    pub fn get_llm_models(&self, provider_id: String) -> Result<Vec<(i64, String, i64, String, String, bool, bool, bool)>> {
+    pub fn get_llm_models(&self, provider_id: String) -> rusqlite::Result<Vec<(i64, String, i64, String, String, bool, bool, bool)>> {
         let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE llm_provider_id = ?")?;
         let llm_models = stmt.query_map([provider_id], |row| {
             Ok((
@@ -180,7 +128,7 @@ impl Database {
         Ok(result)
     }
 
-    pub fn delete_llm_model(&self, id: i64) -> Result<()> {
+    pub fn delete_llm_model(&self, id: i64) -> rusqlite::Result<()> {
         self.conn.execute(
             "DELETE FROM llm_model WHERE id = ?",
             params![id],
@@ -188,7 +136,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn init_llm_provider(&self) -> Result<()> {
+    pub fn init_llm_provider(&self) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO llm_provider (id, name, api_type, description, is_official) VALUES (1, 'OpenAI', 'openai_api', 'OpenAI API', 1)",
             [],
@@ -200,7 +148,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn debug(&self) -> Result<()> {
+    pub fn debug(&self) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO llm_model (id, name, llm_provider_id, code, description, vision_support, audio_support, video_support) VALUES (9999, 'yi:9b-v1.5', 10, 'yi:9b-v1.5', 'yi:9b-v1.5', 0, 0, 0)",
             [],

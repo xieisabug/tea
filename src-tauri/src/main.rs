@@ -10,7 +10,9 @@ use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEven
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::ai_api::ask_ai;
-use crate::db::Database;
+use crate::api::llm_api::{get_llm_models, get_llm_providers};
+use crate::db::system_db::SystemDatabase;
+use crate::db::llm_db::LLMDatabase;
 
 struct AppState {
     api_key: TokioMutex<String>,
@@ -77,44 +79,6 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
     })
 }
 
-#[tauri::command]
-async fn get_llm_providers() -> Result<Vec<LlmProvider>, String> {
-    let db = Database::new().map_err(|e| e.to_string())?;
-    let providers = db.get_llm_providers().map_err(|e| e.to_string())?;
-    let mut result = Vec::new();
-    for (id, name, api_type, description, is_official) in providers {
-        result.push(LlmProvider {
-            id,
-            name,
-            api_type,
-            description,
-            is_official,
-        });
-    }
-    Ok(result)
-}
-
-
-#[tauri::command]
-async fn get_llm_models(provider_id: String) -> Result<Vec<LlmModel>, String> {
-    let db = Database::new().map_err(|e| e.to_string())?;
-    let models = db.get_llm_models(provider_id).map_err(|e| e.to_string())?;
-    let mut result = Vec::new();
-    for (id, name, llm_provider_id, code, description, vision_support, audio_support, video_support) in models {
-        result.push(LlmModel {
-            id,
-            name,
-            llm_provider_id,
-            code,
-            description,
-            vision_support,
-            audio_support,
-            video_support,
-        });
-    }
-    Ok(result)
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     let show = CustomMenuItem::new("show".to_string(), "Show");
@@ -123,8 +87,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
 
-    let db = Database::new()?;
-    db.create_table()?;
+    let system_db = SystemDatabase::new()?;
+    let llm_db = LLMDatabase::new()?;
+    system_db.create_table()?;
+    llm_db.create_table()?;
 
     let app = tauri::Builder::default()
         .system_tray(system_tray)
