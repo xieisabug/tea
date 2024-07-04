@@ -1,5 +1,20 @@
 use reqwest::Client;
-use crate::{AiRequest, AiResponse, AppState};
+use serde::{Deserialize, Serialize};
+use crate::{AppState};
+
+#[derive(Serialize, Deserialize)]
+pub struct AiRequest {
+    prompt: String,
+    model: Option<String>,
+    temperature: Option<f32>,
+    top_p: Option<f32>,
+    max_tokens: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AiResponse {
+    text: String,
+}
 
 #[tauri::command]
 pub async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Result<AiResponse, String> {

@@ -20,44 +20,9 @@ struct AppState {
 }
 
 #[derive(Serialize, Deserialize)]
-struct AiRequest {
-    prompt: String,
-    model: Option<String>,
-    temperature: Option<f32>,
-    top_p: Option<f32>,
-    max_tokens: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct AiResponse {
-    text: String,
-}
-
-#[derive(Serialize, Deserialize)]
 struct Config {
     api_key: String,
     backend: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct LlmProvider {
-    id: i64,
-    name: String,
-    api_type: String,
-    description: String,
-    is_official: bool,
-}
-
-#[derive(Serialize, Deserialize)]
-struct LlmModel {
-    id: i64,
-    name: String,
-    llm_provider_id: i64,
-    code: String,
-    description: String,
-    vision_support: bool,
-    audio_support: bool,
-    video_support: bool,
 }
 
 #[tauri::command]

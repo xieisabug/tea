@@ -1,5 +1,26 @@
-use crate::{LlmModel, LlmProvider};
+use serde::{Deserialize, Serialize};
 use crate::db::llm_db::LLMDatabase;
+
+#[derive(Serialize, Deserialize)]
+pub struct LlmProvider {
+    id: i64,
+    name: String,
+    api_type: String,
+    description: String,
+    is_official: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LlmModel {
+    id: i64,
+    name: String,
+    llm_provider_id: i64,
+    code: String,
+    description: String,
+    vision_support: bool,
+    audio_support: bool,
+    video_support: bool,
+}
 
 #[tauri::command]
 pub async fn get_llm_providers() -> Result<Vec<LlmProvider>, String> {
