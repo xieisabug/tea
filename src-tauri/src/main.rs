@@ -36,6 +36,27 @@ struct Config {
     backend: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct LlmProvider {
+    id: i64,
+    name: String,
+    api_type: String,
+    description: String,
+    is_official: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+struct LlmModel {
+    id: i64,
+    name: String,
+    llm_provider_id: i64,
+    code: String,
+    description: String,
+    vision_support: bool,
+    audio_support: bool,
+    video_support: bool,
+}
+
 #[tauri::command]
 async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Result<AiResponse, String> {
     let client = Client::new();
@@ -97,9 +118,41 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
 }
 
 #[tauri::command]
-async fn get_llm() -> Result<Vec<(String, String)>, String> {
+async fn get_llm_providers() -> Result<Vec<LlmProvider>, String> {
     let db = Database::new().map_err(|e| e.to_string())?;
-    db.get_llm().map_err(|e| e.to_string())
+    let providers = db.get_llm_providers().map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for (id, name, api_type, description, is_official) in providers {
+        result.push(LlmProvider {
+            id,
+            name,
+            api_type,
+            description,
+            is_official,
+        });
+    }
+    Ok(result)
+}
+
+
+#[tauri::command]
+async fn get_llm_models(provider_id: String) -> Result<Vec<LlmModel>, String> {
+    let db = Database::new().map_err(|e| e.to_string())?;
+    let models = db.get_llm_models(provider_id).map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for (id, name, llm_provider_id, code, description, vision_support, audio_support, video_support) in models {
+        result.push(LlmModel {
+            id,
+            name,
+            llm_provider_id,
+            code,
+            description,
+            vision_support,
+            audio_support,
+            video_support,
+        });
+    }
+    Ok(result)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -112,15 +165,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let db = Database::new()?;
     db.create_table()?;
-
-    match db.add_llm("Ollama", "openai_api") {
-        Ok(()) => println!("add ollama success"),
-        Err(err) => eprintln!("error : {}", err)
-    };
-    match db.add_llm("OpenAI", "openai_api") {
-        Ok(()) => println!("add ollama success"),
-        Err(err) => eprintln!("error : {}", err)
-    };
 
     let app = tauri::Builder::default()
         .system_tray(system_tray)
@@ -158,7 +202,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             api_key: TokioMutex::new(String::new()),
             backend: TokioMutex::new("openai".to_string()),
         })
-        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm])
+        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm_providers, get_llm_models])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 

@@ -1,5 +1,4 @@
-// src-tauri/src/database.rs
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, params};
 
 pub struct Database {
     conn: Connection,
@@ -64,30 +63,52 @@ impl Database {
         Ok(())
     }
 
-    pub fn add_llm(&self, name: &str, api_type: &str) -> Result<()> {
+    pub fn add_llm_provider(&self, name: &str, api_type: &str, description: &str, is_official: bool) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO llm (name, api_type) VALUES (?, ?)",
-            &[name, api_type],
+            "INSERT INTO llm_provider (name, api_type, description, is_official) VALUES (?, ?, ?, ?)",
+            params![name, api_type, description, is_official],
         )?;
         Ok(())
     }
 
-    pub fn get_llm(&self) -> Result<Vec<(String, String)>> {
-        let mut stmt = self.conn.prepare("SELECT name, api_type FROM llm")?;
-        let llms = stmt.query_map([], |row| {
-            Ok((row.get(0)?, row.get(1)?))
+    pub fn get_llm_providers(&self) -> Result<Vec<(i64, String, String, String, bool)>> {
+        let mut stmt = self.conn.prepare("SELECT id, name, api_type, description, is_official FROM llm_provider")?;
+        let llm_providers = stmt.query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+            ))
         })?;
 
         let mut result = Vec::new();
-        for llm in llms {
-            result.push(llm?);
+        for llm_provider in llm_providers {
+            result.push(llm_provider?);
         }
         Ok(result)
     }
 
+    pub fn delete_llm_provider(&self, id: i64) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM llm_provider WHERE id = ?",
+            params![id],
+        )?;
+        Ok(())
+    }
+
+    pub fn add_system_config(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO system_config (key, value) VALUES (?, ?)",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
     pub fn get_config(&self, key: &str) -> Result<String> {
         let mut stmt = self.conn.prepare("SELECT value FROM system_config WHERE key = ?")?;
-        let mut rows = stmt.query_map(&[key], |row| {
+        let mut rows = stmt.query_map(params![key], |row| {
             Ok(row.get(0)?)
         })?;
 
@@ -97,6 +118,74 @@ impl Database {
         } else {
             Ok(String::new())
         }
+    }
+
+    pub fn delete_system_config(&self, key: &str) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM system_config WHERE key = ?",
+            params![key],
+        )?;
+        Ok(())
+    }
+
+    pub fn add_llm_model(&self, name: &str, llm_provider_id: i64, code: &str, description: &str, vision_support: bool, audio_support: bool, video_support: bool) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO llm_model (name, llm_provider_id, code, description, vision_support, audio_support, video_support) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            params![name, llm_provider_id, code, description, vision_support, audio_support, video_support],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_all_llm_models(&self) -> Result<Vec<(i64, String, i64, String, String, bool, bool, bool)>> {
+        let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model")?;
+        let llm_models = stmt.query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+            ))
+        })?;
+
+        let mut result = Vec::new();
+        for llm_model in llm_models {
+            result.push(llm_model?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_llm_models(&self, provider_id: String) -> Result<Vec<(i64, String, i64, String, String, bool, bool, bool)>> {
+        let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE llm_provider_id = ?")?;
+        let llm_models = stmt.query_map([provider_id], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+            ))
+        })?;
+
+        let mut result = Vec::new();
+        for llm_model in llm_models {
+            result.push(llm_model?);
+        }
+        Ok(result)
+    }
+
+    pub fn delete_llm_model(&self, id: i64) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM llm_model WHERE id = ?",
+            params![id],
+        )?;
+        Ok(())
     }
 
     pub fn init_llm_provider(&self) -> Result<()> {
