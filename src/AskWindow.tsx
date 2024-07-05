@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
+import { appWindow } from '@tauri-apps/api/window';
 import './App.css';
 
 interface AiResponse {
@@ -8,6 +9,7 @@ interface AiResponse {
 function AskWindow() {
     const [query, setQuery] = useState<string>('');
     const [response, setResponse] = useState<string>('');
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -20,11 +22,30 @@ function AskWindow() {
         }
     };
 
+    useEffect(() => {
+        const handleEsc = async (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                console.log("Closing window")
+                await appWindow.close();
+            }
+        };
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+
+        window.addEventListener('keydown', handleEsc);
+
+        return () => {
+            window.removeEventListener('keydown', handleEsc);
+        };
+    }, []);
+
     return (
-        <div className="App">
-            <div className="chat-container">
+        <div className="ask-window" >
+            <div className="chat-container" data-tauri-drag-region >
                 <form onSubmit={handleSubmit}>
                     <input
+                        ref={inputRef}
                         type="text"
                         value={query}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}

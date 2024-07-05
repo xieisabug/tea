@@ -10,6 +10,14 @@ body {
   height: 100vh;
 }
 
+.ask-window {
+  user-select: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
 .chat-container, .config-container {
   background-color: white;
   padding: 20px;
