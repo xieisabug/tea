@@ -49,6 +49,11 @@ function App() {
         setShowConfig(false);
     };
 
+    const test = async () => {
+        const result = await invoke('get_selected', { });
+        console.log(result)
+    }
+
     return (
         <div className="App">
             {!showConfig ? (
@@ -64,10 +69,11 @@ function App() {
                     </form>
                     <div className="response">{response}</div>
                     <button onClick={() => setShowConfig(true)}>Configure</button>
+                    <button onClick={() => test()}>Test</button>
                 </div>
             ) : (
                 <div className="config-container">
-                    <h2>AI Backend Configuration</h2>
+                <h2>AI Backend Configuration</h2>
                     <div>
                         <label>大模型提供商:</label>
                         <select

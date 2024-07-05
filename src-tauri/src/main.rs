@@ -5,11 +5,13 @@
 
 mod db;
 mod api;
+mod plugin;
 
 use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::ai_api::ask_ai;
+use get_selected_text::get_selected_text;
 use crate::api::llm_api::{get_llm_models, get_llm_providers};
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
@@ -23,6 +25,29 @@ struct AppState {
 struct Config {
     api_key: String,
     backend: String,
+}
+
+#[cfg(target_os = "macos")]
+fn query_accessibility_permissions() -> bool {
+    let trusted = macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
+    if trusted {
+        print!("Application is totally trusted!");
+    } else {
+        print!("Application isn't trusted :(");
+    }
+    trusted
+}
+
+#[cfg(not(target_os = "macos"))]
+fn query_accessibility_permissions() -> bool {
+    return true;
+}
+
+#[tauri::command]
+async fn get_selected() -> Result<String, String> {
+    let result = get_selected_text().unwrap_or_default();
+    println!("{:?}", result);
+    Ok(result)
 }
 
 #[tauri::command]
@@ -87,13 +112,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 create_window(&app_handle)
             }
 
+            if !query_accessibility_permissions() {
+                println!("Please grant accessibility permissions to the app")
+            }
+
             Ok(())
         })
         .manage(AppState {
             api_key: TokioMutex::new(String::new()),
             backend: TokioMutex::new("openai".to_string()),
         })
-        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm_providers, get_llm_models])
+        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm_providers, get_llm_models, get_selected])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
@@ -103,6 +132,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Register global shortcut
             app_handle.global_shortcut_manager().register("CmdOrCtrl+Shift+I", move || {
                 println!("CmdOrCtrl+Shift+I pressed");
+
+                let text = get_selected_text().unwrap_or_default();
+                println!("Selected text : {}", text);
+
                 if app_handle.get_window("main").is_none() {
                     println!("Creating window");
 
