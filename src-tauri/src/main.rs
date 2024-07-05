@@ -6,6 +6,7 @@
 mod db;
 mod api;
 mod plugin;
+mod window;
 
 use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,7 @@ use get_selected_text::get_selected_text;
 use crate::api::llm_api::{get_llm_models, get_llm_providers};
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
+use crate::window::create_ask_window;
 
 struct AppState {
     api_key: TokioMutex<String>,
@@ -109,7 +111,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let app_handle = app.handle();
 
             if app.get_window("main").is_none() {
-                create_window(&app_handle)
+                create_ask_window(&app_handle)
             }
 
             if !query_accessibility_permissions() {
@@ -136,10 +138,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let text = get_selected_text().unwrap_or_default();
                 println!("Selected text : {}", text);
 
-                if app_handle.get_window("main").is_none() {
+                if app_handle.get_window("ask").is_none() {
                     println!("Creating window");
 
-                    create_window(&app_handle)
+                    create_ask_window(&app_handle)
                 } else if let Some(window) = app_handle.get_window("main") {
                     println!("Showing window");
                     if window.is_minimized().unwrap_or(false) {
@@ -149,8 +151,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     window.set_focus().unwrap();
                 }
             }).expect("Failed to register global shortcut");
-
-
         }
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
@@ -159,33 +159,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     Ok(())
-}
-
-fn create_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(
-        app,
-        "main",
-        WindowUrl::App("index.html".into())
-    )
-        .title("Tea")
-        .inner_size(600.0, 200.0)
-        .fullscreen(false)
-        .resizable(false)
-        .decorations(false)
-        .center();
-
-    #[cfg(not(target_os = "macos"))]
-    let window_builder = window_builder.transparent(true);
-
-    match window_builder.build() {
-        Ok(window) => {
-            let window_clone = window.clone();
-            window.on_window_event(move |event| {
-                if let WindowEvent::CloseRequested { .. } = event {
-                    window_clone.hide().unwrap();
-                }
-            });
-        },
-        Err(e) => eprintln!("Failed to build window: {}", e),
-    }
 }
