@@ -142,7 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Creating window");
 
                     create_ask_window(&app_handle)
-                } else if let Some(window) = app_handle.get_window("main") {
+                } else if let Some(window) = app_handle.get_window("ask") {
                     println!("Showing window");
                     if window.is_minimized().unwrap_or(false) {
                         window.unminimize().unwrap();
