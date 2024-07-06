@@ -18,6 +18,7 @@ impl LLMDatabase {
                     api_type TEXT NOT NULL,
                     description TEXT,
                     is_official BOOLEAN NOT NULL DEFAULT 0,
+                    is_enabled BOOLEAN NOT NULL DEFAULT 0,
                     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
                 );",
             [],
@@ -37,20 +38,36 @@ impl LLMDatabase {
                 );",
             [],
         )?;
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS llm_provider_config (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    llm_provider_id INTEGER NOT NULL,
+                    value TEXT,
+                    append_location TEXT,
+                    is_addition BOOLEAN NOT NULL DEFAULT 0,
+                    created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+                );",
+            [],
+        )?;
+
+        if let Err(err) = self.init_llm_provider() {
+            println!("init_llm_provider error: {:?}", err);
+        }
         Ok(())
     }
 
 
-    pub fn add_llm_provider(&self, name: &str, api_type: &str, description: &str, is_official: bool) -> rusqlite::Result<()> {
+    pub fn add_llm_provider(&self, name: &str, api_type: &str, description: &str, is_official: bool, is_enabled: bool) -> rusqlite::Result<()> {
         self.conn.execute(
-            "INSERT INTO llm_provider (name, api_type, description, is_official) VALUES (?, ?, ?, ?)",
-            params![name, api_type, description, is_official],
+            "INSERT INTO llm_provider (name, api_type, description, is_official, is_enabled) VALUES (?, ?, ?, ?, ?)",
+            params![name, api_type, description, is_official, is_enabled],
         )?;
         Ok(())
     }
 
-    pub fn get_llm_providers(&self) -> rusqlite::Result<Vec<(i64, String, String, String, bool)>> {
-        let mut stmt = self.conn.prepare("SELECT id, name, api_type, description, is_official FROM llm_provider")?;
+    pub fn get_llm_providers(&self) -> rusqlite::Result<Vec<(i64, String, String, String, bool, bool)>> {
+        let mut stmt = self.conn.prepare("SELECT id, name, api_type, description, is_official, is_enabled FROM llm_provider")?;
         let llm_providers = stmt.query_map([], |row| {
             Ok((
                 row.get(0)?,
@@ -58,6 +75,7 @@ impl LLMDatabase {
                 row.get(2)?,
                 row.get(3)?,
                 row.get(4)?,
+                row.get(5)?,
             ))
         })?;
 

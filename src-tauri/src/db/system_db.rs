@@ -1,4 +1,5 @@
 use rusqlite::{Connection, Result, params};
+use crate::db::llm_db::LLMDatabase;
 
 pub struct SystemDatabase {
     conn: Connection,
@@ -28,7 +29,6 @@ impl SystemDatabase {
                 "INSERT INTO system_config (key, value) VALUES ('system_version', '0.1')",
                 [],
             )?;
-
         } else {
             // TODO 以后的升级逻辑都放到这里
             println!("system_version: {}", system_version);

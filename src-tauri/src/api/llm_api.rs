@@ -3,23 +3,34 @@ use crate::db::llm_db::LLMDatabase;
 
 #[derive(Serialize, Deserialize)]
 pub struct LlmProvider {
-    id: i64,
-    name: String,
-    api_type: String,
-    description: String,
-    is_official: bool,
+    pub id: i64,
+    pub name: String,
+    pub api_type: String,
+    pub description: String,
+    pub is_official: bool,
+    pub is_enabled: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct LlmModel {
-    id: i64,
-    name: String,
-    llm_provider_id: i64,
-    code: String,
-    description: String,
-    vision_support: bool,
-    audio_support: bool,
-    video_support: bool,
+    pub id: i64,
+    pub name: String,
+    pub llm_provider_id: i64,
+    pub code: String,
+    pub description: String,
+    pub vision_support: bool,
+    pub audio_support: bool,
+    pub video_support: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LlmProviderConfig {
+    pub id: i64,
+    pub name: String,
+    pub llm_provider_id: i64,
+    pub value: String,
+    pub append_location: String,
+    pub is_addition: bool,
 }
 
 #[tauri::command]
@@ -27,13 +38,14 @@ pub async fn get_llm_providers() -> Result<Vec<LlmProvider>, String> {
     let db = LLMDatabase::new().map_err(|e| e.to_string())?;
     let providers = db.get_llm_providers().map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for (id, name, api_type, description, is_official) in providers {
+    for (id, name, api_type, description, is_official, is_enabled) in providers {
         result.push(LlmProvider {
             id,
             name,
             api_type,
             description,
             is_official,
+            is_enabled
         });
     }
     Ok(result)

@@ -11,7 +11,7 @@ mod window;
 use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
-use crate::api::ai_api::ask_ai;
+use crate::api::ai_api::{ask_ai, models};
 use get_selected_text::get_selected_text;
 use crate::api::llm_api::{get_llm_models, get_llm_providers};
 use crate::db::system_db::SystemDatabase;
@@ -124,7 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             api_key: TokioMutex::new(String::new()),
             backend: TokioMutex::new("openai".to_string()),
         })
-        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm_providers, get_llm_models, get_selected, open_config_window])
+        .invoke_handler(tauri::generate_handler![ask_ai, models, save_config, get_config, get_llm_providers, get_llm_models, get_selected, open_config_window])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 

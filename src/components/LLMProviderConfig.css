@@ -1,0 +1,15 @@
+.model-config {
+    padding: 20px;
+    border: 1px solid #ccc;
+}
+
+.providers-grid {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.provider-item {
+    width: 50%;
+    padding: 10px;
+    box-sizing: border-box;
+}

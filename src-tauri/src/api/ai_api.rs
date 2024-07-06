@@ -1,6 +1,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use crate::{AppState};
+use crate::api::llm_api::{LlmProvider, LlmProviderConfig};
 
 #[derive(Serialize, Deserialize)]
 pub struct AiRequest {
@@ -55,4 +56,30 @@ pub async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Re
     let text = response["choices"][0]["message"]["content"].as_str().unwrap_or("").to_string();
 
     Ok(AiResponse { text })
+}
+
+#[tauri::command]
+pub async fn models(llm_provider: LlmProvider, llm_provider_configs: Vec<LlmProviderConfig>) -> Result<(), String> {
+    // convert llm_provider_config to a map
+    let mut origin_config_map = std::collections::HashMap::new();
+    for config in llm_provider_configs {
+        origin_config_map.insert(config.name, config.value);
+    }
+
+    let default_openai_endpoint = "https://api.openai.com/v1/".to_string();
+    let default_ollama_endpoint = "https://localhost:11434/".to_string();
+    let url = match llm_provider.api_type.as_str() {
+        "openai" => {
+            let endpoint = origin_config_map.get("end_point").unwrap_or(&default_openai_endpoint);
+            format!("{}{}", endpoint, "models")
+        }
+        "ollama" => {
+            let endpoint = origin_config_map.get("end_point").unwrap_or(&default_ollama_endpoint);
+            format!("{}{}", endpoint, "tags")
+        }
+        _ => default_openai_endpoint.to_string()
+    };
+
+
+    Ok(())
 }
