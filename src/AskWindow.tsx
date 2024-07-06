@@ -40,9 +40,13 @@ function AskWindow() {
         };
     }, []);
 
+    const openConfig = async () => {
+        await invoke('open_config_window')
+    }
+
     return (
-        <div className="ask-window" >
-            <div className="chat-container" data-tauri-drag-region >
+        <div className="ask-window">
+            <div className="chat-container" data-tauri-drag-region>
                 <form onSubmit={handleSubmit}>
                     <input
                         ref={inputRef}
@@ -55,6 +59,8 @@ function AskWindow() {
                 </form>
                 <div className="response">{response}</div>
             </div>
+            <button onClick={openConfig}>设置</button>
+
         </div>
     );
 }

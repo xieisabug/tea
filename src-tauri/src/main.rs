@@ -16,7 +16,7 @@ use get_selected_text::get_selected_text;
 use crate::api::llm_api::{get_llm_models, get_llm_providers};
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
-use crate::window::create_ask_window;
+use crate::window::{create_ask_window, open_config_window};
 
 struct AppState {
     api_key: TokioMutex<String>,
@@ -124,7 +124,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             api_key: TokioMutex::new(String::new()),
             backend: TokioMutex::new("openai".to_string()),
         })
-        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm_providers, get_llm_models, get_selected])
+        .invoke_handler(tauri::generate_handler![ask_ai, save_config, get_config, get_llm_providers, get_llm_models, get_selected, open_config_window])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 

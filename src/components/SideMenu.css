@@ -1,0 +1,15 @@
+.menu {
+    width: 200px;
+    background-color: #f4f4f4;
+    padding: 20px;
+}
+
+.menu-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.menu-item.selected {
+    background-color: #ddd;
+    font-weight: bold;
+}
