@@ -19,7 +19,7 @@ function AskWindow() {
         setResponse('');
         bufferRef.current = '';
         try {
-            invoke<AiResponse>('ask_ai', { request: { prompt: query } });
+            invoke<AiResponse>('ask_ai', { request: { prompt: query, id: 'quick_chat_response' } });
         } catch (error) {
             console.error('Error:', error);
             setResponse('An error occurred while processing your request.');

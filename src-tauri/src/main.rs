@@ -19,14 +19,12 @@ use crate::db::llm_db::LLMDatabase;
 use crate::window::{create_ask_window, open_config_window};
 
 struct AppState {
-    api_key: TokioMutex<String>,
-    backend: TokioMutex<String>,
+    selected_text: TokioMutex<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Config {
-    api_key: String,
-    backend: String,
+    selected_text: String,
 }
 
 #[cfg(target_os = "macos")]
@@ -54,20 +52,16 @@ async fn get_selected() -> Result<String, String> {
 
 #[tauri::command]
 async fn save_config(state: tauri::State<'_, AppState>, config: Config) -> Result<(), String> {
-    let mut api_key = state.api_key.lock().await;
-    let mut backend = state.backend.lock().await;
-    *api_key = config.api_key;
-    *backend = config.backend;
+    let mut selected_text = state.selected_text.lock().await;
+    *selected_text = config.selected_text;
     Ok(())
 }
 
 #[tauri::command]
 async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String> {
-    let api_key = state.api_key.lock().await;
-    let backend = state.backend.lock().await;
+    let selected_text = state.selected_text.lock().await;
     Ok(Config {
-        api_key: api_key.clone(),
-        backend: backend.clone(),
+        selected_text: selected_text.clone(),
     })
 }
 
@@ -121,8 +115,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         })
         .manage(AppState {
-            api_key: TokioMutex::new(String::new()),
-            backend: TokioMutex::new("openai".to_string()),
+            selected_text: TokioMutex::new(String::new()),
         })
         .invoke_handler(tauri::generate_handler![ask_ai, models, save_config, get_config, get_llm_providers, get_llm_models, get_selected, open_config_window])
         .build(tauri::generate_context!())
@@ -137,6 +130,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 let text = get_selected_text().unwrap_or_default();
                 println!("Selected text : {}", text);
+                let app_state = app_handle.state::<AppState>();
+                let mut selected_text_guard = app_state.selected_text.blocking_lock();
+                *selected_text_guard = text;
 
                 if app_handle.get_window("ask").is_none() {
                     println!("Creating window");
