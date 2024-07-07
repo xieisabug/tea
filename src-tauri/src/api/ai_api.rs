@@ -24,7 +24,7 @@ pub async fn ask_ai(window: tauri::Window, request: AiRequest) -> Result<(), Str
 
     let url = "http://localhost:11434/v1/chat/completions";
 
-    let model = request.model.unwrap_or_else(|| "yi:9b-v1.5".to_string());
+    let model = request.model.unwrap_or_else(|| "yi:34b-v1.5".to_string());
     let temperature = request.temperature.unwrap_or(1.0);
     let top_p = request.top_p.unwrap_or(1.0);
     let max_tokens = request.max_tokens.unwrap_or(512);
