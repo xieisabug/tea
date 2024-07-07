@@ -1,4 +1,5 @@
 use reqwest::Client;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use crate::{AppState};
 use crate::api::llm_api::{LlmProvider, LlmProviderConfig};
@@ -18,24 +19,19 @@ pub struct AiResponse {
 }
 
 #[tauri::command]
-pub async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Result<AiResponse, String> {
+pub async fn ask_ai(window: tauri::Window, request: AiRequest) -> Result<(), String> {
     let client = Client::new();
-    let api_key = state.api_key.lock().await;
-    let backend = state.backend.lock().await;
 
-    let url = match backend.as_str() {
-        "openai" => "https://api.openai.com/v1/chat/completions",
-        "ollama" => "http://localhost:11434/v1/chat/completions",
-        _ => return Err("Invalid backend".to_string()),
-    };
+    let url = "http://localhost:11434/v1/chat/completions";
 
-    let model = request.model.unwrap_or_else(|| "qwen2".to_string());
+    let model = request.model.unwrap_or_else(|| "yi:9b-v1.5".to_string());
     let temperature = request.temperature.unwrap_or(1.0);
     let top_p = request.top_p.unwrap_or(1.0);
     let max_tokens = request.max_tokens.unwrap_or(512);
 
-    let res = client.post(url)
-        .header("Authorization", format!("Bearer {}", api_key))
+    println!("send to url : {}, model: {}", url, model);
+    let mut stream = client.post(url)
+        .header("Authorization", format!("Bearer {}", "123"))
         .json(&serde_json::json!({
             "model": model,
             "messages": [
@@ -46,16 +42,30 @@ pub async fn ask_ai(state: tauri::State<'_, AppState>, request: AiRequest) -> Re
             ],
             "temperature": temperature,
             "top_p": top_p,
+            "stream": true,
             "max_tokens": max_tokens
         }))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .bytes_stream();
 
-    let response: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
-    let text = response["choices"][0]["message"]["content"].as_str().unwrap_or("").to_string();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        let text = String::from_utf8_lossy(&chunk);
+        if text.starts_with("data: ") {
+            let content = text.trim_start_matches("data: ");
+            if content != "[DONE]" {
+                if let Ok(response) = serde_json::from_str::<serde_json::Value>(content) {
+                    if let Some(delta) = response["choices"][0]["delta"]["content"].as_str() {
+                        window.emit("quick_chat_response", delta).map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+        }
+    }
 
-    Ok(AiResponse { text })
+    Ok(())
 }
 
 #[tauri::command]
