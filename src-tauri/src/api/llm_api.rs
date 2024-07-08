@@ -1,4 +1,6 @@
 use serde::{Deserialize, Serialize};
+use crate::api::llm::ollama::models as ollama_models;
+use crate::api::llm::openai::models as openai_models;
 use crate::db::llm_db::LLMDatabase;
 
 #[derive(Serialize, Deserialize)]
@@ -29,8 +31,8 @@ pub struct LlmProviderConfig {
     pub name: String,
     pub llm_provider_id: i64,
     pub value: String,
-    pub append_location: String,
-    pub is_addition: bool,
+    pub append_location: Option<String>,
+    pub is_addition: Option<bool>,
 }
 
 #[tauri::command]
@@ -69,17 +71,24 @@ pub async fn get_llm_provider_config(id: i64) -> Result<Vec<LlmProviderConfig>, 
             name,
             llm_provider_id,
             value,
-            append_location,
-            is_addition,
+            append_location: Some(append_location),
+            is_addition: Some(is_addition),
         });
     }
     Ok(result)
 }
 
 #[tauri::command]
-pub async fn get_llm_models(provider_id: String) -> Result<Vec<LlmModel>, String> {
+pub async fn update_llm_provider_config(llm_provider_id: i64, name: String, value: String) -> Result<(), String> {
     let db = LLMDatabase::new().map_err(|e| e.to_string())?;
-    let models = db.get_llm_models(provider_id).map_err(|e| e.to_string())?;
+    db.update_llm_provider_config(llm_provider_id, &*name, &*value).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_llm_models(llm_provider_id: String) -> Result<Vec<LlmModel>, String> {
+    let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+    let models = db.get_llm_models(llm_provider_id).map_err(|e| e.to_string())?;
     let mut result = Vec::new();
     for (id, name, llm_provider_id, code, description, vision_support, audio_support, video_support) in models {
         result.push(LlmModel {
@@ -94,4 +103,50 @@ pub async fn get_llm_models(provider_id: String) -> Result<Vec<LlmModel>, String
         });
     }
     Ok(result)
+}
+
+#[tauri::command]
+pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, String> {
+    let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+    let llm_provider = db.get_llm_provider(llm_provider_id).map_err(|e| e.to_string())?;
+    let llm_provider_config = db.get_llm_provider_config(llm_provider_id).map_err(|e| e.to_string())?;
+
+    println!("llm_provider: {:?}", llm_provider);
+    match llm_provider.2.as_str() {
+        "openai" => {
+            let models = openai_models()?;
+            let mut result = Vec::new();
+            // for model in models {
+            //     result.push(LlmModel {
+            //         id: model.id,
+            //         name: model.name,
+            //         llm_provider_id: llm_provider_id,
+            //         code: model.code,
+            //         description: model.description,
+            //         vision_support: model.vision_support,
+            //         audio_support: model.audio_support,
+            //         video_support: model.video_support,
+            //     });
+            // }
+            Ok(result)
+        },
+        "ollama" => {
+            let models = ollama_models(llm_provider_config).await.map_err(|e| e.to_string())?;
+            let mut result = Vec::new();
+            for model in models {
+                result.push(LlmModel {
+                    id: model.id,
+                    name: model.name,
+                    llm_provider_id: llm_provider_id,
+                    code: model.code,
+                    description: model.description,
+                    vision_support: model.vision_support,
+                    audio_support: model.audio_support,
+                    video_support: model.video_support,
+                });
+            }
+            Ok(result)
+        },
+        _ => { Ok (Vec::new())}
+    }
 }

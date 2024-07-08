@@ -1,10 +1,10 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './LLMProviderConfig.css';
-import {invoke} from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/tauri";
+import debounce from 'lodash/debounce';
 
-// Define an interface for the component props
 interface LLMProviderConfigFormProps {
-    id: string; // Add the id prop
+    id: string;
 }
 
 interface LLMProviderConfig {
@@ -14,36 +14,66 @@ interface LLMProviderConfig {
     is_addition: boolean;
 }
 
-const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ( {id} ) => {
-    const [endpoint, setEndpoint] = useState<string>('');
-    const [modelList, setModelList] = useState<string>('');
-    const [apiKey, setApiKey] = useState<string>('');
+interface LLMModel {
+    id: number;
+    name: string;
+    llmProviderId: number;
+    code: string;
+    description: string;
+    visionSupport: boolean;
+    audioSupport: boolean;
+    videoSupport: boolean;
+}
+
+const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id }) => {
+    const [config, setConfig] = useState<Record<string, string>>({
+        endpoint: '',
+        model_list: '',
+        api_key: '',
+    });
 
     useEffect(() => {
-        invoke<Array<LLMProviderConfig>>('get_llm_provider_config', { id: id })
+        invoke<Array<LLMProviderConfig>>('get_llm_provider_config', { id })
             .then((configArray) => {
-                configArray.forEach((config) => {
-                    switch (config.name) {
-                        case 'endpoint':
-                            setEndpoint(config.value);
-                            break;
-                        case 'model_list':
-                            setModelList(config.value);
-                            break;
-                        case 'api_key':
-                            setApiKey(config.value);
-                            break;
-                        default:
-                            break;
-                    }
+                console.log(configArray)
+                const newConfig: Record<string, string> = {};
+                configArray.forEach((item) => {
+                    newConfig[item.name] = item.value;
                 });
-            })
+                setConfig(newConfig);
+            });
 
-    }, []);
+        invoke<Array<LLMModel>>('get_llm_models', { llmProviderId: '' + id })
+            .then((modelList) => {
+                setConfig(prev => ({
+                    ...prev,
+                    model_list: modelList.map((model) => model.name).join(',')
+                }));
+            });
+    }, [id]);
 
-    const getModelList = async () => {
+    const updateField = useCallback(
+        debounce((key: string, value: string) => {
+            invoke('update_llm_provider_config', { llmProviderId: id, name: key, value })
+                .then(() => console.log(`Field ${key} updated`))
+                .catch((error) => console.error(`Error updating field ${key}:`, error));
+        }, 50),
+        [id]
+    );
 
-    }
+    const handleInputChange = (key: string, value: string) => {
+        setConfig(prev => ({ ...prev, [key]: value }));
+        updateField(key, value);
+    };
+
+    const fetchModelList = async () => {
+        invoke<Array<LLMModel>>('fetch_model_list', { llmProviderId: id })
+            .then((modelList) => {
+                const modelListString = modelList.map((model) => model.name).join(',');
+                setConfig(prev => ({ ...prev, model_list: modelListString }));
+                updateField('model_list', modelListString);
+            });
+    };
 
     return (
         <div className="provider-config">
@@ -51,29 +81,29 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ( {id} ) => 
                 <label>Endpoint:</label>
                 <input
                     type="text"
-                    value={endpoint}
-                    onChange={(e) => setEndpoint(e.target.value)}
+                    value={config.endpoint || ''}
+                    onChange={(e) => handleInputChange('endpoint', e.target.value)}
                 />
             </div>
             <div className="form-group">
                 <label>API Key:</label>
                 <input
                     type="text"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    value={config.api_key || ''}
+                    onChange={(e) => handleInputChange('api_key', e.target.value)}
                 />
             </div>
             <div className="form-group">
                 <label>Model List:</label>
-                <button onClick={getModelList}>获取</button>
+                <button onClick={fetchModelList}>获取</button>
                 <input
                     type="text"
-                    value={modelList}
-                    onChange={(e) => setModelList(e.target.value)}
+                    value={config.model_list || ''}
+                    onChange={(e) => handleInputChange('model_list', e.target.value)}
                 />
             </div>
         </div>
     );
-}
+};
 
 export default LLMProviderConfigForm;

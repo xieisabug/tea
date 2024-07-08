@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::ai_api::{ask_ai, models};
 use get_selected_text::get_selected_text;
-use crate::api::llm_api::{get_llm_models, get_llm_provider_config, get_llm_providers, update_llm_provider};
+use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, update_llm_provider, update_llm_provider_config};
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::window::{create_ask_window, open_config_window};
@@ -121,8 +121,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ask_ai, models, get_selected, open_config_window,
             save_config, get_config,
             get_llm_providers, update_llm_provider,
-            get_llm_provider_config,
-            get_llm_models
+            get_llm_provider_config, update_llm_provider_config,
+            get_llm_models, fetch_model_list
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

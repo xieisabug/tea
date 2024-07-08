@@ -44,7 +44,7 @@ impl LLMDatabase {
                     name TEXT NOT NULL,
                     llm_provider_id INTEGER NOT NULL,
                     value TEXT,
-                    append_location TEXT,
+                    append_location TEXT DEFAULT 'header',
                     is_addition BOOLEAN NOT NULL DEFAULT 0,
                     created_time DATETIME DEFAULT CURRENT_TIMESTAMP
                 );",
@@ -86,6 +86,26 @@ impl LLMDatabase {
         Ok(result)
     }
 
+    pub fn get_llm_provider(&self, id: i64) -> rusqlite::Result<(i64, String, String, String, bool, bool)> {
+        let mut stmt = self.conn.prepare("SELECT id, name, api_type, description, is_official, is_enabled FROM llm_provider WHERE id = ?")?;
+        let llm_providers = stmt.query_map([id], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+            ))
+        })?;
+
+        let mut result = (0, "".to_string(), "".to_string(), "".to_string(), false, false);
+        for llm_provider in llm_providers {
+            result = llm_provider?;
+        }
+        Ok(result)
+    }
+
     pub fn update_llm_provider(&self, id: i64, name: &str, api_type: &str, description: &str, is_enabled: bool) -> rusqlite::Result<()> {
         self.conn.execute(
             "UPDATE llm_provider SET name = ?, api_type = ?, description = ?, is_enabled = ? WHERE id = ?",
@@ -120,6 +140,14 @@ impl LLMDatabase {
             result.push(llm_provider_config?);
         }
         Ok(result)
+    }
+
+    pub fn update_llm_provider_config(&self, llm_provider_id: i64, name: &str, value: &str) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO llm_provider_config (id, name, llm_provider_id, value) VALUES ((SELECT id FROM llm_provider_config WHERE llm_provider_id = ? AND name = ?), ?, ?, ?)",
+            params![llm_provider_id, name, name, llm_provider_id, value],
+        )?;
+        Ok(())
     }
 
     pub fn add_llm_model(&self, name: &str, llm_provider_id: i64, code: &str, description: &str, vision_support: bool, audio_support: bool, video_support: bool) -> rusqlite::Result<()> {
@@ -188,7 +216,7 @@ impl LLMDatabase {
             [],
         )?;
         self.conn.execute(
-            "INSERT INTO llm_provider (id, name, api_type, description, is_official) VALUES (10, 'Ollama', 'openai_api', 'Ollama API', 1)",
+            "INSERT INTO llm_provider (id, name, api_type, description, is_official) VALUES (10, 'Ollama', 'ollama', 'Ollama API', 1)",
             [],
         )?;
         Ok(())
