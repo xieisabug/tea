@@ -51,6 +51,30 @@ pub async fn get_llm_providers() -> Result<Vec<LlmProvider>, String> {
     Ok(result)
 }
 
+#[tauri::command]
+pub async fn update_llm_provider(id: i64, name: String, api_type: String, description: String, is_enabled: bool) -> Result<(), String> {
+    let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+    db.update_llm_provider(id, &*name, &*api_type, &*description, is_enabled).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_llm_provider_config(id: i64) -> Result<Vec<LlmProviderConfig>, String> {
+    let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+    let configs = db.get_llm_provider_config(id).map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for (id, name, llm_provider_id, value, append_location, is_addition) in configs {
+        result.push(LlmProviderConfig {
+            id,
+            name,
+            llm_provider_id,
+            value,
+            append_location,
+            is_addition,
+        });
+    }
+    Ok(result)
+}
 
 #[tauri::command]
 pub async fn get_llm_models(provider_id: String) -> Result<Vec<LlmModel>, String> {

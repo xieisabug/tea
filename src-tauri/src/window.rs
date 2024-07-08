@@ -41,11 +41,10 @@ pub fn create_config_window(app: &AppHandle) {
         .fullscreen(false)
         .resizable(true)
         .decorations(true)
-        .transparent(false)
         .center();
 
     #[cfg(not(target_os = "macos"))]
-    let window_builder = window_builder.transparent(true);
+    let window_builder = window_builder.transparent(false);
 
     match window_builder.build() {
         Ok(window) => {

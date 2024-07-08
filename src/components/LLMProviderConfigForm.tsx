@@ -1,10 +1,45 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import './LLMProviderConfig.css';
+import {invoke} from "@tauri-apps/api/tauri";
 
-const LLMProviderConfigForm: React.FC = () => {
+// Define an interface for the component props
+interface LLMProviderConfigFormProps {
+    id: string; // Add the id prop
+}
+
+interface LLMProviderConfig {
+    name: string;
+    value: string;
+    append_location: string;
+    is_addition: boolean;
+}
+
+const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ( {id} ) => {
     const [endpoint, setEndpoint] = useState<string>('');
     const [modelList, setModelList] = useState<string>('');
     const [apiKey, setApiKey] = useState<string>('');
+
+    useEffect(() => {
+        invoke<Array<LLMProviderConfig>>('get_llm_provider_config', { id: id })
+            .then((configArray) => {
+                configArray.forEach((config) => {
+                    switch (config.name) {
+                        case 'endpoint':
+                            setEndpoint(config.value);
+                            break;
+                        case 'model_list':
+                            setModelList(config.value);
+                            break;
+                        case 'api_key':
+                            setApiKey(config.value);
+                            break;
+                        default:
+                            break;
+                    }
+                });
+            })
+
+    }, []);
 
     const getModelList = async () => {
 
