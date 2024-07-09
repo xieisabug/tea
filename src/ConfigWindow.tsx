@@ -1,6 +1,7 @@
 import React, {useState} from "react";
 import SideMenu from "./components/SideMenu.tsx";
 import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
+import AssistantConfig from "./components/AssistantConfig.tsx";
 
 interface MenuItem {
     id: string;
@@ -10,7 +11,7 @@ interface MenuItem {
 
 const contentMap: Record<string, React.ReactElement> = {
     'llm-provider-config': <LLMProviderConfig />,
-    'assistant-config': <div>assistant-config</div>,
+    'assistant-config': <AssistantConfig />,
 }
 
 function ConfigWindow() {
