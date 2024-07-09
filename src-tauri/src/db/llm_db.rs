@@ -210,6 +210,14 @@ impl LLMDatabase {
         Ok(())
     }
 
+    pub fn delete_llm_model_by_provider(&self, provider_id: i64) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "DELETE FROM llm_model WHERE llm_provider_id = ?",
+            params![provider_id],
+        )?;
+        Ok(())
+    }
+
     pub fn init_llm_provider(&self) -> rusqlite::Result<()> {
         self.conn.execute(
             "INSERT INTO llm_provider (id, name, api_type, description, is_official) VALUES (1, 'OpenAI', 'openai_api', 'OpenAI API', 1)",

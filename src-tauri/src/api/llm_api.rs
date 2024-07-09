@@ -132,8 +132,12 @@ pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, Str
         },
         "ollama" => {
             let models = ollama_models(llm_provider_config).await.map_err(|e| e.to_string())?;
+            db.delete_llm_model_by_provider(llm_provider_id).map_err(|e| e.to_string())?;
             let mut result = Vec::new();
             for model in models {
+                let name_clone = model.name.clone(); // 克隆 description
+                let code_clone = model.code.clone(); // 克隆 description
+                let description_clone = model.description.clone(); // 克隆 description
                 result.push(LlmModel {
                     id: model.id,
                     name: model.name,
@@ -144,6 +148,7 @@ pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, Str
                     audio_support: model.audio_support,
                     video_support: model.video_support,
                 });
+                db.add_llm_model(name_clone.as_str(), llm_provider_id, code_clone.as_str(), description_clone.as_str(), model.vision_support, model.audio_support, model.video_support).map_err(|e| e.to_string())?;
             }
             Ok(result)
         },
