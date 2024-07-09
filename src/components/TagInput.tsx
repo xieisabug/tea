@@ -1,63 +1,47 @@
-import React, {useEffect, useState} from 'react';
-import './TagInput.css'; // 引入样式文件
+import React, { useState, KeyboardEvent, ChangeEvent } from 'react';
+import './TagInput.css';
 
-interface Props {
-    value: string;
+// 定义TagInputProps接口
+interface TagInputProps {
+    tags: string[];
+    onAddTag: (tag: string) => void;
+    onRemoveTag: (index: number) => void;
 }
 
-interface Tag {
-    id: number;
-    text: string;
-}
-
-const TagInput: React.FC<Props> = ({ value }) => {
-    const [tags, setTags] = useState<Tag[]>([]);
+// TagInput组件
+const TagInput: React.FC<TagInputProps> = ({ tags, onAddTag, onRemoveTag }) => {
     const [inputValue, setInputValue] = useState<string>('');
 
-    useEffect(() => {
-        console.log("value change", value)
-        const tagList = value.split(',').map((tagText, index) => {
-            return {id: index, text: tagText}
-        });
-        setTags(tagList);
-    }, [value]);
-
-    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setInputValue(event.target.value);
-    };
-
-    const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter' && inputValue.trim()) {
-            event.preventDefault();
-            const newTag: Tag = { id: Date.now(), text: inputValue.trim() };
-            setTags([...tags, newTag]);
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue.trim() !== '') {
+            onAddTag(inputValue.trim());
             setInputValue('');
         }
     };
 
-    const handleTagRemove = (id: number) => {
-        setTags(tags.filter(tag => tag.id !== id));
+    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
     };
 
     return (
         <div className="tag-input-container">
-            <div className="tags">
-                {tags.map(tag => (
-                    <div key={tag.id} className="tag">
-                        {tag.text}
-                        <button onClick={() => handleTagRemove(tag.id)} className="tag-close">
-                            &times;
-                        </button>
-                    </div>
+            <div className="tags-container">
+                {tags.map((tag, index) => (
+                    <span key={index} className="tag">
+            {tag}
+                        <button onClick={() => onRemoveTag(index)} className="tag-close">
+              &times;
+            </button>
+          </span>
                 ))}
             </div>
             <input
                 type="text"
                 value={inputValue}
-                onChange={handleInputChange}
-                onKeyDown={handleInputKeyDown}
-                className="input-field"
-                placeholder="输入内容后按回车添加tag"
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Add a tag and press Enter"
+                className="tag-input"
             />
         </div>
     );

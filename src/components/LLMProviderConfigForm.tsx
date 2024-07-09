@@ -29,7 +29,6 @@ interface LLMModel {
 const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id }) => {
     const [config, setConfig] = useState<Record<string, string>>({
         endpoint: '',
-        model_list: '',
         api_key: '',
     });
 
@@ -42,14 +41,6 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id }) => 
                     newConfig[item.name] = item.value;
                 });
                 setConfig(newConfig);
-            });
-
-        invoke<Array<LLMModel>>('get_llm_models', { llmProviderId: '' + id })
-            .then((modelList) => {
-                setConfig(prev => ({
-                    ...prev,
-                    model_list: modelList.map((model) => model.name).join(',')
-                }));
             });
     }, [id]);
 
@@ -70,10 +61,22 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id }) => 
     const fetchModelList = async () => {
         invoke<Array<LLMModel>>('fetch_model_list', { llmProviderId: id })
             .then((modelList) => {
-                const modelListString = modelList.map((model) => model.name).join(',');
-                setConfig(prev => ({ ...prev, model_list: modelListString }));
-                updateField('model_list', modelListString);
+                setTags(modelList.map((model) => model.name));
             });
+    };
+
+    const [tags, setTags] = useState<string[]>([]);
+    useEffect(() => {
+        invoke<Array<LLMModel>>('get_llm_models', { llmProviderId: '' + id })
+            .then((modelList) => {
+                setTags(modelList.map((model) => model.name));
+            });
+    }, [id]);
+    const handleAddTag = (tag: string) => {
+        setTags([...tags, tag]);
+    };
+    const handleRemoveTag = (index: number) => {
+        setTags(tags.filter((_, i) => i !== index));
     };
 
     return (
@@ -98,7 +101,7 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id }) => 
                 <label>Model List:</label>
                 <button onClick={fetchModelList}>获取</button>
                 <TagInput
-                    value={config.model_list || ''}
+                    tags={tags} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag}
                 />
             </div>
         </div>

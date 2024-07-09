@@ -1,40 +1,45 @@
 /* TagInput.css */
 .tag-input-container {
+    width: 300px;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 10px;
+    flex-direction: column;
     border: 1px solid #ccc;
+    padding: 10px;
     border-radius: 5px;
 }
 
-.tags {
+.tags-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    margin-bottom: 10px;
 }
 
 .tag {
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    padding: 5px;
+    margin: 3px;
     display: flex;
     align-items: center;
-    background-color: #f0f0f0;
-    padding: 5px 10px;
-    border-radius: 15px;
 }
 
 .tag-close {
-    margin-left: 5px;
     background: none;
     border: none;
+    margin-left: 5px;
     cursor: pointer;
-    font-size: 16px;
-    color: #333;
+    font-size: 14px;
+    color: #888;
 }
 
-.input-field {
-    flex: 1;
+.tag-close:hover {
+    color: #555;
+}
+
+.tag-input {
     border: none;
     outline: none;
+    flex: 1;
     padding: 5px;
     font-size: 16px;
 }
