@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import './LLMProviderConfig.css';
 import { invoke } from "@tauri-apps/api/tauri";
 import debounce from 'lodash/debounce';
+import TagInput from "./TagInput.tsx";
 
 interface LLMProviderConfigFormProps {
     id: string;
@@ -96,10 +97,8 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id }) => 
             <div className="form-group">
                 <label>Model List:</label>
                 <button onClick={fetchModelList}>获取</button>
-                <input
-                    type="text"
+                <TagInput
                     value={config.model_list || ''}
-                    onChange={(e) => handleInputChange('model_list', e.target.value)}
                 />
             </div>
         </div>
