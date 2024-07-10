@@ -25,6 +25,8 @@ interface ModelForSelect {
 }
 
 const AssistantConfig: React.FC = () => {
+    // 基础数据
+    // 模型数据
     const [models, setModels] = useState<ModelForSelect[]>([]);
     useEffect(() => {
         invoke<Array<ModelForSelect>>("get_models_for_select").then((modelList) => {
@@ -37,7 +39,13 @@ const AssistantConfig: React.FC = () => {
     const [newParamKey, setNewParamKey] = useState('');
     const [newParamValue, setNewParamValue] = useState('');
 
+    // 助手相关
     const [assistants, setAssistants] = useState<Assistant[]>([]);
+    useEffect(() => {
+        invoke<Array<Assistant>>("get_assistants").then((assistantList) => {
+            setAssistants(assistantList);
+        });
+    }, []);
     const onSave = (assistant: Assistant) => {
         console.log(assistant)
     }
@@ -126,7 +134,7 @@ const AssistantConfig: React.FC = () => {
                                             <option key={model.id} value={model.code}>{model.name}</option>
                                         ))}
                                     </select>
-                                    {Object.entries(currentAssistant.config).map(([key, value]) => (
+                                    {Object.entries(currentAssistant.config || []).map(([key, value]) => (
                                         <div className="config-item" key={key}>
                                             <label>{key}</label>
                                             <input

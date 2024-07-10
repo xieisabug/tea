@@ -155,3 +155,26 @@ pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, Str
         _ => { Ok (Vec::new())}
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct ModelForSelect {
+    name: String,
+    code: String,
+    id: i64,
+    llm_provider_id: i64,
+}
+
+#[tauri::command]
+pub fn get_models_for_select() -> Result<Vec<ModelForSelect>, String> {
+    let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+    let result = db.get_models_for_select().unwrap();
+    let models = result.iter().map(|(name, code, id, llm_provider_id)| {
+        ModelForSelect {
+            name: name.clone(),
+            code: code.clone(),
+            id: *id,
+            llm_provider_id: *llm_provider_id,
+        }
+    }).collect();
+    Ok(models)
+}

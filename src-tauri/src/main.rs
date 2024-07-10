@@ -12,8 +12,10 @@ use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEven
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::ai_api::{ask_ai, models};
+use crate::api::assistant_api::{get_assistants};
 use get_selected_text::get_selected_text;
-use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, update_llm_provider, update_llm_provider_config};
+use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select, update_llm_provider, update_llm_provider_config};
+use crate::db::assistant_db::AssistantDatabase;
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::window::{create_ask_window, open_config_window};
@@ -75,8 +77,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let system_db = SystemDatabase::new()?;
     let llm_db = LLMDatabase::new()?;
+    let assistant_db = AssistantDatabase::new()?;
     system_db.create_table()?;
     llm_db.create_table()?;
+    assistant_db.create_table()?;
 
     let app = tauri::Builder::default()
         .system_tray(system_tray)
@@ -122,7 +126,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             save_config, get_config,
             get_llm_providers, update_llm_provider,
             get_llm_provider_config, update_llm_provider_config,
-            get_llm_models, fetch_model_list
+            get_llm_models, fetch_model_list, get_models_for_select,
+            get_assistants
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

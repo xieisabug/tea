@@ -1,4 +1,5 @@
 use rusqlite::{Connection, params};
+use crate::api::llm_api::ModelForSelect;
 
 pub struct LLMDatabase {
     conn: Connection,
@@ -217,6 +218,44 @@ impl LLMDatabase {
         )?;
         Ok(())
     }
+
+    pub fn get_models_for_select(&self) -> Result<Vec<(String, String, i64, i64)>, String> {
+    let mut stmt = match self.conn.prepare("
+        SELECT
+            (p.name || ' / ' || m.name) AS name,
+            m.code,
+            m.id,
+            m.llm_provider_id
+        FROM
+            llm_model m
+        JOIN
+            llm_provider p ON m.llm_provider_id = p.id
+    ") {
+        Ok(stmt) => stmt,
+        Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
+    };
+
+    let models = match stmt.query_map([], |row| {
+        Ok((
+            row.get(0)?,
+            row.get(1)?,
+            row.get(2)?,
+            row.get(3)?,
+        ))
+    }) {
+        Ok(models) => models,
+        Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
+    };
+
+    let mut result = Vec::new();
+    for model in models {
+        match model {
+            Ok(model) => result.push(model),
+            Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
+        }
+    }
+    Ok(result)
+}
 
     pub fn init_llm_provider(&self) -> rusqlite::Result<()> {
         self.conn.execute(
