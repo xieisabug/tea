@@ -12,7 +12,7 @@ use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEven
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::ai_api::{ask_ai, models};
-use crate::api::assistant_api::{get_assistants};
+use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant};
 use get_selected_text::get_selected_text;
 use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select, update_llm_provider, update_llm_provider_config};
 use crate::db::assistant_db::AssistantDatabase;
@@ -127,7 +127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_llm_providers, update_llm_provider,
             get_llm_provider_config, update_llm_provider_config,
             get_llm_models, fetch_model_list, get_models_for_select,
-            get_assistants
+            get_assistants, get_assistant, save_assistant
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

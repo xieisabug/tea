@@ -2,19 +2,56 @@ import React, {useEffect, useState} from 'react';
 import "./AssistantConfig.css";
 import {invoke} from "@tauri-apps/api/tauri";
 
-interface AssistantConfig {
-    max_tokens: number;
-    temperature: number;
-    top_p: number;
-    stream: boolean;
-    [key: string]: string | number | boolean;
+interface AssistantListItem {
+    id: number;
+    name: string;
 }
 
 interface Assistant {
+    id: number;
     name: string;
-    config: AssistantConfig;
-    model: string;
+    description: string | null;
+    assistant_type: number; // 0: 普通对话助手, 1: 多模型对比助手，2: 工作流助手，3: 展示助手
+    is_addition: boolean;
+    created_time: string;
+}
+
+interface AssistantModel {
+    id: number;
+    assistant_id: number;
+    model_id: string;
+    alias: string;
+}
+
+interface AssistantPrompt {
+    id: number;
+    assistant_id: number;
     prompt: string;
+    created_time: string;
+}
+
+interface AssistantModelConfig {
+    id: number;
+    assistant_id: number;
+    name: string;
+    value: string;
+}
+
+interface AssistantPromptParam {
+    id: number;
+    assistant_id: number;
+    assistant_prompt_id: number;
+    param_name: string;
+    param_type: string;
+    param_value: string | null;
+}
+
+interface AssistantDetail {
+    assistant: Assistant;
+    prompts: AssistantPrompt[];
+    model: AssistantModel[];
+    model_configs: AssistantModelConfig[];
+    prompt_params: AssistantPromptParam[];
 }
 
 interface ModelForSelect {
@@ -34,40 +71,54 @@ const AssistantConfig: React.FC = () => {
         });
     }, []);
 
-    const [expanded, setExpanded] = useState(true);
-    const [currentAssistant, setCurrentAssistant] = useState<Assistant | null>(null);
-    const [newParamKey, setNewParamKey] = useState('');
-    const [newParamValue, setNewParamValue] = useState('');
+    const [currentAssistant, setCurrentAssistant] = useState<AssistantDetail | null>(null);
 
     // 助手相关
-    const [assistants, setAssistants] = useState<Assistant[]>([]);
+    const [assistants, setAssistants] = useState<AssistantListItem[]>([]);
     useEffect(() => {
-        invoke<Array<Assistant>>("get_assistants").then((assistantList) => {
+        invoke<Array<AssistantListItem>>("get_assistants").then((assistantList) => {
             setAssistants(assistantList);
         });
     }, []);
-    const onSave = (assistant: Assistant) => {
-        console.log(assistant)
+    const onSave = (assistant: AssistantDetail) => {
+        invoke("save_assistant", { assistantDetail: assistant}).then(() => {
+
+        });
     }
     const onAdd = (name: string) => {
-        setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
+        console.log(name)
+        // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
 
-    const handleChooseAssistant = (assistant: Assistant) => {
-        if (currentAssistant === assistant) {
+    const [expanded, setExpanded] = useState(true);
+    const handleChooseAssistant = (assistant: AssistantListItem) => {
+        if (currentAssistant && currentAssistant.assistant.id === assistant.id) {
             setExpanded(!expanded);
         } else {
-            setCurrentAssistant(assistant);
-            setExpanded(true);
+            invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id }).then((assistant: AssistantDetail) => {
+                setCurrentAssistant(assistant);
+                setExpanded(true);
+            });
         }
     }
 
     const handleConfigChange = (key: string, value: string | number | boolean) => {
         if (currentAssistant) {
+            let index = currentAssistant.model_configs.findIndex((config) => {
+                return config.name === key
+            })
+
             setCurrentAssistant({
                 ...currentAssistant,
-                config: { ...currentAssistant.config, [key]: value },
-            });
+                model_configs: [
+                    ...currentAssistant.model_configs.slice(0, index),
+                    {
+                        ...currentAssistant.model_configs[index],
+                        value: value.toString(),
+                    },
+                    ...currentAssistant.model_configs.slice(index + 1),
+                ],
+            })
         }
     };
 
@@ -75,7 +126,12 @@ const AssistantConfig: React.FC = () => {
         if (currentAssistant) {
             setCurrentAssistant({
                 ...currentAssistant,
-                prompt: value,
+                prompts: [
+                    {
+                        ...currentAssistant.prompts[0],
+                        prompt: value,
+                    },
+                ],
             });
         }
     };
@@ -86,11 +142,21 @@ const AssistantConfig: React.FC = () => {
         }
     };
 
+    const [newParamKey, setNewParamKey] = useState('');
+    const [newParamValue, setNewParamValue] = useState('');
     const handleAddParam = () => {
         if (currentAssistant && newParamKey) {
             setCurrentAssistant({
                 ...currentAssistant,
-                config: { ...currentAssistant.config, [newParamKey]: newParamValue },
+                model_configs: [
+                    ...currentAssistant.model_configs,
+                    {
+                        id: 0,
+                        assistant_id: currentAssistant.assistant.id,
+                        name: newParamKey,
+                        value: newParamValue,
+                    },
+                ]
             });
             setNewParamKey('');
             setNewParamValue('');
@@ -110,7 +176,7 @@ const AssistantConfig: React.FC = () => {
             <button className="add-button" onClick={handleAddAssistant}>添加</button>
             <div className="assistant-list">
                 {assistants.map((assistant, index) => (
-                    <div className={`assistant-item ${currentAssistant?.name === assistant.name ? 'active' : ''}`}
+                    <div className={`assistant-item ${currentAssistant?.assistant.id === assistant.id ? 'active' : ''}`}
                          key={index} onClick={() => handleChooseAssistant(assistant)}>
                         {assistant.name}
 
@@ -128,20 +194,34 @@ const AssistantConfig: React.FC = () => {
 
                                 <div>
                                     <span>Model</span>
-                                    <select value={currentAssistant.model} onChange={(e) => setCurrentAssistant({ ...currentAssistant, model: e.target.value })}>
+                                    <select value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_id: -1}
+                                            onChange={(e) => {
+                                                if (currentAssistant?.model.length > 0) {
+                                                    setCurrentAssistant({
+                                                        ...currentAssistant,
+                                                        model: [{...currentAssistant?.model[0], model_id: e.target.value}]
+                                                    })
+                                                } else {
+                                                    setCurrentAssistant({
+                                                        ...currentAssistant,
+                                                        model: [{id: 0, assistant_id: currentAssistant.assistant.id, model_id: e.target.value, alias: ''}]
+                                                    })
+                                                }
+                                            }
+                                    }>
                                         <option value="">请选择模型</option>
                                         {models.map((model) => (
                                             <option key={model.id} value={model.code}>{model.name}</option>
                                         ))}
                                     </select>
-                                    {Object.entries(currentAssistant.config || []).map(([key, value]) => (
-                                        <div className="config-item" key={key}>
-                                            <label>{key}</label>
+                                    {(currentAssistant.model_configs || []).map(config => (
+                                        <div className="config-item" key={config.name}>
+                                            <label>{config.name}</label>
                                             <input
-                                                type={typeof value === 'boolean' ? 'checkbox' : 'text'}
-                                                value={value.toString()}
-                                                checked={typeof value === 'boolean' ? value : undefined}
-                                                onChange={(e) => handleConfigChange(key, e.target.type === 'checkbox' ? e.target.checked : e.target.value)}
+                                                type={config.value === 'true' || config.value === 'false' ? 'checkbox' : 'text'}
+                                                value={config.value}
+                                                checked={config.value === 'true'}
+                                                onChange={(e) => handleConfigChange(config.name, e.target.type === 'checkbox' ? e.target.checked : e.target.value)}
                                             />
                                         </div>
                                     ))}
@@ -163,7 +243,7 @@ const AssistantConfig: React.FC = () => {
                                 </div>
                                 <div>
                                     <span>Prompt</span>
-                                    <textarea value={currentAssistant.prompt}
+                                    <textarea value={currentAssistant.prompts[0].prompt}
                                               onChange={(e) => handlePromptChange(e.target.value)}></textarea>
                                     <button className="save-button" type="button" onClick={handleSave}>保存</button>
 
