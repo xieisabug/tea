@@ -6,7 +6,7 @@ pub struct Assistant {
     id: i32,
     name: String,
     description: Option<String>,
-    llm_model_id: Option<i32>,
+    assistant_type: Option<i32>, // 0: 普通对话助手, 1: 多模型对比助手，2: 工作流助手，3: 展示助手
     is_addition: bool,
     created_time: String,
 }
@@ -53,9 +53,18 @@ impl AssistantDatabase {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 description TEXT,
-                llm_model_id INTEGER,
+                assistant_type INTEGER NOT NULL DEFAULT 0,
                 is_addition BOOLEAN NOT NULL DEFAULT 0,
                 created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+            );",
+            [],
+        )?;
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS assistant_model (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                assistant_id INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                alias TEXT
             );",
             [],
         )?;
@@ -99,18 +108,18 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant(&self, name: &str, description: &str, llm_model_id: Option<i32>, is_addition: bool) -> Result<()> {
+    pub fn add_assistant(&self, name: &str, description: &str, assistant_type: Option<i32>, is_addition: bool) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO assistant (name, description, llm_model_id, is_addition) VALUES (?, ?, ?, ?)",
-            params![name, description, llm_model_id, is_addition],
+            "INSERT INTO assistant (name, description, assistant_type, is_addition) VALUES (?, ?, ?, ?)",
+            params![name, description, assistant_type, is_addition],
         )?;
         Ok(())
     }
 
-    pub fn update_assistant(&self, id: i32, name: &str, description: &str, llm_model_id: Option<i32>, is_addition: bool) -> Result<()> {
+    pub fn update_assistant(&self, id: i32, name: &str, description: &str, is_addition: bool) -> Result<()> {
         self.conn.execute(
-            "UPDATE assistant SET name = ?, description = ?, llm_model_id = ?, is_addition = ? WHERE id = ?",
-            params![name, description, llm_model_id, is_addition, id],
+            "UPDATE assistant SET name = ?, description = ?, is_addition = ? WHERE id = ?",
+            params![name, description, is_addition, id],
         )?;
         Ok(())
     }
@@ -196,13 +205,13 @@ impl AssistantDatabase {
     }
 
     pub fn get_assistants(&self) -> Result<Vec<Assistant>> {
-        let mut stmt = self.conn.prepare("SELECT id, name, description, llm_model_id, is_addition, created_time FROM assistant")?;
+        let mut stmt = self.conn.prepare("SELECT id, name, description, assistant_type, is_addition, created_time FROM assistant")?;
         let assistant_iter = stmt.query_map(params![], |row| {
             Ok(Assistant {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 description: row.get(2)?,
-                llm_model_id: row.get(3)?,
+                assistant_type: row.get(3)?,
                 is_addition: row.get(4)?,
                 created_time: row.get(5)?,
             })
@@ -272,9 +281,10 @@ impl AssistantDatabase {
     }
     pub fn init_assistant(&self) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO assistant (id, name, description, llm_model_id, is_addition) VALUES (1, '快速使用助手', '快捷键呼出的快速使用助手', -1, 0)",
+            "INSERT INTO assistant (id, name, description, is_addition) VALUES (1, '快速使用助手', '快捷键呼出的快速使用助手', 0)",
             [],
         )?;
+        self.add_assistant_prompt(1, "You are a helpful assistant.")?;
         Ok(())
     }
 
