@@ -1,7 +1,7 @@
 use rusqlite::{Connection, params, Result};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Assistant {
     pub id: i64,
     pub name: String,
@@ -11,7 +11,7 @@ pub struct Assistant {
     pub created_time: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AssistantModel {
     pub id: i64,
     pub assistant_id: i64,
@@ -19,7 +19,7 @@ pub struct AssistantModel {
     pub alias: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AssistantPrompt {
     pub id: i64,
     pub assistant_id: i64,
@@ -27,7 +27,7 @@ pub struct AssistantPrompt {
     pub created_time: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AssistantModelConfig {
     pub id: i64,
     pub assistant_id: i64,
@@ -36,7 +36,7 @@ pub struct AssistantModelConfig {
     pub value: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AssistantPromptParam {
     pub id: i64,
     pub assistant_id: i64,
@@ -273,10 +273,11 @@ impl AssistantDatabase {
     pub fn get_assistant_model(&self, assistant_id: i64) -> Result<Vec<AssistantModel>> {
         let mut stmt = self.conn.prepare("SELECT id, assistant_id, model_id, alias FROM assistant_model WHERE assistant_id = ?")?;
         let assistant_model_iter = stmt.query_map(params![assistant_id], |row| {
+            println!("row: {:?}", row);
             Ok(AssistantModel {
                 id: row.get(0)?,
                 assistant_id: row.get(1)?,
-                model_id: row.get(2)?,
+                model_id: row.get::<_, i64>(2)?.to_string(),
                 alias: row.get(3)?,
             })
         })?;

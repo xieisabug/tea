@@ -211,7 +211,7 @@ const AssistantConfig: React.FC = () => {
                                     }>
                                         <option value="">请选择模型</option>
                                         {models.map((model) => (
-                                            <option key={model.id} value={model.code}>{model.name}</option>
+                                            <option key={model.id} value={model.id}>{model.name}</option>
                                         ))}
                                     </select>
                                     {(currentAssistant.model_configs || []).map(config => (

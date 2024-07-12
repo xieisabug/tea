@@ -11,7 +11,7 @@ mod window;
 use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
-use crate::api::ai_api::{ask_ai, models};
+use crate::api::ai_api::{ask_ai};
 use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant};
 use get_selected_text::get_selected_text;
 use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select, update_llm_provider, update_llm_provider_config};
@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             selected_text: TokioMutex::new(String::new()),
         })
         .invoke_handler(tauri::generate_handler![
-            ask_ai, models, get_selected, open_config_window,
+            ask_ai, get_selected, open_config_window,
             save_config, get_config,
             get_llm_providers, update_llm_provider,
             get_llm_provider_config, update_llm_provider_config,

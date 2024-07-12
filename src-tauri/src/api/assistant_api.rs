@@ -23,19 +23,24 @@ pub fn get_assistant(assistant_id: i64) -> Result<AssistantDetail, String> {
 
     // 获取 Assistant 基本信息
     let assistant = assistant_db.get_assistant(assistant_id).map_err(|e| e.to_string())?;
+    println!("assistant: {:?}", assistant);
 
     // 获取相关的 prompt
     let prompts = assistant_db.get_assistant_prompt(assistant_id).map_err(|e| e.to_string())?;
+    println!("prompts: {:?}", prompts);
 
     // 获取相关的 model
     let model = assistant_db.get_assistant_model(assistant_id).map_err(|e| e.to_string())?;
+    println!("model: {:?}", model);
 
     // 获取相关的 model_config
     let model_configs = assistant_db.get_assistant_model_configs(assistant_id).map_err(|e| e.to_string())?;
+    println!("model_configs: {:?}", model_configs);
 
     // 获取相关的 prompt_params
     let prompt_params = assistant_db.get_assistant_prompt_params(assistant_id).map_err(|e| e.to_string())?;
-
+    println!("prompt_params: {:?}", prompt_params);
+    
     // 构建 AssistantDetail 对象
     let assistant_detail = AssistantDetail {
         assistant,

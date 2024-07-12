@@ -1,4 +1,4 @@
-use crate::api::llm_api::LlmModel;
+use crate::{api::llm_api::LlmModel, db::llm_db::LLMProviderConfig};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -27,13 +27,13 @@ struct Details {
     quantization_level: String,
 }
 
-pub async fn models(llm_provider_config: Vec<(i64, String, i64, String, String, bool)>) -> Result<Vec<LlmModel>, String> {
+pub async fn models(llm_provider_config: Vec<LLMProviderConfig>) -> Result<Vec<LlmModel>, String> {
     let mut result = Vec::new();
 
     // config list to map
     let mut config_map = HashMap::new();
     for config in llm_provider_config {
-        config_map.insert(config.1, config.3);
+        config_map.insert(config.name, config.value);
     }
 
     println!("config_map: {:?}", config_map);

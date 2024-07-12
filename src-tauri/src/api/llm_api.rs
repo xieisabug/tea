@@ -37,7 +37,7 @@ pub struct LlmProviderConfig {
 
 #[tauri::command]
 pub async fn get_llm_providers() -> Result<Vec<LlmProvider>, String> {
-    let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+    let db = LLMDatabase::new().map_err(|e: rusqlite::Error| e.to_string())?;
     let providers = db.get_llm_providers().map_err(|e| e.to_string())?;
     let mut result = Vec::new();
     for (id, name, api_type, description, is_official, is_enabled) in providers {
@@ -65,14 +65,14 @@ pub async fn get_llm_provider_config(id: i64) -> Result<Vec<LlmProviderConfig>, 
     let db = LLMDatabase::new().map_err(|e| e.to_string())?;
     let configs = db.get_llm_provider_config(id).map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for (id, name, llm_provider_id, value, append_location, is_addition) in configs {
+    for config in configs {
         result.push(LlmProviderConfig {
-            id,
-            name,
-            llm_provider_id,
-            value,
-            append_location: Some(append_location),
-            is_addition: Some(is_addition),
+            id: config.id,
+            name: config.name,
+            llm_provider_id: config.llm_provider_id,
+            value: config.value,
+            append_location: Some(config.append_location),
+            is_addition: Some(config.is_addition),
         });
     }
     Ok(result)
@@ -112,7 +112,7 @@ pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, Str
     let llm_provider_config = db.get_llm_provider_config(llm_provider_id).map_err(|e| e.to_string())?;
 
     println!("llm_provider: {:?}", llm_provider);
-    match llm_provider.2.as_str() {
+    match llm_provider.api_type.as_str() {
         "openai" => {
             let models = openai_models()?;
             let mut result = Vec::new();

@@ -1,10 +1,13 @@
 use reqwest::Client;
 use futures::StreamExt;
-use get_selected_text::get_selected_text;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use crate::api::assistant_api::{get_assistant};
+use crate::db::llm_db::LLMDatabase;
 use crate::{AppState};
 use crate::api::llm_api::{LlmProvider, LlmProviderConfig};
 use tauri::{Manager, State};
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 #[derive(Serialize, Deserialize)]
@@ -30,25 +33,43 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
 
     let selected_text = state.inner().selected_text.lock().await.clone();
     tokio::spawn(async move {
-        let url = "http://localhost:11434/v1/chat/completions";
+        let assistant_detail = get_assistant(1).unwrap();
 
-        let model = request.model.unwrap_or_else(|| "yi:34b-v1.5".to_string());
-        let temperature = request.temperature.unwrap_or(1.0);
-        let top_p = request.top_p.unwrap_or(1.0);
-        let max_tokens = request.max_tokens.unwrap_or(512);
-        let stream = request.stream.unwrap_or(true);
-
-        let mut prompt = request.prompt.clone();
-        // 如果prompt里面有 !s 替换为 选中的文本
-        if prompt.contains("!s") {
-            prompt = prompt.replace("!s", selected_text.as_str());
+        if assistant_detail.model.is_empty() {
+            return Err("No model found".to_string());
         }
 
-        println!("send to url : {}, model: {}", url, model);
+        let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+        let model_id = &assistant_detail.model[0].model_id;
+        println!("model id : {}", model_id);
+
+        let model_detail = db.get_llm_model_detail(model_id.parse::<i64>().unwrap()).unwrap();
+        let assistant_prompt = &assistant_detail.prompts[0].prompt;
+        let config_map = assistant_detail.model_configs.iter().filter_map(|config| {
+            config.value.as_ref().map(|value| (config.name.clone(), value.clone()))
+        }).collect::<HashMap<String, String>>();
+        let url = "http://localhost:11434/v1/chat/completions";
+
+        let temperature = config_map.get("temperature").and_then(|v| v.parse().ok()).unwrap_or(0.75);
+        let top_p = config_map.get("top_p").and_then(|v| v.parse().ok()).unwrap_or(1.0);
+        let max_tokens = config_map.get("max_tokens").and_then(|v| v.parse().ok()).unwrap_or(2000);
+        let stream = config_map.get("stream").and_then(|v| v.parse().ok()).unwrap_or(false);
+
+        let mut prompt = request.prompt.clone();
+        if prompt.contains("!s") {
+            prompt = prompt.replace("!s", &selected_text);
+        }
+
+        println!("send to url: {}, model: {}", url, model_detail.model.name);
         println!("prompt: {}", prompt);
-        let mut body = serde_json::json!({
-            "model": model,
+
+        let body = json!({
+            "model": model_detail.model.code,
             "messages": [
+                {
+                    "role": "system",
+                    "content": assistant_prompt
+                },
                 {
                     "role": "user",
                     "content": prompt
@@ -60,6 +81,8 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
             "max_tokens": max_tokens
         });
 
+        println!("request json : {}", body);
+
         let mut response = client.post(url)
             .header("Authorization", format!("Bearer {}", "123"))
             .json(&body)
@@ -69,7 +92,6 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
 
         if stream {
             let mut stream = response.bytes_stream();
-
             while let Some(chunk) = stream.next().await {
                 let id = request.id.clone();
                 let chunk = chunk.map_err(|e| e.to_string())?;
@@ -80,7 +102,6 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
                         if let Ok(response) = serde_json::from_str::<serde_json::Value>(content) {
                             if let Some(delta) = response["choices"][0]["delta"]["content"].as_str() {
                                 tx.send((id, delta.to_string())).await.unwrap();
-                                // window.emit("quick_chat_response", delta).map_err(|e| e.to_string())?;
                             }
                         }
                     }
@@ -97,36 +118,8 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
     });
 
     while let Some((id, content)) = rx.recv().await {
-        window
-            .emit(id.as_str(), content)
-            .map_err(|e| e.to_string())?;
+        window.emit(id.as_str(), content).map_err(|e| e.to_string())?;
     }
-
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn models(llm_provider: LlmProvider, llm_provider_configs: Vec<LlmProviderConfig>) -> Result<(), String> {
-    // convert llm_provider_config to a map
-    let mut origin_config_map = std::collections::HashMap::new();
-    for config in llm_provider_configs {
-        origin_config_map.insert(config.name, config.value);
-    }
-
-    let default_openai_endpoint = "https://api.openai.com/v1/".to_string();
-    let default_ollama_endpoint = "https://localhost:11434/".to_string();
-    let url = match llm_provider.api_type.as_str() {
-        "openai" => {
-            let endpoint = origin_config_map.get("end_point").unwrap_or(&default_openai_endpoint);
-            format!("{}{}", endpoint, "models")
-        }
-        "ollama" => {
-            let endpoint = origin_config_map.get("end_point").unwrap_or(&default_ollama_endpoint);
-            format!("{}{}", endpoint, "tags")
-        }
-        _ => default_openai_endpoint.to_string()
-    };
-
 
     Ok(())
 }

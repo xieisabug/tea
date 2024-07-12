@@ -1,6 +1,45 @@
 use rusqlite::{Connection, params};
 use crate::api::llm_api::ModelForSelect;
 
+#[derive(Debug)]
+pub struct LLMProvider {
+    pub id: i64,
+    pub name: String,
+    pub api_type: String,
+    pub description: String,
+    pub is_official: bool,
+    pub is_enabled: bool,
+}
+
+#[derive(Debug)]
+pub struct LLMProviderConfig {
+    pub id: i64,
+    pub name: String,
+    pub llm_provider_id: i64,
+    pub value: String,
+    pub append_location: String,
+    pub is_addition: bool,
+}
+
+#[derive(Debug)]
+pub struct LLMModel {
+    pub id: i64,
+    pub name: String,
+    pub llm_provider_id: i64,
+    pub code: String,
+    pub description: String,
+    pub vision_support: bool,
+    pub audio_support: bool,
+    pub video_support: bool,
+}
+
+#[derive(Debug)]
+pub struct ModelDetail {
+    pub model: LLMModel,
+    pub provider: LLMProvider,
+    pub configs: Vec<LLMProviderConfig>,
+}
+
 pub struct LLMDatabase {
     conn: Connection,
 }
@@ -87,24 +126,23 @@ impl LLMDatabase {
         Ok(result)
     }
 
-    pub fn get_llm_provider(&self, id: i64) -> rusqlite::Result<(i64, String, String, String, bool, bool)> {
+    pub fn get_llm_provider(&self, id: i64) -> rusqlite::Result<LLMProvider> {
         let mut stmt = self.conn.prepare("SELECT id, name, api_type, description, is_official, is_enabled FROM llm_provider WHERE id = ?")?;
-        let llm_providers = stmt.query_map([id], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-                row.get(5)?,
-            ))
-        })?;
+        let provider = stmt.query_map([id], |row| {
+            Ok(LLMProvider {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                api_type: row.get(2)?,
+                description: row.get(3)?,
+                is_official: row.get(4)?,
+                is_enabled: row.get(5)?,
+            })
+        })?.next().transpose()?;
 
-        let mut result = (0, "".to_string(), "".to_string(), "".to_string(), false, false);
-        for llm_provider in llm_providers {
-            result = llm_provider?;
+        match provider {
+            Some(provider) => Ok(provider),
+            None => Err(rusqlite::Error::QueryReturnedNoRows),
         }
-        Ok(result)
     }
 
     pub fn update_llm_provider(&self, id: i64, name: &str, api_type: &str, description: &str, is_enabled: bool) -> rusqlite::Result<()> {
@@ -123,22 +161,22 @@ impl LLMDatabase {
         Ok(())
     }
 
-    pub fn get_llm_provider_config(&self, llm_provider_id: i64) -> rusqlite::Result<Vec<(i64, String, i64, String, String, bool)>> {
+    pub fn get_llm_provider_config(&self, llm_provider_id: i64) -> rusqlite::Result<Vec<LLMProviderConfig>> {
         let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, value, append_location, is_addition FROM llm_provider_config WHERE llm_provider_id = ?")?;
-        let llm_provider_configs = stmt.query_map([llm_provider_id], |row| {
-            Ok((
-                row.get(0)?,
-                row.get(1)?,
-                row.get(2)?,
-                row.get(3)?,
-                row.get(4)?,
-                row.get(5)?,
-            ))
+        let configs = stmt.query_map([llm_provider_id], |row| {
+            Ok(LLMProviderConfig {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                llm_provider_id: row.get(2)?,
+                value: row.get(3)?,
+                append_location: row.get(4)?,
+                is_addition: row.get(5)?,
+            })
         })?;
 
         let mut result = Vec::new();
-        for llm_provider_config in llm_provider_configs {
-            result.push(llm_provider_config?);
+        for config in configs {
+            result.push(config?);
         }
         Ok(result)
     }
@@ -203,6 +241,37 @@ impl LLMDatabase {
         Ok(result)
     }
 
+    pub fn get_llm_model_detail(&self, model_id: i64) -> rusqlite::Result<ModelDetail> {
+        let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE id = ?")?;
+        let model = stmt.query_map([model_id], |row| {
+            Ok(LLMModel {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                llm_provider_id: row.get(2)?,
+                code: row.get(3)?,
+                description: row.get(4)?,
+                vision_support: row.get(5)?,
+                audio_support: row.get(6)?,
+                video_support: row.get(7)?,
+            })
+        })?.next().transpose()?;
+
+        let model = match model {
+            Some(model) => model,
+            None => return Err(rusqlite::Error::QueryReturnedNoRows),
+        };
+
+        let provider_id = model.llm_provider_id;
+        let provider = self.get_llm_provider(provider_id)?;
+        let configs = self.get_llm_provider_config(provider_id)?;
+
+        Ok(ModelDetail {
+            model,
+            provider,
+            configs,
+        })
+    }
+
     pub fn delete_llm_model(&self, id: i64) -> rusqlite::Result<()> {
         self.conn.execute(
             "DELETE FROM llm_model WHERE id = ?",
@@ -220,42 +289,42 @@ impl LLMDatabase {
     }
 
     pub fn get_models_for_select(&self) -> Result<Vec<(String, String, i64, i64)>, String> {
-    let mut stmt = match self.conn.prepare("
-        SELECT
-            (p.name || ' / ' || m.name) AS name,
-            m.code,
-            m.id,
-            m.llm_provider_id
-        FROM
-            llm_model m
-        JOIN
-            llm_provider p ON m.llm_provider_id = p.id
-    ") {
-        Ok(stmt) => stmt,
-        Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
-    };
-
-    let models = match stmt.query_map([], |row| {
-        Ok((
-            row.get(0)?,
-            row.get(1)?,
-            row.get(2)?,
-            row.get(3)?,
-        ))
-    }) {
-        Ok(models) => models,
-        Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
-    };
-
-    let mut result = Vec::new();
-    for model in models {
-        match model {
-            Ok(model) => result.push(model),
+        let mut stmt = match self.conn.prepare("
+            SELECT
+                (p.name || ' / ' || m.name) AS name,
+                m.code,
+                m.id,
+                m.llm_provider_id
+            FROM
+                llm_model m
+            JOIN
+                llm_provider p ON m.llm_provider_id = p.id
+        ") {
+            Ok(stmt) => stmt,
             Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
+        };
+
+        let models = match stmt.query_map([], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+            ))
+        }) {
+            Ok(models) => models,
+            Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
+        };
+
+        let mut result = Vec::new();
+        for model in models {
+            match model {
+                Ok(model) => result.push(model),
+                Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String
+            }
         }
+        Ok(result)
     }
-    Ok(result)
-}
 
     pub fn init_llm_provider(&self) -> rusqlite::Result<()> {
         self.conn.execute(
