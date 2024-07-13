@@ -8,17 +8,17 @@ mod api;
 mod plugin;
 mod window;
 
-use tauri::{WindowBuilder, WindowUrl, GlobalShortcutManager, Manager, WindowEvent, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent, AppHandle};
+use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
-use crate::api::ai_api::{ask_ai};
+use crate::api::ai_api::ask_ai;
 use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant};
 use get_selected_text::get_selected_text;
 use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select, update_llm_provider, update_llm_provider_config};
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
-use crate::window::{create_ask_window, open_config_window, open_chat_ui_window, create_chat_ui_window};
+use crate::window::{create_ask_window, open_config_window, open_chat_ui_window};
 
 struct AppState {
     selected_text: TokioMutex<String>,
@@ -157,11 +157,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("Creating ask window");
                         create_ask_window(&app_handle);
                     },
-                    (Some(window), None) if window.is_focused().unwrap_or(false) => {
-                        println!("Creating chat_ui window");
-                        create_chat_ui_window(&app_handle);
-                        window.close().unwrap();
-                    },
                     (Some(window), _) => {
                         println!("Focusing ask window");
                         if window.is_minimized().unwrap_or(false) {
@@ -171,7 +166,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         window.set_focus().unwrap();
                     },
                 }
-            }).expect("Failed to register global shortcut");            
+            }).expect("Failed to register global shortcut");
         }
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();

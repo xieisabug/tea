@@ -27,9 +27,12 @@ function AskWindow() {
     };
 
     useEffect(() => {
-        const handleEsc = async (event: KeyboardEvent) => {
+        const handleShortcut = async (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 console.log("Closing window");
+                await appWindow.close();
+            } else if (event.key === 'i' && event.ctrlKey) {
+                await openChatUI();
                 await appWindow.close();
             }
         };
@@ -38,7 +41,7 @@ function AskWindow() {
             inputRef.current.focus();
         }
 
-        window.addEventListener('keydown', handleEsc);
+        window.addEventListener('keydown', handleShortcut);
 
         const unsubscribe = listen('quick_chat_response', (event) => {
             bufferRef.current += event.payload as string;
@@ -46,7 +49,7 @@ function AskWindow() {
         });
 
         return () => {
-            window.removeEventListener('keydown', handleEsc);
+            window.removeEventListener('keydown', handleShortcut);
             unsubscribe.then(f => f());
         };
     }, []);
