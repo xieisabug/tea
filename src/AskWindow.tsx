@@ -55,6 +55,10 @@ function AskWindow() {
         await invoke('open_config_window')
     }
 
+    const openChatUI = async () => {
+        await invoke('open_chat_ui_window')
+    }
+
     return (
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
@@ -70,6 +74,7 @@ function AskWindow() {
                 </form>
                 <div className="response">{response}</div>
             </div>
+            <button onClick={openChatUI}>完整UI</button>
             <button onClick={openConfig}>设置</button>
 
         </div>

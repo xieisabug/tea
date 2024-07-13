@@ -18,7 +18,7 @@ use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_con
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::system_db::SystemDatabase;
 use crate::db::llm_db::LLMDatabase;
-use crate::window::{create_ask_window, open_config_window};
+use crate::window::{create_ask_window, open_config_window, open_chat_ui_window, create_chat_ui_window};
 
 struct AppState {
     selected_text: TokioMutex<String>,
@@ -122,7 +122,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             selected_text: TokioMutex::new(String::new()),
         })
         .invoke_handler(tauri::generate_handler![
-            ask_ai, get_selected, open_config_window,
+            ask_ai, get_selected, open_config_window, open_chat_ui_window,
             save_config, get_config,
             get_llm_providers, update_llm_provider,
             get_llm_provider_config, update_llm_provider_config,
@@ -136,28 +136,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         RunEvent::Ready => {
             let app_handle = app_handle.clone();
             // Register global shortcut
+            // 快捷键的逻辑要理一下：
+            // 什么都没有的时候，快捷打开ask窗口
+            // ask窗口打开的时候，快捷打开chat_ui窗口
+            // chat_ui窗口打开的时候，不会再打开任何窗口了
             app_handle.global_shortcut_manager().register("CmdOrCtrl+Shift+I", move || {
                 println!("CmdOrCtrl+Shift+I pressed");
-
+            
                 let text = get_selected_text().unwrap_or_default();
-                println!("Selected text : {}", text);
+                println!("Selected text: {}", text);
+            
                 let app_state = app_handle.state::<AppState>();
-                let mut selected_text_guard = app_state.selected_text.blocking_lock();
-                *selected_text_guard = text;
-
-                if app_handle.get_window("ask").is_none() {
-                    println!("Creating window");
-
-                    create_ask_window(&app_handle)
-                } else if let Some(window) = app_handle.get_window("ask") {
-                    println!("Showing window");
-                    if window.is_minimized().unwrap_or(false) {
-                        window.unminimize().unwrap();
-                    }
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
+                *app_state.selected_text.blocking_lock() = text;
+            
+                let ask_window = app_handle.get_window("ask");
+                let chat_ui_window = app_handle.get_window("chat_ui");
+            
+                match (ask_window, chat_ui_window) {
+                    (None, _) => {
+                        println!("Creating ask window");
+                        create_ask_window(&app_handle);
+                    },
+                    (Some(window), None) if window.is_focused().unwrap_or(false) => {
+                        println!("Creating chat_ui window");
+                        create_chat_ui_window(&app_handle);
+                        window.close().unwrap();
+                    },
+                    (Some(window), _) => {
+                        println!("Focusing ask window");
+                        if window.is_minimized().unwrap_or(false) {
+                            window.unminimize().unwrap();
+                        }
+                        window.show().unwrap();
+                        window.set_focus().unwrap();
+                    },
                 }
-            }).expect("Failed to register global shortcut");
+            }).expect("Failed to register global shortcut");            
         }
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
