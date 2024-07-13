@@ -138,7 +138,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Register global shortcut
             // 快捷键的逻辑要理一下：
             // 什么都没有的时候，快捷打开ask窗口
-            // ask窗口打开的时候，快捷打开chat_ui窗口
+            // ask窗口打开的时候，快捷打开chat_ui窗口（这一步现在是在js里做的）
             // chat_ui窗口打开的时候，不会再打开任何窗口了
             app_handle.global_shortcut_manager().register("CmdOrCtrl+Shift+I", move || {
                 println!("CmdOrCtrl+Shift+I pressed");

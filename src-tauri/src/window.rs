@@ -1,4 +1,3 @@
-use get_selected_text::get_selected_text;
 use tauri::{AppHandle, Manager, WindowBuilder, WindowEvent, WindowUrl};
 
 pub fn create_ask_window(app: &AppHandle) {
