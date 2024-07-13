@@ -1,0 +1,68 @@
+.chat-ui-window {
+    display: flex;
+    height: 100vh;
+}
+
+.left-side {
+    flex: 0 0 200px;
+    background-color: #f4f4f4;
+    padding: 10px;
+}
+
+.center-content {
+    flex: 1;
+    padding: 10px;
+    background-color: #fff;
+}
+
+.chat-ui-toolbar button {
+    display: block;
+    margin: 5px 0;
+}
+
+.conversation-list ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.conversation-list li {
+    padding: 5px;
+    border-bottom: 1px solid #ddd;
+}
+
+.chat-ui-information p {
+    margin: 10px 0;
+}
+
+.conversation-ui {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.user-message {
+    text-align: right;
+}
+
+.bot-message {
+    text-align: left;
+}
+
+.input-area {
+    display: flex;
+    padding: 10px 0;
+}
+
+.input-area input {
+    flex: 1;
+    padding: 10px;
+}
+
+.input-area button {
+    padding: 10px;
+}
