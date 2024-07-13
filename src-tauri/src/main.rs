@@ -8,6 +8,7 @@ mod api;
 mod plugin;
 mod window;
 
+use db::conversation_db::{self, ConversationDatabase};
 use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
@@ -78,9 +79,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let system_db = SystemDatabase::new()?;
     let llm_db = LLMDatabase::new()?;
     let assistant_db = AssistantDatabase::new()?;
+    let conversation_db = ConversationDatabase::new()?;
     system_db.create_table()?;
     llm_db.create_table()?;
     assistant_db.create_table()?;
+    conversation_db.create_table()?;
 
     let app = tauri::Builder::default()
         .system_tray(system_tray)

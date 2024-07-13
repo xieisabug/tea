@@ -3,6 +3,7 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use crate::api::assistant_api::{get_assistant};
+use crate::db::conversation_db::{Conversation, ConversationDatabase, Message};
 use crate::db::llm_db::LLMDatabase;
 use crate::{AppState};
 use crate::api::llm_api::{LlmProvider, LlmProviderConfig};
@@ -111,6 +112,8 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
             let response_body: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
             if let Some(content) = response_body["choices"][0]["message"]["content"].as_str() {
                 tx.send((request.id, content.to_string())).await.unwrap();
+                let _ = save_conversation(1, model_id.parse::<i64>().unwrap(), 
+                    vec![("system".to_string(), "assistant_prompt".to_string()), ("user".to_string(), prompt), ("assistant".to_string(), content.to_string())]);
             }
         }
 
@@ -119,6 +122,17 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
 
     while let Some((id, content)) = rx.recv().await {
         window.emit(id.as_str(), content).map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}
+
+fn save_conversation(assistant_id: i64, llm_model_id: i64, messages: Vec<(String, String)>) -> Result<(), String> {
+    let db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string())?;
+    let conversation = Conversation::create(&db.conn, "新对话".to_string(), Some(assistant_id));
+    let conversation_id = conversation.unwrap().id;
+    for (message_type, content) in messages {
+        let _ = Message::create(&db.conn, conversation_id, message_type, content, Some(llm_model_id), 0);
     }
 
     Ok(())

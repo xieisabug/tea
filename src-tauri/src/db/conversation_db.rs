@@ -23,13 +23,13 @@ pub struct Message {
 }
 
 impl Conversation {
-    fn create(conn: &Connection, name: String, assistant_id: Option<i64>) -> Result<Self> {
+    pub fn create(conn: &Connection, name: String, assistant_id: Option<i64>) -> Result<Self> {
         conn.execute("INSERT INTO conversation (name, assistant_id) VALUES (?1, ?2)", (&name, &assistant_id))?;
         let id = conn.last_insert_rowid();
         Ok(Conversation { id, name, assistant_id, created_time: Utc::now() })
     }
 
-    fn read(conn: &Connection, id: i64) -> Result<Option<Self>> {
+    pub fn read(conn: &Connection, id: i64) -> Result<Option<Self>> {
         conn.query_row("SELECT id, name, assistant_id, created_time FROM conversation WHERE id = ?", &[&id], |row| {
             Ok(Conversation {
                 id: row.get(0)?,
@@ -40,19 +40,19 @@ impl Conversation {
         }).optional()
     }
 
-    fn update(conn: &Connection, id: i64, name: String, assistant_id: Option<i64>) -> Result<()> {
+    pub fn update(conn: &Connection, id: i64, name: String, assistant_id: Option<i64>) -> Result<()> {
         conn.execute("UPDATE conversation SET name = ?1, assistant_id = ?2 WHERE id = ?3", (&name, &assistant_id, &id))?;
         Ok(())
     }
 
-    fn delete(conn: &Connection, id: i64) -> Result<()> {
+    pub fn delete(conn: &Connection, id: i64) -> Result<()> {
         conn.execute("DELETE FROM conversation WHERE id = ?", &[&id])?;
         Ok(())
     }
 }
 
 impl Message {
-    fn list_by_conversation_id(conn: &Connection, conversation_id: i64) -> Result<Vec<Self>> {
+    pub fn list_by_conversation_id(conn: &Connection, conversation_id: i64) -> Result<Vec<Self>> {
         let mut stmt = conn.prepare("SELECT * FROM message WHERE conversation_id = ?1")?;
         let rows = stmt.query_map(&[&conversation_id], |row| {
             Ok(Message {
@@ -72,13 +72,13 @@ impl Message {
         Ok(messages)
     }
 
-    fn create(conn: &Connection, conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<Self> {
+    pub fn create(conn: &Connection, conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<Self> {
         conn.execute("INSERT INTO message (conversation_id, message_type, content, llm_model_id, token_count) VALUES (?1, ?2, ?3, ?4, ?5)", (&conversation_id, &message_type, &content, &llm_model_id, &token_count))?;
         let id = conn.last_insert_rowid();
         Ok(Message { id, conversation_id, message_type, content, llm_model_id, created_time: Utc::now(), token_count })
     }
 
-    fn read(conn: &Connection, id: i64) -> Result<Option<Self>> {
+    pub fn read(conn: &Connection, id: i64) -> Result<Option<Self>> {
         conn.query_row("SELECT * FROM message WHERE id = ?", &[&id], |row| {
             Ok(Message {
                 id: row.get(0)?,
@@ -92,13 +92,51 @@ impl Message {
         }).optional()
     }
 
-    fn update(conn: &Connection, id: i64, conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<()> {
+    pub fn update(conn: &Connection, id: i64, conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<()> {
         conn.execute("UPDATE message SET conversation_id = ?1, message_type = ?2, content = ?3, llm_model_id = ?4, token_count = ?5 WHERE id = ?6", (&conversation_id, &message_type, &content, &llm_model_id, &token_count, &id))?;
         Ok(())
     }
 
-    fn delete(conn: &Connection, id: i64) -> Result<()> {
+    pub fn delete(conn: &Connection, id: i64) -> Result<()> {
         conn.execute("DELETE FROM message WHERE id = ?", &[&id])?;
+        Ok(())
+    }
+}
+
+
+pub struct ConversationDatabase {
+    pub conn: Connection,
+}
+
+impl ConversationDatabase {
+    pub fn new() -> rusqlite::Result<Self> {
+        let conn = Connection::open("./conversation.db")?;
+        Ok(ConversationDatabase { conn })
+    }
+
+    pub fn create_table(&self) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS conversation (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                assistant_id INTEGER,
+                created_time DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS message (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                message_type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                llm_model_id INTEGER,
+                created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                token_count INTEGER
+            )",
+            [],
+        )?;
+
         Ok(())
     }
 }
