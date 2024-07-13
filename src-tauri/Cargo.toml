@@ -16,10 +16,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12.5", features = ["json", "stream"] }
 tokio = { version = "1.0", features = ["full"] }
-rusqlite = { version = "0.31.0", features = ["bundled"] }
+rusqlite = { version = "0.31.0", features = ["bundled", "chrono"] }
 get-selected-text = "0.1.6"
 config = "0.14.0"
 futures = "0.3.30"
+chrono = { version = "0.4", features = ["serde"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
 core-graphics = "0.23.2"
