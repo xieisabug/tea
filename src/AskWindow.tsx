@@ -11,21 +11,34 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface AiResponse {
-    text: string;
+    conversation_id: number;
+    add_message_id: number;
 }
 
 function AskWindow() {
     const [query, setQuery] = useState<string>('');
     const [response, setResponse] = useState<string>('');
     const inputRef = useRef<HTMLInputElement>(null);
-    const bufferRef = useRef<string>('');
+
+    let unsubscribe: Promise<() => void> | null = null;
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setResponse('');
-        bufferRef.current = '';
         try {
-            invoke<AiResponse>('ask_ai', { request: { prompt: query, id: 'quick_chat_response' } });
+            invoke<AiResponse>('ask_ai', { request: { prompt: query, conversation_id: "", assistant_id: 1 } })
+            .then((res) => {
+                console.log("ask ai response", res);
+                if (unsubscribe) {
+                    console.log('Unsubscribing from previous event listener');
+                    unsubscribe.then(f => f());
+                }
+
+                console.log("Listening for response", `message_${res.add_message_id}`);
+                unsubscribe = listen(`message_${res.add_message_id}`, (event) => {
+                    setResponse(event.payload as string);
+                });
+            });
         } catch (error) {
             console.error('Error:', error);
             setResponse('An error occurred while processing your request.');
@@ -49,13 +62,11 @@ function AskWindow() {
 
         window.addEventListener('keydown', handleShortcut);
 
-        const unsubscribe = listen('quick_chat_response', (event) => {
-            setResponse(event.payload as string);
-        });
-
         return () => {
             window.removeEventListener('keydown', handleShortcut);
-            unsubscribe.then(f => f());
+            if (unsubscribe) {
+                unsubscribe.then(f => f());
+            }
         };
     }, []);
 

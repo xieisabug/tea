@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Message } from "../data/Conversation";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -8,12 +8,16 @@ import rehypeKatex from "rehype-katex";
 import 'katex/dist/katex.min.css';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { listen } from "@tauri-apps/api/event";
 
 interface ConversationUIProps {
     conversationId: string;
 }
 
 function ConversationUI({ conversationId }: ConversationUIProps) {
+    let unsubscribe: Promise<() => void> | null = null;
+    const [response, setResponse] = useState<string>('');
+
     useEffect(() => {
         if (!conversationId) {
             return
@@ -21,7 +25,21 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
         console.log(`conversationId change : ${conversationId}`);
         invoke<Array<any>>("get_conversation_with_messages", {conversationId}).then((res: any[]) => {
             setMessages(res[1])
-        })
+        });
+
+        if (unsubscribe) {
+            unsubscribe.then(f => f());
+        }
+
+        unsubscribe = listen('conversation-' + conversationId, (event) => {
+            setResponse(event.payload as string);
+        });
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe.then(f => f());
+            }
+        };
     }, [conversationId]);
 
     const [messages, setMessages] = useState<Array<Message>>([]);
@@ -59,7 +77,7 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
                                     </code>
                                   )
                                 }
-                              }}
+                            }}
                         />
                     </div>
                 ))}

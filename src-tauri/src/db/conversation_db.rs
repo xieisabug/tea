@@ -2,7 +2,7 @@ use rusqlite::{Connection, Result, OptionalExtension};
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Conversation {
     pub id: i64,
     pub name: String,
@@ -11,7 +11,7 @@ pub struct Conversation {
 }
 
 // Define the Message struct
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
     pub id: i64,
     pub conversation_id: i64,
@@ -92,8 +92,8 @@ impl Message {
         }).optional()
     }
 
-    pub fn update(conn: &Connection, id: i64, conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<()> {
-        conn.execute("UPDATE message SET conversation_id = ?1, message_type = ?2, content = ?3, llm_model_id = ?4, token_count = ?5 WHERE id = ?6", (&conversation_id, &message_type, &content, &llm_model_id, &token_count, &id))?;
+    pub fn update(conn: &Connection, id: i64, conversation_id: i64, content: String, token_count: i32) -> Result<()> {
+        conn.execute("UPDATE message SET conversation_id = ?1, content = ?2, token_count = ?3 WHERE id = ?4", (&conversation_id, &content, &token_count, &id))?;
         Ok(())
     }
 
