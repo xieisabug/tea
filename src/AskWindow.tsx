@@ -44,8 +44,7 @@ function AskWindow() {
         window.addEventListener('keydown', handleShortcut);
 
         const unsubscribe = listen('quick_chat_response', (event) => {
-            bufferRef.current += event.payload as string;
-            setResponse(bufferRef.current);
+            setResponse(event.payload as string);
         });
 
         return () => {

@@ -139,4 +139,31 @@ impl ConversationDatabase {
 
         Ok(())
     }
+
+    pub fn list_conversations(&self, page: u32, per_page: u32) -> Result<Vec<Conversation>> {
+        let offset = (page - 1) * per_page;
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, assistant_id, created_time 
+             FROM conversation 
+             ORDER BY created_time DESC 
+             LIMIT ?1 OFFSET ?2"
+        )?;
+        let rows = stmt.query_map(&[&per_page, &offset], |row| {
+            Ok(Conversation {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                assistant_id: row.get(2)?,
+                created_time: row.get(3)?,
+            })
+        })?;
+        let conversations: Result<Vec<_>> = rows.collect();
+        conversations
+    }
+
+    pub fn get_conversation_with_messages(&self, conversation_id: i64) -> Result<(Conversation, Vec<Message>)> {
+        let conversation = Conversation::read(&self.conn, conversation_id)?
+            .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+        let messages = Message::list_by_conversation_id(&self.conn, conversation_id)?;
+        Ok((conversation, messages))
+    }
 }

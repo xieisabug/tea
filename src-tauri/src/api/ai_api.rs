@@ -93,18 +93,27 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
 
         if stream {
             let mut stream = response.bytes_stream();
+            let mut full_text = String::new();
             while let Some(chunk) = stream.next().await {
                 let id = request.id.clone();
+                let prompt_clone = prompt.clone();
                 let chunk = chunk.map_err(|e| e.to_string())?;
                 let text = String::from_utf8_lossy(&chunk);
+                println!("text: {}", text.clone());
                 if text.starts_with("data: ") {
                     let content = text.trim_start_matches("data: ");
-                    if content != "[DONE]" {
+                    if !content.contains("data: [DONE]") {
+                        println!("content: {}", content.clone());
                         if let Ok(response) = serde_json::from_str::<serde_json::Value>(content) {
                             if let Some(delta) = response["choices"][0]["delta"]["content"].as_str() {
-                                tx.send((id, delta.to_string())).await.unwrap();
+                                full_text.push_str(delta);
+                                tx.send((id, full_text.clone())).await.unwrap();
                             }
                         }
+                    } else {
+                        println!("content DONE, full_text: {}", full_text.clone());
+                        let _ = save_conversation(1, model_id.parse::<i64>().unwrap(), 
+                            vec![("system".to_string(), "assistant_prompt".to_string()), ("user".to_string(), prompt_clone), ("assistant".to_string(), full_text.clone())]);
                     }
                 }
             }
@@ -130,9 +139,11 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
 fn save_conversation(assistant_id: i64, llm_model_id: i64, messages: Vec<(String, String)>) -> Result<(), String> {
     let db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string())?;
     let conversation = Conversation::create(&db.conn, "新对话".to_string(), Some(assistant_id));
+    println!("conversation : {:?}", conversation);
     let conversation_id = conversation.unwrap().id;
     for (message_type, content) in messages {
-        let _ = Message::create(&db.conn, conversation_id, message_type, content, Some(llm_model_id), 0);
+        let message = Message::create(&db.conn, conversation_id, message_type, content, Some(llm_model_id), 0);
+        println!("message : {:?}", message);
     }
 
     Ok(())
