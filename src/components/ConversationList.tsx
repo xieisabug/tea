@@ -1,25 +1,34 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {invoke} from "@tauri-apps/api/tauri";
 
-function ConversationList() {
+interface ConversationListProps {
+    onSelectConversation: (conversation: string) => void;
+    conversationId: string;
+}
+
+interface Conversation {
+    id: string;
+    name: string;
+}
+
+function ConversationList({onSelectConversation, conversationId}: ConversationListProps) {
     useEffect(() => {
         // Fetch conversations from the server
-        invoke("list_conversations", {page: 1, pageSize: 100}).then((conversations) => {
-            console.log(conversations);
+        invoke<Array<Conversation>>("list_conversations", {page: 1, pageSize: 100}).then((conversations: Conversation[]) => {
+            setConversations(conversations);
         });
     }, []);
 
-    const [conversations, setConversations] = useState([
-        "Conversation 1",
-        "Conversation 2",
-        "Conversation 3"
-    ]);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
 
     return (
         <div className="conversation-list">
             <ul>
-                {conversations.map((conversation, index) => (
-                    <li key={index}>{conversation}</li>
+                {conversations.map((conversation) => (
+                    <li className={`${conversationId === conversation.id? "selected": ""}`} key={conversation.id} onClick={() => {
+                        console.log(`click : ${JSON.stringify(conversation)}`)
+                        onSelectConversation(conversation.id);
+                    }}>{conversation.name}</li>
                 ))}
             </ul>
         </div>

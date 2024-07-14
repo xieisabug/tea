@@ -5,6 +5,8 @@
 
 .left-side {
     flex: 0 0 200px;
+    display: flex;
+    flex-direction: column;
     background-color: #f4f4f4;
     padding: 10px;
 }
@@ -20,6 +22,10 @@
     margin: 5px 0;
 }
 
+.conversation-list {
+    flex: 1;
+    overflow-y: auto;
+}
 .conversation-list ul {
     list-style-type: none;
     padding: 0;
@@ -28,6 +34,11 @@
 .conversation-list li {
     padding: 5px;
     border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.conversation-list li.selected {
+    font-weight: bolder;
 }
 
 .chat-ui-information p {

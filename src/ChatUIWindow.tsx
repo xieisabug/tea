@@ -8,16 +8,18 @@ import "./components/ChatUIWindow.css";
 
 function ChatUIWindow() {
 
+    const [selectedConversation, setSelectedConversation] = useState<string>("");
+
     return (
         <div className="chat-ui-window">
             <div className="left-side">
                 <ChatUIToolbar />
-                <ConversationList />
+                <ConversationList conversationId={selectedConversation} onSelectConversation={setSelectedConversation} />
                 <ChatUIInfomation />
             </div>
 
             <div className="center-content">
-                <ConversationUI />
+                <ConversationUI conversationId={selectedConversation} />
             </div>
         </div>
     );

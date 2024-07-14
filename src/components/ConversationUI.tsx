@@ -1,15 +1,27 @@
-import React, { useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+import React, { useEffect, useState } from "react";
+import { Message } from "../data/Conversation";
 
-function ConversationUI() {
-    const [messages, setMessages] = useState([
-        { sender: "User", text: "Hello!" },
-        { sender: "Bot", text: "Hi there!" }
-    ]);
+interface ConversationUIProps {
+    conversationId: string;
+}
+
+function ConversationUI({ conversationId }: ConversationUIProps) {
+    useEffect(() => {
+        if (!conversationId) {
+            return
+        }
+        console.log(`conversationId change : ${conversationId}`);
+        invoke("get_conversation_with_messages", {conversationId}).then((res: any[]) => {
+            setMessages(res[1])
+        })
+    }, [conversationId]);
+
+    const [messages, setMessages] = useState<Array<Message>>([]);
     const [inputText, setInputText] = useState("");
 
     const handleSend = () => {
         if (inputText.trim() !== "") {
-            setMessages([...messages, { sender: "User", text: inputText }]);
             setInputText("");
         }
     };
@@ -17,9 +29,9 @@ function ConversationUI() {
     return (
         <div className="conversation-ui">
             <div className="messages">
-                {messages.map((message, index) => (
-                    <div key={index} className={message.sender === "User" ? "user-message" : "bot-message"}>
-                        <strong>{message.sender}:</strong> {message.text}
+                {messages.filter(m => m.message_type !== "system").map((message, index) => (
+                    <div key={index} className={message.message_type === "user" ? "user-message" : "bot-message"}>
+                        {message.content}
                     </div>
                 ))}
             </div>
