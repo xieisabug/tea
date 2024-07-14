@@ -12,7 +12,7 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
             return
         }
         console.log(`conversationId change : ${conversationId}`);
-        invoke("get_conversation_with_messages", {conversationId}).then((res: any[]) => {
+        invoke<Array<any>>("get_conversation_with_messages", {conversationId}).then((res: any[]) => {
             setMessages(res[1])
         })
     }, [conversationId]);
