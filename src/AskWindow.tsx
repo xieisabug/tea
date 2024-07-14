@@ -3,6 +3,12 @@ import { invoke } from '@tauri-apps/api/tauri';
 import { appWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import './App.css';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeRaw from 'rehype-raw';
+import rehypeKatex from 'rehype-katex';
+import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
+import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface AiResponse {
     text: string;
@@ -74,7 +80,31 @@ function AskWindow() {
                     />
                     <button type="submit">Send</button>
                 </form>
-                <div className="response">{response}</div>
+                <div className="response">
+                    <ReactMarkdown 
+                        children={response}
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                        components={{
+                            code({node, className, children, ref, ...props}) {
+                                const match = /language-(\w+)/.exec(className || '')
+                                return match ? (
+                                <SyntaxHighlighter
+                                    {...props}
+                                    PreTag="div"
+                                    children={String(children).replace(/\n$/, '')}
+                                    language={match[1]}
+                                    style={dark}
+                                />
+                                ) : (
+                                <code {...props} ref={ref} className={className}>
+                                    {children}
+                                </code>
+                                )
+                            }
+                            }}
+                    />
+                </div>
             </div>
             <button onClick={openChatUI}>完整UI</button>
             <button onClick={openConfig}>设置</button>
