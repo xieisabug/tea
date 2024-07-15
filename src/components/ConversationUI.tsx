@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
+import { writeText } from '@tauri-apps/api/clipboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Conversation, Message } from "../data/Conversation";
 import ReactMarkdown from "react-markdown";
@@ -20,7 +21,7 @@ interface AiResponse {
 }
 
 const MessageItem = React.memo(({ message }: any) => (
-    <div className={message.message_type === "user" ? "user-message" : "bot-message"}>
+    <div className={"message-item " + (message.message_type === "user" ? "user-message" : "bot-message")}>
         <ReactMarkdown
             children={message.content}
             remarkPlugins={[remarkMath]}
@@ -44,6 +45,11 @@ const MessageItem = React.memo(({ message }: any) => (
                 }
             }}
         />
+        <div className="message-item-button-container">
+            <button className="message-item-copy-button" onClick={() => writeText(message.content)}>复制</button>
+            <button className="message-item-copy-button" disabled>刷新</button>
+            <button className="message-item-copy-button" disabled>删除</button>
+        </div>
     </div>
 ));
 

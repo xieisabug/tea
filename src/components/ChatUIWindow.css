@@ -56,12 +56,34 @@
     overflow-y: auto;
 }
 
+.message-item {
+    position: relative;
+    margin-bottom: 20px;
+}
 .user-message {
     text-align: right;
 }
 
 .bot-message {
     text-align: left;
+}
+
+.message-item-button-container {
+    position: absolute;
+    bottom: -20px;
+}
+
+.user-message .message-item-button-container {
+    right: 0;
+}
+.bot-message .message-item-button-container {
+    left: 0;
+}
+
+.message-item-copy-button {
+    font-size: 12px;
+    height: 20px;
+    padding: 2px 5px;
 }
 
 .input-area {
