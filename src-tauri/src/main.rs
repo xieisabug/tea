@@ -8,7 +8,7 @@ mod api;
 mod plugin;
 mod window;
 
-use db::conversation_db::{self, ConversationDatabase};
+use db::conversation_db::ConversationDatabase;
 use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;

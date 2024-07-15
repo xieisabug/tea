@@ -2,12 +2,11 @@ use reqwest::Client;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::api::assistant_api::{get_assistant};
+use crate::api::assistant_api::get_assistant;
 use crate::db::conversation_db::{Conversation, ConversationDatabase, Message};
 use crate::db::llm_db::LLMDatabase;
-use crate::{AppState};
-use crate::api::llm_api::{LlmProvider, LlmProviderConfig};
-use tauri::{Manager, State};
+use crate::AppState;
+use tauri::State;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -115,7 +114,7 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
     
             println!("request json : {}", body);
     
-            let mut response = client.post(url)
+            let response = client.post(url)
                 .header("Authorization", format!("Bearer {}", "123"))
                 .json(&body)
                 .send()

@@ -27,18 +27,18 @@ function AskWindow() {
         setResponse('');
         try {
             invoke<AiResponse>('ask_ai', { request: { prompt: query, conversation_id: "", assistant_id: 1 } })
-            .then((res) => {
-                console.log("ask ai response", res);
-                if (unsubscribe) {
-                    console.log('Unsubscribing from previous event listener');
-                    unsubscribe.then(f => f());
-                }
+                .then((res) => {
+                    console.log("ask ai response", res);
+                    if (unsubscribe) {
+                        console.log('Unsubscribing from previous event listener');
+                        unsubscribe.then(f => f());
+                    }
 
-                console.log("Listening for response", `message_${res.add_message_id}`);
-                unsubscribe = listen(`message_${res.add_message_id}`, (event) => {
-                    setResponse(event.payload as string);
+                    console.log("Listening for response", `message_${res.add_message_id}`);
+                    unsubscribe = listen(`message_${res.add_message_id}`, (event) => {
+                        setResponse(event.payload as string);
+                    });
                 });
-            });
         } catch (error) {
             console.error('Error:', error);
             setResponse('An error occurred while processing your request.');
