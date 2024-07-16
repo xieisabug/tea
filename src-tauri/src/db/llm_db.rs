@@ -11,7 +11,7 @@ pub struct LLMProvider {
     pub is_enabled: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LLMProviderConfig {
     pub id: i64,
     pub name: String,

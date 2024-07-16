@@ -1,7 +1,6 @@
+use futures::executor::block_on;
 use serde::{Deserialize, Serialize};
-use crate::api::llm::ollama::models as ollama_models;
-use crate::api::llm::openai::models as openai_models;
-use crate::db::llm_db::LLMDatabase;
+use crate::{api::llm::get_provider, db::llm_db::LLMDatabase};
 
 #[derive(Serialize, Deserialize)]
 pub struct LlmProvider {
@@ -13,7 +12,7 @@ pub struct LlmProvider {
     pub is_enabled: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LlmModel {
     pub id: i64,
     pub name: String,
@@ -111,48 +110,20 @@ pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, Str
     let llm_provider = db.get_llm_provider(llm_provider_id).map_err(|e| e.to_string())?;
     let llm_provider_config = db.get_llm_provider_config(llm_provider_id).map_err(|e| e.to_string())?;
 
-    println!("llm_provider: {:?}", llm_provider);
-    match llm_provider.api_type.as_str() {
-        "openai" => {
-            let models = openai_models()?;
-            let mut result = Vec::new();
-            // for model in models {
-            //     result.push(LlmModel {
-            //         id: model.id,
-            //         name: model.name,
-            //         llm_provider_id: llm_provider_id,
-            //         code: model.code,
-            //         description: model.description,
-            //         vision_support: model.vision_support,
-            //         audio_support: model.audio_support,
-            //         video_support: model.video_support,
-            //     });
-            // }
-            Ok(result)
-        },
-        "ollama" => {
-            let models = ollama_models(llm_provider_config).await.map_err(|e| e.to_string())?;
-            db.delete_llm_model_by_provider(llm_provider_id).map_err(|e| e.to_string())?;
-            let mut result = Vec::new();
-            for model in models {
-                let name_clone = model.name.clone(); // 克隆 description
-                let code_clone = model.code.clone(); // 克隆 description
-                let description_clone = model.description.clone(); // 克隆 description
-                result.push(LlmModel {
-                    id: model.id,
-                    name: model.name,
-                    llm_provider_id: llm_provider_id,
-                    code: model.code,
-                    description: model.description,
-                    vision_support: model.vision_support,
-                    audio_support: model.audio_support,
-                    video_support: model.video_support,
-                });
-                db.add_llm_model(name_clone.as_str(), llm_provider_id, code_clone.as_str(), description_clone.as_str(), model.vision_support, model.audio_support, model.video_support).map_err(|e| e.to_string())?;
+    let provider = get_provider(llm_provider,llm_provider_config);
+    
+    let models_future = provider.models();
+    match models_future.await {
+        Ok(models) => {
+            for model in &models {
+                println!("Model: {:?}", model);
             }
-            Ok(result)
-        },
-        _ => { Ok (Vec::new())}
+            Ok(models)
+        }
+        Err(e) => {
+            eprintln!("Models error: {}", e);
+            Err(e)
+        }
     }
 }
 
