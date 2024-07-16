@@ -2,12 +2,16 @@ use reqwest::Client;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::time::timeout;
 use crate::api::assistant_api::get_assistant;
+use crate::api::llm::get_provider;
+use crate::db::assistant_db::AssistantModelConfig;
 use crate::db::conversation_db::{Conversation, ConversationDatabase, Message};
 use crate::db::llm_db::LLMDatabase;
 use crate::AppState;
 use tauri::State;
 use std::collections::HashMap;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 #[derive(Serialize, Deserialize)]
@@ -30,7 +34,6 @@ pub struct AiResponse {
 
 #[tauri::command]
 pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: AiRequest) -> Result<AiResponse, String> {
-    let client = Client::new();
     let (tx, mut rx) = mpsc::channel(100);
 
     let selected_text = state.inner().selected_text.lock().await.clone();
@@ -78,14 +81,22 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
             println!("model id : {}", model_id);
     
             let model_detail = db.get_llm_model_detail(model_id.parse::<i64>().unwrap()).unwrap();
+            let provider = get_provider(model_detail.provider, model_detail.configs);
+
+            let mut model_config_clone = assistant_detail.model_configs.clone();
+            model_config_clone.push(AssistantModelConfig {
+                id: 0,
+                assistant_id: assistant_detail.assistant.id,
+                assistant_model_id: model_detail.model.id,
+                name: "model".to_string(),
+                value: Some(model_detail.model.code)
+            });
+            
             let config_map = assistant_detail.model_configs.iter().filter_map(|config| {
                 config.value.as_ref().map(|value| (config.name.clone(), value.clone()))
             }).collect::<HashMap<String, String>>();
             let url = "http://localhost:11434/v1/chat/completions";
     
-            let temperature = config_map.get("temperature").and_then(|v| v.parse().ok()).unwrap_or(0.75);
-            let top_p = config_map.get("top_p").and_then(|v| v.parse().ok()).unwrap_or(1.0);
-            let max_tokens = config_map.get("max_tokens").and_then(|v| v.parse().ok()).unwrap_or(2000);
             let stream = config_map.get("stream").and_then(|v| v.parse().ok()).unwrap_or(false);
     
             let mut prompt = request.prompt.clone();
@@ -96,70 +107,44 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
             println!("send to url: {}, model: {}", url, model_detail.model.name);
             println!("prompt: {}", prompt);
 
-            let json_messages = init_message_list.iter().map(|(message_type, content)| {
-                json!({
-                    "role": message_type,
-                    "content": content
-                })
-            }).collect::<Vec<serde_json::Value>>();
-    
-            let body = json!({
-                "model": model_detail.model.code,
-                "messages": json_messages,
-                "temperature": temperature,
-                "top_p": top_p,
-                "stream": stream,
-                "max_tokens": max_tokens
-            });
-    
-            println!("request json : {}", body);
-    
-            let response = client.post(url)
-                .header("Authorization", format!("Bearer {}", "123"))
-                .json(&body)
-                .send()
-                .await
-                .map_err(|e| e.to_string())?;
-    
             if stream {
-                let mut stream = response.bytes_stream();
-                let mut full_text = String::new();
-                while let Some(chunk) = stream.next().await {
-                    let chunk = chunk.map_err(|e| e.to_string())?;
-                    let text = String::from_utf8_lossy(&chunk);
-                    println!("text: {}", text.clone());
-                    if text.starts_with("data: ") {
-                        let content = text.trim_start_matches("data: ");
-                        if !content.contains("data: [DONE]") {
-                            println!("content: {}", content);
-                            if let Ok(response) = serde_json::from_str::<serde_json::Value>(content) {
-                                if let Some(delta) = response["choices"][0]["delta"]["content"].as_str() {
-                                    full_text.push_str(delta);
-                                    tx.send((add_message_id.unwrap(), full_text.clone())).await.unwrap();
-                                }
-                            }
-                        } else {
-                            println!("content DONE, add message id: {}, full_text: {}", add_message_id.unwrap(), full_text.clone());
-                            let _ = Message::update(&conversation_db.conn, add_message_id.unwrap(), conversation_id, full_text.clone(), 0);
-                        }
-                    }
+                if let Err(e) = provider.chat_stream(add_message_id.unwrap(), init_message_list, model_config_clone, tx).await {
+                    eprintln!("Chat stream error: {}", e);
                 }
             } else {
-                let response_body: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
-                if let Some(content) = response_body["choices"][0]["message"]["content"].as_str() {
-                    tx.send((add_message_id.unwrap(), content.to_string())).await.unwrap();
+                let content = provider.chat(add_message_id.unwrap(), init_message_list, model_config_clone)
+                    .await
+                    .map_err(|e| e.to_string())?;
 
-                    let _ = Message::update(&conversation_db.conn, add_message_id.unwrap(), conversation_id, content.to_string(), 0);
-                }
+                tx.send((add_message_id.unwrap(), content.clone(), true)).await.unwrap();
+
+                let _ = Message::update(&conversation_db.conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
             }
-    
             Ok::<(), String>(())
         });
 
         tokio::spawn(async move {
-            while let Some((id, content)) = rx.recv().await {
-                println!("channel : {}", format!("message_{}", id).as_str());
-                window_clone.emit(format!("message_{}", id).as_str(), content).map_err(|e| e.to_string()).unwrap();
+            loop {
+                match timeout(Duration::from_secs(10), rx.recv()).await {
+                    Ok(Some((id, content, done))) => {
+                        println!("Received data: id={}, content={}", id, content);
+                        window_clone.emit(format!("message_{}", id).as_str(), content.clone())
+                            .map_err(|e| e.to_string()).unwrap();
+
+                        if done {
+                            let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string());
+                            let _ = Message::update(&conversation_db.unwrap().conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
+                        }
+                    }
+                    Ok(None) => {
+                        println!("Channel closed");
+                        break;
+                    }
+                    Err(_) => {
+                        println!("Timeout waiting for data");
+                        // Decide whether to break or continue based on your requirements
+                    }
+                }
             }
         });
     }

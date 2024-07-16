@@ -115,9 +115,12 @@ pub async fn fetch_model_list(llm_provider_id: i64) -> Result<Vec<LlmModel>, Str
     let models_future = provider.models();
     match models_future.await {
         Ok(models) => {
+            db.delete_llm_model_by_provider(llm_provider_id).map_err(|e| e.to_string())?;
             for model in &models {
                 println!("Model: {:?}", model);
+                db.add_llm_model(&model.name, llm_provider_id, &model.code, &model.description, model.vision_support, model.audio_support, model.video_support).map_err(|e| e.to_string())?;
             }
+
             Ok(models)
         }
         Err(e) => {

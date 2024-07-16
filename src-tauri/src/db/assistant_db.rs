@@ -27,7 +27,7 @@ pub struct AssistantPrompt {
     pub created_time: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AssistantModelConfig {
     pub id: i64,
     pub assistant_id: i64,
