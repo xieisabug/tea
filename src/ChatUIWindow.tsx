@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import {useState} from "react";
 import ChatUIToolbar from "./components/ChatUIToolbar";
 import ConversationList from "./components/ConversationList";
 import ChatUIInfomation from "./components/ChatUIInfomation";
@@ -13,7 +13,7 @@ function ChatUIWindow() {
     return (
         <div className="chat-ui-window">
             <div className="left-side">
-                <ChatUIToolbar />
+                <ChatUIToolbar onNewConversation={() => setSelectedConversation("")} />
                 <ConversationList conversationId={selectedConversation} onSelectConversation={setSelectedConversation} />
                 <ChatUIInfomation />
             </div>

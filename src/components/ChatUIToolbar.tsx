@@ -1,10 +1,18 @@
-import React from "react";
+import { invoke } from "@tauri-apps/api/tauri";
 
-function ChatUIToolbar() {
+interface ChatUIToolbarProps {
+    onNewConversation: () => void;
+}
+
+function ChatUIToolbar({onNewConversation} : ChatUIToolbarProps) {
+    const openConfig = async () => {
+        await invoke('open_config_window')
+    }
+
     return (
         <div className="chat-ui-toolbar">
-            <button>New Chat</button>
-            <button>Settings</button>
+            <button onClick={onNewConversation}>新对话</button>
+            <button onClick={openConfig}>设置</button>
         </div>
     );
 }

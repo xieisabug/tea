@@ -61,6 +61,8 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
     const [conversation, setConversation] = useState<Conversation>();
     useEffect(() => {
         if (!conversationId) {
+            setMessages([]);
+            setConversation(undefined);
             return
         }
         console.log(`conversationId change : ${conversationId}`);

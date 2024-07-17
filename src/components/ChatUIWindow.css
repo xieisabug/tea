@@ -16,10 +16,12 @@
     padding: 10px;
     background-color: #fff;
 }
-
+.chat-ui-toolbar {
+    display: flex;
+}
 .chat-ui-toolbar button {
-    display: block;
-    margin: 5px 0;
+    flex: 1;
+    margin: 0 5px;
 }
 
 .conversation-list {
