@@ -77,10 +77,10 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
         tokio::spawn(async move {
             let db = LLMDatabase::new().map_err(|e| e.to_string())?;
             let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string())?;
-            let model_id = &assistant_detail.model[0].model_id;
-            println!("model id : {}", model_id);
-    
+            let model_id = &assistant_detail.model[0].model_id;    
             let model_detail = db.get_llm_model_detail(model_id.parse::<i64>().unwrap()).unwrap();
+            println!("model detail : {:#?}", model_detail);
+
             let provider = get_provider(model_detail.provider, model_detail.configs);
 
             let mut model_config_clone = assistant_detail.model_configs.clone();
@@ -95,7 +95,6 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
             let config_map = assistant_detail.model_configs.iter().filter_map(|config| {
                 config.value.as_ref().map(|value| (config.name.clone(), value.clone()))
             }).collect::<HashMap<String, String>>();
-            let url = "http://localhost:11434/v1/chat/completions";
     
             let stream = config_map.get("stream").and_then(|v| v.parse().ok()).unwrap_or(false);
     
@@ -104,7 +103,6 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
                 prompt = prompt.replace("!s", &selected_text);
             }
     
-            println!("send to url: {}, model: {}", url, model_detail.model.name);
             println!("prompt: {}", prompt);
 
             if stream {

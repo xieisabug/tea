@@ -74,6 +74,7 @@ impl ModelProvider for OpenAIProvider {
                     "messages": json_messages,
                     "stream": false
                 });
+                println!("openai chat: {:?}", body);
     
                 let response = client.post(&url)
                     .json(&body)
@@ -101,6 +102,7 @@ impl ModelProvider for OpenAIProvider {
                     .collect();
     
                 let url = format!("{}chat/completions", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/v1".to_string()));
+                let api_key = config_map.get("api_key").unwrap().clone();
     
                 let json_messages = messages.iter().map(|(message_type, content)| {
                     json!({
@@ -126,24 +128,39 @@ impl ModelProvider for OpenAIProvider {
                     "messages": json_messages,
                     "stream": true
                 });
+                println!("openai chat stream url: {} body: {:?}", url, body);
     
                 let response = client.post(&url)
+                    .header(AUTHORIZATION, api_key)
                     .json(&body)
                     .send()
                     .await?;
     
                 let mut stream = response.bytes_stream();
                 let mut full_text = String::new();
+                let mut buffer = Vec::new();
                 while let Some(chunk) = stream.next().await {
                     let chunk = chunk?;
                     let text = String::from_utf8_lossy(&chunk);
-                    if text.starts_with("data: ") {
-                        let content = text.trim_start_matches("data: ");
-                        if !content.contains("data: [DONE]") {
-                            if let Ok(response) = serde_json::from_str::<serde_json::Value>(content) {
-                                if let Some(delta) = response["message"]["content"].as_str() {
+                    println!("openai chat stream text: {}", text);
+                    buffer.extend_from_slice(&chunk);
+ 
+                    // 处理粘包和拆包
+                    while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
+                        let chunk_data = buffer.drain(..=pos + 1).collect::<Vec<_>>();
+                        let chunk_str = String::from_utf8_lossy(&chunk_data);
+                        
+                        if chunk_str.starts_with("data: ") {
+                            let json_str = &chunk_str["data: ".len()..];
+                            if json_str.trim() == "[DONE]" {
+                                tx.send((message_id, full_text.clone(), true)).await?;
+                                return Ok(());
+                            }
+                            
+                            if let Ok(chunk_response) = serde_json::from_str::<serde_json::Value>(json_str) {
+                                if let Some(delta) = chunk_response["choices"][0]["delta"]["content"].as_str() {
                                     full_text.push_str(delta);
-                                    tx.send((message_id, full_text.clone(), response["done"].as_bool().unwrap())).await?;
+                                    tx.send((message_id, full_text.clone(), false)).await?;
                                 }
                             }
                         }
