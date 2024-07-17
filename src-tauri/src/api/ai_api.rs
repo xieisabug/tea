@@ -1,7 +1,4 @@
-use reqwest::Client;
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tokio::time::timeout;
 use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
@@ -114,9 +111,11 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
                     .await
                     .map_err(|e| e.to_string())?;
 
-                tx.send((add_message_id.unwrap(), content.clone(), true)).await.unwrap();
+                println!("Chat content: {}", content.clone());
 
-                let _ = Message::update(&conversation_db.conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
+                tx.send((add_message_id.unwrap(), content.clone(), true)).await.unwrap();
+                // Ensure tx is closed after sending the message
+                drop(tx);
             }
             Ok::<(), String>(())
         });

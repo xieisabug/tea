@@ -19,10 +19,10 @@ struct ModelsResponse {
 struct Model {
     id: String,
     object: String,
-    created: u64,
+    created: Option<u64>,
     owned_by: String,
-    root: String,
-    parent: String,
+    root: Option<String>,
+    parent: Option<String>,
 }
 
 pub struct OpenAIProvider {
@@ -49,6 +49,7 @@ impl ModelProvider for OpenAIProvider {
                     .collect();
     
                 let url = format!("{}chat/completions", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/".to_string()));
+                let api_key = config_map.get("api_key").unwrap().clone();
     
                 let json_messages = messages.iter().map(|(message_type, content)| {
                     json!({
@@ -77,13 +78,16 @@ impl ModelProvider for OpenAIProvider {
                 println!("openai chat: {:?}", body);
     
                 let response = client.post(&url)
+                    .header(AUTHORIZATION, api_key)
                     .json(&body)
                     .send()
                     .await?
                     .json::<serde_json::Value>()
                     .await?;
+
+                println!("openai chat response: {:?}", response.clone());
     
-                if let Some(content) = response["message"]["content"].as_str() {
+                if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
                     Ok(content.to_string())
                 } else {
                     Err("Failed to get content from response".into())
@@ -197,8 +201,10 @@ impl ModelProvider for OpenAIProvider {
             println!("req: {:?}", req);
 
             let response = client.execute(req.unwrap());
+            let res2 =  response.await;
+            // println!("response: {:?}", res2.unwrap().text().await.unwrap());
 
-            let models_response: ModelsResponse = response.await.unwrap().json()
+            let models_response: ModelsResponse = res2.unwrap().json()
                 .await
                 .map_err(|e| e.to_string())?;
             println!("models_response: {:?}", models_response);
