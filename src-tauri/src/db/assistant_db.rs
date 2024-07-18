@@ -24,7 +24,7 @@ pub struct AssistantPrompt {
     pub id: i64,
     pub assistant_id: i64,
     pub prompt: String,
-    pub created_time: String,
+    pub created_time: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -118,12 +118,13 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant(&self, name: &str, description: &str, assistant_type: Option<i64>, is_addition: bool) -> Result<()> {
+    pub fn add_assistant(&self, name: &str, description: &str, assistant_type: Option<i64>, is_addition: bool) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant (name, description, assistant_type, is_addition) VALUES (?, ?, ?, ?)",
             params![name, description, assistant_type, is_addition],
         )?;
-        Ok(())
+        let id = self.conn.last_insert_rowid();
+        Ok(id)
     }
 
     pub fn update_assistant(&self, id: i64, name: &str, description: &str, is_addition: bool) -> Result<()> {
@@ -142,12 +143,13 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_prompt(&self, assistant_id: i64, prompt: &str) -> Result<()> {
+    pub fn add_assistant_prompt(&self, assistant_id: i64, prompt: &str) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant_prompt (assistant_id, prompt) VALUES (?, ?)",
             params![assistant_id, prompt],
         )?;
-        Ok(())
+        let id = self.conn.last_insert_rowid();
+        Ok(id)
     }
 
     pub fn update_assistant_prompt(&self, id: i64, prompt: &str) -> Result<()> {
@@ -166,12 +168,13 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_model(&self, assistant_id: i64, model_id: &str, alias: &str) -> Result<()> {
+    pub fn add_assistant_model(&self, assistant_id: i64, model_id: &str, alias: &str) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant_model (assistant_id, model_id, alias) VALUES (?, ?, ?)",
             params![assistant_id, model_id, alias],
         )?;
-        Ok(())
+        let id = self.conn.last_insert_rowid();
+        Ok(id)
     }
 
     pub fn update_assistant_model(&self, id: i64, model_id: &str, alias: &str) -> Result<()> {
@@ -182,12 +185,13 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_model_config(&self, assistant_id: i64, assistant_model_id: i64, name: &str, value: &str) -> Result<()> {
+    pub fn add_assistant_model_config(&self, assistant_id: i64, assistant_model_id: i64, name: &str, value: &str) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant_model_config (assistant_id, assistant_model_id, name, value) VALUES (?, ?, ?, ?)",
             params![assistant_id, assistant_model_id, name, value],
         )?;
-        Ok(())
+        let id = self.conn.last_insert_rowid();
+        Ok(id)
     }
 
     pub fn update_assistant_model_config(&self, id: i64, name: &str, value: &str) -> Result<()> {

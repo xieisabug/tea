@@ -85,8 +85,11 @@ const AssistantConfig: React.FC = () => {
 
         });
     }
-    const onAdd = (name: string) => {
-        console.log(name)
+    const onAdd = () => {
+        invoke<AssistantDetail>("add_assistant").then((assistantDetail: AssistantDetail) => {
+            setAssistants([...assistants, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
+            setCurrentAssistant(assistantDetail);
+        });
         // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
 
@@ -163,17 +166,10 @@ const AssistantConfig: React.FC = () => {
         }
     };
 
-    const handleAddAssistant = () => {
-        const name = "Temp Assistant";
-        if (name) {
-            onAdd(name);
-        }
-    };
-
     return (
         <div className="assistant-editor">
             <h2>助手列表</h2>
-            <button className="add-button" onClick={handleAddAssistant}>添加</button>
+            <button className="add-button" onClick={onAdd}>添加</button>
             <div className="assistant-list">
                 {assistants.map((assistant, index) => (
                     <div className={`assistant-item ${currentAssistant?.assistant.id === assistant.id ? 'active' : ''}`}

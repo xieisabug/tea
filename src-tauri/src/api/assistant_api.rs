@@ -112,3 +112,102 @@ pub fn save_assistant(assistant_detail: AssistantDetail) -> Result<(), String> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn add_assistant() -> Result<AssistantDetail, String> {
+    println!("start add assistant");
+    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+
+    // Add a default assistant
+    let assistant_id = assistant_db.add_assistant(
+        "初始助手名称",
+        "This is a default assistant",
+        Some(0), // Assuming 0 is a default assistant type
+        false,
+    ).map_err(|e| e.to_string())?;
+
+    // Get the newly added assistant
+    let assistant = assistant_db.get_assistant(assistant_id).map_err(|e| e.to_string())?;
+    println!("assistant: {:?}", assistant);
+
+    let default_prompt = "You are a helpful assistant.";
+    let prompt_id = assistant_db.add_assistant_prompt(assistant_id, default_prompt).map_err(|e| e.to_string())?;
+    let prompts = vec![AssistantPrompt {
+        id: prompt_id,
+        assistant_id: assistant_id,
+        prompt: default_prompt.to_string(),
+        created_time: Option::None,
+    }];
+
+    let model_id = assistant_db.add_assistant_model(assistant_id, "0", "").map_err(|e| e.to_string())?;
+    println!("model_id: {:?}", model_id);
+
+    // Add default model configs
+    let default_model_configs = vec![
+        AssistantModelConfig {
+            id: 0,
+            assistant_id,
+            assistant_model_id: model_id, // Assuming 0 is a default model ID
+            name: "max_tokens".to_string(),
+            value: Some("2000".to_string()),
+        },
+        AssistantModelConfig {
+            id: 0,
+            assistant_id,
+            assistant_model_id: model_id, // Assuming 0 is a default model ID
+            name: "temperature".to_string(),
+            value: Some("0.7".to_string()),
+        },
+        AssistantModelConfig {
+            id: 0,
+            assistant_id,
+            assistant_model_id: model_id, // Assuming 0 is a default model ID
+            name: "top_p".to_string(),
+            value: Some("1.0".to_string()),
+        },
+        AssistantModelConfig {
+            id: 0,
+            assistant_id,
+            assistant_model_id: model_id, // Assuming 0 is a default model ID
+            name: "stream".to_string(),
+            value: Some("true".to_string()),
+        },
+    ];
+    let mut model_configs = Vec::new();
+    for config in default_model_configs {
+        let config_id = assistant_db.add_assistant_model_config(
+            config.assistant_id,
+            config.assistant_model_id,
+            &config.name,
+            config.value.as_deref().unwrap_or(""),
+        ).map_err(|e| e.to_string())?;
+        model_configs.push(AssistantModelConfig {
+            id: config_id,
+            assistant_id: config.assistant_id,
+            assistant_model_id: config.assistant_model_id,
+            name: config.name,
+            value: config.value,
+        });
+    }
+    println!("model_configs: {:?}", model_configs);
+
+    // Model and prompt params are empty
+    let model = vec![AssistantModel {
+        id: model_id,
+        assistant_id,
+        model_id: "0".to_string(),
+        alias: "".to_string(),
+    }];
+    let prompt_params = Vec::new();
+
+    // Build AssistantDetail object
+    let assistant_detail = AssistantDetail {
+        assistant,
+        prompts,
+        model,
+        model_configs,
+        prompt_params,
+    };
+
+    Ok(assistant_detail)
+}
