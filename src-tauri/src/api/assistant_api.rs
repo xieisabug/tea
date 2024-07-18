@@ -1,6 +1,6 @@
 use crate::db::assistant_db::{Assistant, AssistantDatabase, AssistantModel, AssistantModelConfig, AssistantPrompt, AssistantPromptParam};
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct AssistantDetail {
     pub assistant: Assistant,
     pub prompts: Vec<AssistantPrompt>,
@@ -56,6 +56,8 @@ pub fn get_assistant(assistant_id: i64) -> Result<AssistantDetail, String> {
 #[tauri::command]
 pub fn save_assistant(assistant_detail: AssistantDetail) -> Result<(), String> {
     let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+
+    println!("save_assistant assistant_detail: {:?}", assistant_detail.clone());
 
     // Save or update the Assistant
     if assistant_detail.assistant.id == 0 {
