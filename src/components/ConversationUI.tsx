@@ -11,8 +11,14 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { listen } from "@tauri-apps/api/event";
 
+interface AssistantListItem {
+    id: number;
+    name: string;
+}
+
 interface ConversationUIProps {
     conversationId: string;
+    onChangeConversationId: (conversationId: string) => void;
 }
 
 interface AiResponse {
@@ -53,26 +59,35 @@ const MessageItem = React.memo(({ message }: any) => (
     </div>
 ));
 
-function ConversationUI({ conversationId }: ConversationUIProps) {
+function ConversationUI({ conversationId, onChangeConversationId }: ConversationUIProps) {
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const [messages, setMessages] = useState<Array<Message>>([]);
     const [conversation, setConversation] = useState<Conversation>();
+    const [assistants, setAssistants] = useState<AssistantListItem[]>([]);
     useEffect(() => {
         if (!conversationId) {
             setMessages([]);
             setConversation(undefined);
+
+            invoke<Array<AssistantListItem>>("get_assistants").then((assistantList) => {
+                setAssistants(assistantList);
+                if (assistantList.length > 0) {
+                    setSelectedAssistant(assistantList[0].id);
+                }
+            });
             return
         }
         console.log(`conversationId change : ${conversationId}`);
-        invoke<Array<any>>("get_conversation_with_messages", { conversationId }).then((res: any[]) => {
+        invoke<Array<any>>("get_conversation_with_messages", { conversationId: +conversationId }).then((res: any[]) => {
             setMessages(res[1]);
             setConversation(res[0]);
         });
 
         return () => {
             if (unsubscribeRef.current) {
+                console.log("unsubscribe")
                 unsubscribeRef.current.then(f => f());
             }
         };
@@ -91,13 +106,18 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
             setInputText("");
             return;
         }
+        let conversationId = "";
+        let assistantId = "";
         if (!conversation || !conversation.id) {
-            return;
+            assistantId = selectedAssistant + "";
+        } else {
+            conversationId = conversation.id + "";
+            assistantId = conversation.assistant_id + "";
         }
         try {
             const userMessage = {
                 id: 0,
-                conversation_id: conversation.id,
+                conversation_id: conversationId? -1: +conversationId,
                 llm_model_id: -1,
                 content: inputText,
                 token_count: 0,
@@ -106,25 +126,30 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
             };
 
             setMessages(prevMessages => [...prevMessages, userMessage]);
-            invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversation.id + "", assistant_id: conversation.assistant_id } })
+            invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId } })
                 .then((res) => {
                     console.log("ask ai response", res);
                     if (unsubscribeRef.current) {
                         console.log('Unsubscribing from previous event listener');
                         unsubscribeRef.current.then(f => f());
                     }
-                    const assistantMessage = {
-                        id: res.add_message_id,
-                        conversation_id: conversation.id,
-                        llm_model_id: -1,
-                        content: "",
-                        token_count: 0,
-                        message_type: "assistant",
-                        created_time: new Date()
-                    };
 
-                    setMessages(prevMessages => [...prevMessages, assistantMessage]);
-
+                    if (conversationId != (res.conversation_id + "")) {
+                        onChangeConversationId(res.conversation_id + "");
+                    } else {
+                        const assistantMessage = {
+                            id: res.add_message_id,
+                            conversation_id: conversationId? -1: +conversationId,
+                            llm_model_id: -1,
+                            content: "",
+                            token_count: 0,
+                            message_type: "assistant",
+                            created_time: new Date()
+                        };
+    
+                        setMessages(prevMessages => [...prevMessages, assistantMessage]);
+                    }
+                    
                     console.log("Listening for response", `message_${res.add_message_id}`);
                     unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
                         // 更新messages的最后一个对象
@@ -155,12 +180,21 @@ function ConversationUI({ conversationId }: ConversationUIProps) {
 
     const filteredMessages = useMemo(() => messages.filter(m => m.message_type !== "system"), [messages]);
 
+    const [selectedAssistant, setSelectedAssistant] = useState(-1);
+
     return (
         <div className="conversation-ui">
             <div className="messages">
-                {filteredMessages.map((message, index) => (
+                {conversationId ? filteredMessages.map((message, index) => (
                     <MessageItem key={index} message={message} />
-                ))}
+                )): <div>
+                    <div>请选择一个对话，或者选择一个助手开始新聊天</div>
+                    <select value={selectedAssistant} onChange={(e) => setSelectedAssistant(+e.target.value)}>
+                        {assistants.map((assistant) => (
+                            <option key={assistant.id} value={assistant.id}>{assistant.name}</option>
+                        ))}
+                    </select>
+                    </div>}
                 <div ref={messagesEndRef} />
             </div>
             <div className="input-area">

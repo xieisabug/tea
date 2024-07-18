@@ -41,6 +41,7 @@
 
 .conversation-list li.selected {
     font-weight: bolder;
+    color: red;
 }
 
 .chat-ui-information p {

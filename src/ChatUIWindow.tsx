@@ -19,7 +19,7 @@ function ChatUIWindow() {
             </div>
 
             <div className="center-content">
-                <ConversationUI conversationId={selectedConversation} />
+                <ConversationUI conversationId={selectedConversation} onChangeConversationId={setSelectedConversation} />
             </div>
         </div>
     );
