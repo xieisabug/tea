@@ -1,16 +1,18 @@
 use std::collections::HashMap;
+use tauri::State;
+
+use crate::FeatureConfigState;
 
 use crate::db::system_db::{FeatureConfig, SystemDatabase};
 
 #[tauri::command]
-pub async fn get_all_feature_config() -> Result<Vec<FeatureConfig>, String> {
-    let db = SystemDatabase::new().map_err(|e| e.to_string())?;
-    let configs = db.get_all_feature_config().map_err(|e| e.to_string())?;
-    Ok(configs)
+pub async fn get_all_feature_config(state: State<'_, FeatureConfigState>) -> Result<Vec<FeatureConfig>, String> {
+    let configs = state.configs.lock().await;
+    Ok(configs.clone())
 }
 
 #[tauri::command]
-pub async fn save_feature_config(feature_code: String, config: HashMap<String, String>) -> Result<(), String> {
+pub async fn save_feature_config(state: State<'_, FeatureConfigState>, feature_code: String, config: HashMap<String, String>) -> Result<(), String> {
     let db = SystemDatabase::new().map_err(|e| e.to_string())?;
     let _ = db.delete_feature_config_by_feature_code(feature_code.as_str());
     for (key, value) in config.iter() {
@@ -22,6 +24,28 @@ pub async fn save_feature_config(feature_code: String, config: HashMap<String, S
             data_type: "string".to_string(),
             description: Some("".to_string()),
         }).map_err(|e| e.to_string())?;
+    }
+
+    // 更新内存状态
+    let mut configs = state.configs.lock().await;
+    let mut config_feature_map = state.config_feature_map.lock().await;
+
+    // 删除旧的配置
+    configs.retain(|c| c.feature_code != feature_code);
+    config_feature_map.remove(&feature_code);
+
+    // 添加新的配置
+    for (key, value) in config.iter() {
+        let new_config = FeatureConfig {
+            id: None,
+            feature_code: feature_code.clone(),
+            key: key.clone(),
+            value: value.clone(),
+            data_type: "string".to_string(),
+            description: Some("".to_string()),
+        };
+        configs.push(new_config.clone());
+        config_feature_map.entry(feature_code.clone()).or_insert(HashMap::new()).insert(key.clone(), new_config);
     }
     Ok(())
 }

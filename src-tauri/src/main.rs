@@ -8,7 +8,11 @@ mod api;
 mod plugin;
 mod window;
 
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use db::conversation_db::ConversationDatabase;
+use db::system_db::FeatureConfig;
 use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
@@ -25,6 +29,12 @@ use crate::window::{create_ask_window, open_config_window, open_chat_ui_window};
 
 struct AppState {
     selected_text: TokioMutex<String>,
+}
+
+#[derive(Clone)]
+struct FeatureConfigState {
+    configs: Arc<TokioMutex<Vec<FeatureConfig>>>,
+    config_feature_map: Arc<TokioMutex<HashMap<String, HashMap<String, FeatureConfig>>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -126,6 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .manage(AppState {
             selected_text: TokioMutex::new(String::new()),
         })
+        .manage(initialize_state())
         .invoke_handler(tauri::generate_handler![
             ask_ai, get_selected, open_config_window, open_chat_ui_window,
             save_config, get_config, get_all_feature_config, save_feature_config,
@@ -181,4 +192,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     Ok(())
+}
+
+fn initialize_state() -> FeatureConfigState {
+    let db = SystemDatabase::new().expect("Failed to connect to database");
+    let configs = db.get_all_feature_config().expect("Failed to load feature configs");
+    let mut configs_map = HashMap::new();
+    for config in configs.clone().into_iter() {
+        let feature_code = config.feature_code.clone();
+        let key = config.key.clone();
+        configs_map.entry(feature_code.clone()).or_insert(HashMap::new()).insert(key.clone(), config);
+    }
+    FeatureConfigState {
+        configs: Arc::new(TokioMutex::new(configs)),
+        config_feature_map: Arc::new(TokioMutex::new(configs_map)),
+    }
 }

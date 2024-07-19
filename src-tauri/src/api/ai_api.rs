@@ -43,6 +43,7 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
     let mut init_message_list: Vec<(String, String)> = vec![];
     let mut add_message_id = None;
     let mut conversation_id = 0;
+    let need_generate_title = request.conversation_id.is_empty();
 
     if request.conversation_id.is_empty() {
         init_message_list = vec![(String::from("system"), assistant_prompt.to_string()), (String::from("user"), request.prompt.clone())];
@@ -131,6 +132,10 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
                         if done {
                             let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string());
                             let _ = Message::update(&conversation_db.unwrap().conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
+
+                            if need_generate_title {
+                                
+                            }
                         }
                     }
                     Ok(None) => {

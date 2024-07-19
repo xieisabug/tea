@@ -2,7 +2,7 @@ use rusqlite::{params, Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
 use crate::db::llm_db::LLMDatabase;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FeatureConfig {
     pub id: Option<i64>,
     pub feature_code: String,
