@@ -2,6 +2,7 @@ import React, {useState} from "react";
 import SideMenu from "./components/SideMenu.tsx";
 import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
 import AssistantConfig from "./components/AssistantConfig.tsx";
+import FeatureAssistantConfig from "./components/FeatureAssistantConfig.tsx";
 
 interface MenuItem {
     id: string;
@@ -12,12 +13,14 @@ interface MenuItem {
 const contentMap: Record<string, React.ReactElement> = {
     'llm-provider-config': <LLMProviderConfig />,
     'assistant-config': <AssistantConfig />,
+    'feature-assistant-config': <FeatureAssistantConfig />,
 }
 
 function ConfigWindow() {
     const menuList:Array<MenuItem> = [
         {id: 'llm-provider-config', name: '大模型配置', icon: 'icon1'},
         {id: 'assistant-config', name: '个人助手配置', icon: 'icon2'},
+        {id: 'feature-assistant-config', name: '程序助手配置', icon: 'icon3'},
     ];
 
     const [selectedMenu, setSelectedMenu] = useState<string>('llm-provider-config');
