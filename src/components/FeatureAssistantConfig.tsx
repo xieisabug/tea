@@ -36,16 +36,32 @@ const FeatureAssistantConfig: React.FC = () => {
     const [featureConfig, setFeatureConfig] = useState<FeatureConfig>(new Map());
     useEffect(() => {
         invoke<Array<FeatureConfigListItem>>("get_all_feature_config").then((feature_config_list) => {
-
+            for (let feature_config of feature_config_list) {
+                let feature_code = feature_config.feature_code;
+                let key = feature_config.key;
+                let value = feature_config.value;
+                if (!featureConfig.has(feature_code)) {
+                    featureConfig.set(feature_code, new Map());
+                }
+                featureConfig.get(feature_code)?.set(key, value);
+            }
+            console.log("init featureConfig", featureConfig);
+            setFeatureConfig(new Map(featureConfig));
         });
     })
 
     const handleConfigChange = (feature_code: string, key: string, value: string | number | boolean) => {
-        
+        let newFeatureConfig = new Map(featureConfig);
+        if (!newFeatureConfig.has(feature_code)) {
+            newFeatureConfig.set(feature_code, new Map());
+        }
+        newFeatureConfig.get(feature_code)?.set(key, value.toString());
+        setFeatureConfig(newFeatureConfig);
     };
 
-    const handleSave = () => {
-        
+    const handleSave = (feature_code: string) => {
+        console.log("save", feature_code, featureConfig.get(feature_code));
+        invoke("save_feature_config", { featureCode: feature_code, config: featureConfig.get(feature_code) });
     };
 
     return (
@@ -60,7 +76,8 @@ const FeatureAssistantConfig: React.FC = () => {
                             <span>模型</span>
                             <select value={featureConfig.get('conversation_summary')?.get('model_id')}
                                     onChange={(e) => {
-                                        
+                                        handleConfigChange('conversation_summary', 'model_id', e.target.value);
+                                        console.log(e.target.value)
                                     }
                             }>
                                 <option value="">请选择模型</option>
@@ -70,9 +87,9 @@ const FeatureAssistantConfig: React.FC = () => {
                             </select>
                             <div className="config-item">
                                 <label>总结文本长度</label>
-                                <select value={featureConfig.get('conversation_summary')?.get('model_id')}
+                                <select value={featureConfig.get('conversation_summary')?.get('summary_length')}
                                         onChange={(e) => {
-                                            
+                                            handleConfigChange('conversation_summary', 'summary_length', e.target.value);
                                         }
                                 }>
                                     <option value="50">50</option>
@@ -87,8 +104,10 @@ const FeatureAssistantConfig: React.FC = () => {
                         <div>
                             <span>Prompt</span>
                             <textarea value={featureConfig.get('conversation_summary')?.get('prompt')}
-                                        onChange={(e) => {}}></textarea>
-                            <button className="save-button" type="button" onClick={handleSave}>保存</button>
+                                        onChange={(e) => {
+                                            handleConfigChange('conversation_summary', 'prompt', e.target.value);
+                                        }}></textarea>
+                            <button className="save-button" type="button" onClick={() => handleSave('conversation_summary')}>保存</button>
 
                         </div>
                     </div>

@@ -1,14 +1,15 @@
 use rusqlite::{params, Connection, OptionalExtension, Result};
+use serde::{Deserialize, Serialize};
 use crate::db::llm_db::LLMDatabase;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FeatureConfig {
-    id: Option<i64>,
-    feature_code: String,
-    key: String,
-    value: String,
-    data_type: String,
-    description: Option<String>,
+    pub id: Option<i64>,
+    pub feature_code: String,
+    pub key: String,
+    pub value: String,
+    pub data_type: String,
+    pub description: Option<String>,
 }
 
 pub struct SystemDatabase {
@@ -88,7 +89,7 @@ impl SystemDatabase {
         Ok(())
     }
 
-    fn add_feature_config(&self, config: &FeatureConfig) -> Result<()> {
+    pub fn add_feature_config(&self, config: &FeatureConfig) -> Result<()> {
         self.conn.execute(
             "INSERT INTO feature_config (feature_code, key, value, data_type, description)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -118,10 +119,10 @@ impl SystemDatabase {
         Ok(())
     }
 
-    fn delete_feature_config(&self, feature_code: &str, key: &str) -> Result<()> {
+    pub fn delete_feature_config_by_feature_code(&self, feature_code: &str) -> Result<()> {
         self.conn.execute(
-            "DELETE FROM feature_config WHERE feature_code = ?1 AND key = ?2",
-            params![feature_code, key],
+            "DELETE FROM feature_config WHERE feature_code = ?1",
+            params![feature_code],
         )?;
         Ok(())
     }
@@ -151,6 +152,26 @@ impl SystemDatabase {
              FROM feature_config WHERE feature_code = ?1",
         )?;
         let configs = stmt.query_map(params![feature_code], |row| {
+            Ok(FeatureConfig {
+                id: Some(row.get(0)?),
+                feature_code: row.get(1)?,
+                key: row.get(2)?,
+                value: row.get(3)?,
+                data_type: row.get(4)?,
+                description: row.get(5)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+        Ok(configs)
+    }
+
+    // 查询特定模块的所有配置
+    pub fn get_all_feature_config(&self) -> Result<Vec<FeatureConfig>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, feature_code, key, value, data_type, description
+             FROM feature_config",
+        )?;
+        let configs = stmt.query_map(params![], |row| {
             Ok(FeatureConfig {
                 id: Some(row.get(0)?),
                 feature_code: row.get(1)?,
