@@ -48,7 +48,7 @@ const FeatureAssistantConfig: React.FC = () => {
             console.log("init featureConfig", featureConfig);
             setFeatureConfig(new Map(featureConfig));
         });
-    })
+    }, [])
 
     const handleConfigChange = (feature_code: string, key: string, value: string | number | boolean) => {
         let newFeatureConfig = new Map(featureConfig);

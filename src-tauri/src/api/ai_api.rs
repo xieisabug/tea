@@ -4,14 +4,14 @@ use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
 use crate::db::assistant_db::AssistantModelConfig;
 use crate::db::conversation_db::{Conversation, ConversationDatabase, Message};
-use crate::db::llm_db::LLMDatabase;
-use crate::AppState;
+use crate::db::llm_db::{self, LLMDatabase};
+use crate::{AppState, FeatureConfigState};
 use tauri::State;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AiRequest {
     conversation_id: String,
     assistant_id: i64,
@@ -30,7 +30,7 @@ pub struct AiResponse {
 }
 
 #[tauri::command]
-pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: AiRequest) -> Result<AiResponse, String> {
+pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, FeatureConfigState>, window: tauri::Window, request: AiRequest) -> Result<AiResponse, String> {
     let (tx, mut rx) = mpsc::channel(100);
 
     let selected_text = state.inner().selected_text.lock().await.clone();
@@ -44,6 +44,7 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
     let mut add_message_id = None;
     let mut conversation_id = 0;
     let need_generate_title = request.conversation_id.is_empty();
+    let request_prompt = request.prompt.clone();
 
     if request.conversation_id.is_empty() {
         init_message_list = vec![(String::from("system"), assistant_prompt.to_string()), (String::from("user"), request.prompt.clone())];
@@ -71,6 +72,7 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
 
     if add_message_id.is_some() {
         let window_clone = window.clone();
+        let config_feature_map = feature_config_state.config_feature_map.lock().await.clone(); 
         
         tokio::spawn(async move {
             let db = LLMDatabase::new().map_err(|e| e.to_string())?;
@@ -134,7 +136,49 @@ pub async fn ask_ai(state: State<'_, AppState>, window: tauri::Window, request: 
                             let _ = Message::update(&conversation_db.unwrap().conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
 
                             if need_generate_title {
-                                
+                                let feature_config = config_feature_map.get("conversation_summary");
+                                if let Some(config) = feature_config {
+                                    // model_id, prompt, summary_length
+                                    let model_id = config.get("model_id").unwrap();
+                                    let prompt = config.get("prompt").unwrap().value.clone();
+                                    let summary_length = config.get("summary_length").unwrap().value.clone().parse::<i32>().unwrap();
+                                    let mut context = String::new();
+
+                                    if summary_length == -1 {
+                                        context.push_str(format!("# user\n {} \n\n#assistant\n {}", request_prompt, content).as_str());
+                                    } else {
+                                        let unsize_summary_length:usize = summary_length.try_into().unwrap();
+                                        if request_prompt.len() > unsize_summary_length {
+                                            context.push_str(format!("# user\n {}", request_prompt[..unsize_summary_length].to_string()).as_str());
+                                        } else {
+                                            let assistant_summary_length = unsize_summary_length-request_prompt.len();
+                                            if content.len() > assistant_summary_length {
+                                                context.push_str(format!("# user\n {} \n\n#assistant\n {}", request_prompt, content[..assistant_summary_length].to_string()).as_str());
+                                            } else {
+                                                context.push_str(format!("# user\n {} \n\n#assistant\n {}", request_prompt, content).as_str());
+                                            }
+                                        }
+                                    }
+
+                                    let db = LLMDatabase::new().map_err(|e| e.to_string());
+                                    let model_detail = db.unwrap().get_llm_model_detail(model_id.value.parse::<i64>().unwrap()).unwrap();
+                                    
+                                    let provider = get_provider(model_detail.provider,model_detail.configs);
+                                    let response = provider
+                                        .chat(-1, vec![
+                                            ("system".to_string(), prompt), 
+                                            ("user".to_string(), context)], 
+                                            vec![
+                                                AssistantModelConfig {
+                                                    id: 0,
+                                                    assistant_id: 0,
+                                                    assistant_model_id: 0,
+                                                    name: "model".to_string(),
+                                                    value: Some(model_detail.model.code)
+                                                }
+                                            ]).await.map_err(|e| e.to_string());
+                                    println!("Chat content: {}", response.unwrap().clone());                                
+                                }
                             }
                         }
                     }
@@ -175,4 +219,9 @@ fn add_message(conversation_id: i64, message_type: String, content: String, llm_
     let db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string())?;
     let message = Message::create(&db.conn, conversation_id, message_type, content, llm_model_id, token_count);
     Ok(message.unwrap().clone())
+}
+
+fn generate_title() -> Result<Option<String>, String> {
+    
+    Ok(Some("".to_string()))
 }
