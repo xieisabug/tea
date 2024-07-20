@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {invoke} from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
+import { confirm } from '@tauri-apps/api/dialog';
 
 interface ConversationListProps {
     onSelectConversation: (conversation: string) => void;
@@ -47,12 +48,28 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
             }
         });
 
+        const index = conversations.findIndex(c => conversationId == c.id);
+        if (index === -1) {
+            onSelectConversation("");
+        }
+
         return () => {
             if (unsubscribe) {
                 unsubscribe.then((f) => f());
             }
         };
     }, [conversations])
+
+    const deleteConversation = async (id: string) => {
+        const confirmed = await confirm('This action cannot be reverted. Are you sure?', { title: 'Tauri', type: 'warning' });
+        if (confirmed) {
+            invoke("delete_conversation", {conversationId: id}).then(() => {
+                return invoke<Array<Conversation>>("list_conversations", {page: 1, pageSize: 100});
+            }).then((conversations: Conversation[]) => {
+                setConversations(conversations);
+            });
+        }
+    }
 
     return (
         <div className="conversation-list">
@@ -61,7 +78,13 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
                     <li className={`${conversationId == conversation.id? "selected": ""}`} key={conversation.id} onClick={() => {
                         console.log(`click : ${JSON.stringify(conversation)}`)
                         onSelectConversation(conversation.id);
-                    }}>{conversation.name}</li>
+                    }}>
+                        <div>{conversation.name}</div>
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conversation.id)
+                        }} >删除</button>
+                    </li>
                 ))}
             </ul>
         </div>

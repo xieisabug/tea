@@ -171,4 +171,9 @@ impl ConversationDatabase {
         Conversation::update(&self.conn, conversation_id, name)?;
         Ok(())
     }
+
+    pub fn delete_conversation(&self, conversation_id: i64) -> Result<()> {
+        Conversation::delete(&self.conn, conversation_id)?;
+        Ok(())
+    }
 }

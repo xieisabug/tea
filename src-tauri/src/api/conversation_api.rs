@@ -21,3 +21,10 @@ pub fn get_conversation_with_messages(
     db.get_conversation_with_messages(conversation_id)
         .map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn delete_conversation(conversation_id: i64) -> Result<(), String> {
+    let db = ConversationDatabase::new().map_err(|e| e.to_string())?;
+    db.delete_conversation(conversation_id)
+        .map_err(|e| e.to_string())
+}
