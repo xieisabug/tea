@@ -83,12 +83,6 @@
     left: 0;
 }
 
-.message-item-copy-button {
-    font-size: 12px;
-    height: 20px;
-    padding: 2px 5px;
-}
-
 .input-area {
     display: flex;
     padding: 10px 0;

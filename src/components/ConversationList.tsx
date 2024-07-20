@@ -80,7 +80,7 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
                         onSelectConversation(conversation.id);
                     }}>
                         <div>{conversation.name}</div>
-                        <button onClick={(e) => {
+                        <button className="mini" onClick={(e) => {
                             e.stopPropagation();
                             deleteConversation(conversation.id)
                         }} >删除</button>

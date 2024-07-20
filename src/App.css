@@ -62,6 +62,11 @@ button {
   cursor: pointer;
   margin-left: 10px;
 }
+button.mini {
+  font-size: 12px;
+  height: 20px;
+  padding: 2px 5px;
+}
 
 button:hover {
   background-color: #0056b3;

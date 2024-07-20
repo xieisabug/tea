@@ -52,9 +52,9 @@ const MessageItem = React.memo(({ message }: any) => (
             }}
         />
         <div className="message-item-button-container">
-            <button className="message-item-copy-button" onClick={() => writeText(message.content)}>复制</button>
-            <button className="message-item-copy-button" disabled>刷新</button>
-            <button className="message-item-copy-button" disabled>删除</button>
+            <button className="mini" onClick={() => writeText(message.content)}>复制</button>
+            <button className="mini" disabled>刷新</button>
+            <button className="mini" disabled>删除</button>
         </div>
     </div>
 ));
