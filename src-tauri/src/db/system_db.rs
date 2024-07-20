@@ -52,6 +52,9 @@ impl SystemDatabase {
                 "INSERT INTO system_config (key, value) VALUES ('system_version', '0.1')",
                 [],
             )?;
+            if let Err(err) = self.init_feature_config() {
+                println!("init_feature_config error: {:?}", err);
+            }
         } else {
             // TODO 以后的升级逻辑都放到这里
             println!("system_version: {}", system_version);
@@ -183,5 +186,31 @@ impl SystemDatabase {
         })?
         .collect::<Result<Vec<_>, _>>()?;
         Ok(configs)
+    }
+
+    pub fn init_feature_config(&self) -> rusqlite::Result<()> {
+        self.add_feature_config(&FeatureConfig {
+            id: None,
+            feature_code: "conversation_summary".to_string(),
+            key: "summary_length".to_string(),
+            value: "100".to_string(),
+            data_type: "string".to_string(),
+            description: Some("对话总结使用长度".to_string()),
+        })?;
+        self.add_feature_config(&FeatureConfig {
+            id: None,
+            feature_code: "conversation_summary".to_string(),
+            key: "prompt".to_string(),
+            value: "请根据提供的大模型问答对话,总结一个简洁明了的标题。标题要求:
+- 字数在5-15个字左右，必须是中文
+- 准确概括对话的核心主题，尽量贴近用户的提问
+- 避免使用过于宽泛或笼统的词语
+- 不要透露任何私人信息
+- 用祈使句或陈述句
+- 仅输出标题，不要包含其他信息和任何格式".to_string(),
+            data_type: "string".to_string(),
+            description: Some("对话总结使用长度".to_string()),
+        })?;
+        Ok(())
     }
 }
