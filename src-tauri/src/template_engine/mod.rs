@@ -13,14 +13,22 @@ fn current_date(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> Str
 // 截取指定长度字符的命令处理函数
 fn sub_start(engine: &TemplateEngine, input: &str, context: &HashMap<String, String>) -> String {
     println!("input : {}", input);
-    let parts: Vec<&str> = input.split(',').collect();
-    if parts.len() == 2 {
-        let text = engine.resolve(parts[0].trim(), context);
-        if let Ok(count) = parts[1].trim().parse::<usize>() { 
+    let re = Regex::new(r"\((.*),(\d+)\)").unwrap();
+    for cap in re.captures_iter(input) {
+        println!("cap : {:?}", &cap);
+        let text_origin = &cap[1];
+        let num = &cap[2];
+
+        let text = engine.parse(text_origin.trim(), context);
+        if let Ok(count) = num.trim().parse::<usize>() { 
             return text.chars().take(count).collect();
-        }
+        }    
     }
     String::new()
+}
+
+fn selected_text(_: &TemplateEngine, _: &str, context: &HashMap<String, String>) -> String {
+    context.get("selected_text").unwrap_or(&String::default()).to_string()
 }
 
 // 模板解析器结构体
@@ -33,7 +41,13 @@ impl TemplateEngine {
     pub fn new() -> Self {
         let mut commands = HashMap::new();
         commands.insert("current_date".to_string(), current_date as CommandFn);
+        commands.insert("cd".to_string(), current_date as CommandFn);
+
         commands.insert("sub_start".to_string(), sub_start as CommandFn);
+
+        commands.insert("selected_text".to_string(), selected_text as CommandFn);
+        commands.insert("s".to_string(), selected_text as CommandFn);
+
         TemplateEngine { commands }
     }
 
@@ -44,7 +58,8 @@ impl TemplateEngine {
 
     // 解析并替换模板字符串
     pub fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
-        let re = Regex::new(r"!\s*(\w+)(\([^)]*\))?").unwrap();
+        // !@\s*(\w+)(\([^)]*\))?@!
+        let re = Regex::new(r"!(\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         let mut result = template.to_string();
 
         for cap in re.captures_iter(template) {
@@ -64,28 +79,6 @@ impl TemplateEngine {
         }
 
         result
-    }
-
-    // 解析并替换标识符或命令
-    pub fn resolve(&self, input: &str, context: &HashMap<String, String>) -> String {
-        let trimmed_input = input.trim();
-
-        // 如果是标识符，直接替换上下文变量
-        if let Some(value) = context.get(trimmed_input) {
-            return value.clone();
-        }
-
-        // 否则尝试解析命令
-        let re = Regex::new(r"!\s*(\w+)\(([^)]*)\)").unwrap();
-        if let Some(cap) = re.captures(trimmed_input) {
-            let command = &cap[1];
-            let args = &cap[2];
-            if let Some(handler) = self.commands.get(command) {
-                return handler(self, args, context);
-            }
-        }
-
-        trimmed_input.to_string()
     }
 }
 
