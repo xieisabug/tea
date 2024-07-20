@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tauri::utils::config::WindowConfig;
 use tokio::time::timeout;
 use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
@@ -132,8 +133,8 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
                             .map_err(|e| e.to_string()).unwrap();
 
                         if done {
-                            let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string());
-                            let _ = Message::update(&conversation_db.unwrap().conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
+                            let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string()).unwrap();
+                            let _ = Message::update(&conversation_db.conn, add_message_id.unwrap(), conversation_id, content.clone(), 0);
 
                             if need_generate_title {
                                 let feature_config = config_feature_map.get("conversation_summary");
@@ -145,17 +146,17 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
                                     let mut context = String::new();
 
                                     if summary_length == -1 {
-                                        context.push_str(format!("# user\n {} \n\n#assistant\n {}", request_prompt, content).as_str());
+                                        context.push_str(format!("# user\n {} \n\n#assistant\n {} \n\n请总结上述对话为标题，不需要包含标点符号", request_prompt, content).as_str());
                                     } else {
                                         let unsize_summary_length:usize = summary_length.try_into().unwrap();
                                         if request_prompt.len() > unsize_summary_length {
-                                            context.push_str(format!("# user\n {}", request_prompt[..unsize_summary_length].to_string()).as_str());
+                                            context.push_str(format!("# user\n {} \n\n请总结上述对话为标题，不需要包含标点符号", request_prompt.chars().take(unsize_summary_length).collect::<String>()).as_str());
                                         } else {
                                             let assistant_summary_length = unsize_summary_length-request_prompt.len();
                                             if content.len() > assistant_summary_length {
-                                                context.push_str(format!("# user\n {} \n\n#assistant\n {}", request_prompt, content[..assistant_summary_length].to_string()).as_str());
+                                                context.push_str(format!("# user\n {} \n\n#assistant\n {} \n\n请总结上述对话为标题，不需要包含标点符号", request_prompt, content.chars().take(assistant_summary_length).collect::<String>()).as_str());
                                             } else {
-                                                context.push_str(format!("# user\n {} \n\n#assistant\n {}", request_prompt, content).as_str());
+                                                context.push_str(format!("# user\n {} \n\n#assistant\n {} \n\n请总结上述对话为标题，不需要包含标点符号", request_prompt, content).as_str());
                                             }
                                         }
                                     }
@@ -177,7 +178,11 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
                                                     value: Some(model_detail.model.code)
                                                 }
                                             ]).await.map_err(|e| e.to_string());
-                                    println!("Chat content: {}", response.unwrap().clone());                                
+                                    let response_text = response.unwrap();
+                                    println!("Chat content: {}", response_text.clone());
+                                    
+                                    let _ = conversation_db.update_conversation_name(conversation_id, response_text.clone());
+                                    window_clone.emit("title_change", (conversation_id, response_text.clone())).map_err(|e| e.to_string()).unwrap();
                                 }
                             }
                         }

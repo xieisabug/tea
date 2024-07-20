@@ -40,8 +40,8 @@ impl Conversation {
         }).optional()
     }
 
-    pub fn update(conn: &Connection, id: i64, name: String, assistant_id: Option<i64>) -> Result<()> {
-        conn.execute("UPDATE conversation SET name = ?1, assistant_id = ?2 WHERE id = ?3", (&name, &assistant_id, &id))?;
+    pub fn update(conn: &Connection, id: i64, name: String) -> Result<()> {
+        conn.execute("UPDATE conversation SET name = ?1 WHERE id = ?2", (&name, &id))?;
         Ok(())
     }
 
@@ -165,5 +165,10 @@ impl ConversationDatabase {
             .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
         let messages = Message::list_by_conversation_id(&self.conn, conversation_id)?;
         Ok((conversation, messages))
+    }
+
+    pub fn update_conversation_name(&self, conversation_id: i64, name: String) -> Result<()> {
+        Conversation::update(&self.conn, conversation_id, name)?;
+        Ok(())
     }
 }

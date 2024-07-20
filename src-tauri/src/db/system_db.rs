@@ -202,12 +202,10 @@ impl SystemDatabase {
             feature_code: "conversation_summary".to_string(),
             key: "prompt".to_string(),
             value: "请根据提供的大模型问答对话,总结一个简洁明了的标题。标题要求:
-- 字数在5-15个字左右，必须是中文
+- 字数在5-15个字左右，必须是中文，不要包含标点符号
 - 准确概括对话的核心主题，尽量贴近用户的提问
-- 避免使用过于宽泛或笼统的词语
 - 不要透露任何私人信息
-- 用祈使句或陈述句
-- 仅输出标题，不要包含其他信息和任何格式".to_string(),
+- 用祈使句或陈述句".to_string(),
             data_type: "string".to_string(),
             description: Some("对话总结使用长度".to_string()),
         })?;
