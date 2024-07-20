@@ -86,6 +86,7 @@ dependencies = [
  "get-selected-text",
  "macos-accessibility-client",
  "objc",
+ "regex",
  "reqwest",
  "rusqlite",
  "serde",

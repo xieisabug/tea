@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
-use tauri::utils::config::WindowConfig;
 use tokio::time::timeout;
+use crate::template_engine::TemplateEngine;
 use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
 use crate::db::assistant_db::AssistantModelConfig;
 use crate::db::conversation_db::{Conversation, ConversationDatabase, Message};
-use crate::db::llm_db::{self, LLMDatabase};
+use crate::db::llm_db::LLMDatabase;
 use crate::{AppState, FeatureConfigState};
 use tauri::State;
 use std::collections::HashMap;
@@ -32,11 +32,18 @@ pub struct AiResponse {
 
 #[tauri::command]
 pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, FeatureConfigState>, window: tauri::Window, request: AiRequest) -> Result<AiResponse, String> {
+    let template = TemplateEngine::new();
+    let mut template_context = HashMap::new();
     let (tx, mut rx) = mpsc::channel(100);
 
     let selected_text = state.inner().selected_text.lock().await.clone();
+    template_context.insert("selected_text".to_string(), selected_text);
+
     let assistant_detail = get_assistant(request.assistant_id).unwrap();
     let assistant_prompt = &assistant_detail.prompts[0].prompt;
+    let prompt_result = template.parse(&assistant_prompt, &template_context);
+    println!("prompt_result: {}", prompt_result);
+
     if assistant_detail.model.is_empty() {
         return Err("No model found".to_string());
     }
@@ -48,7 +55,7 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
     let request_prompt = request.prompt.clone();
 
     if request.conversation_id.is_empty() {
-        init_message_list = vec![(String::from("system"), assistant_prompt.to_string()), (String::from("user"), request.prompt.clone())];
+        init_message_list = vec![(String::from("system"), prompt_result.to_string()), (String::from("user"), request.prompt.clone())];
         let conversation = init_conversation(request.assistant_id, assistant_detail.model[0].model_id.parse::<i64>().unwrap(), &init_message_list).unwrap();
         conversation_id = conversation.0.id;
 
@@ -77,7 +84,6 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
         
         tokio::spawn(async move {
             let db = LLMDatabase::new().map_err(|e| e.to_string())?;
-            let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string())?;
             let model_id = &assistant_detail.model[0].model_id;    
             let model_detail = db.get_llm_model_detail(model_id.parse::<i64>().unwrap()).unwrap();
             println!("model detail : {:#?}", model_detail);
@@ -99,10 +105,7 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
     
             let stream = config_map.get("stream").and_then(|v| v.parse().ok()).unwrap_or(false);
     
-            let mut prompt = request.prompt.clone();
-            if prompt.contains("!s") {
-                prompt = prompt.replace("!s", &selected_text);
-            }
+            let prompt = request.prompt.clone();
     
             println!("prompt: {}", prompt);
 
