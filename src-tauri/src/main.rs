@@ -8,6 +8,7 @@ mod api;
 mod plugin;
 mod window;
 mod template_engine;
+mod errors;
 
 use std::collections::HashMap;
 use std::sync::Arc;
