@@ -7,7 +7,12 @@ type CommandFn = fn(&TemplateEngine, &str, &HashMap<String, String>) -> String;
 
 // 获取当前日期的命令处理函数
 fn current_date(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> String {
-    Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+    Local::now().format("%Y-%m-%d").to_string()
+}
+
+// 获取当前时间的命令处理函数
+fn current_time(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> String {
+    Local::now().format("%H:%M:%S").to_string()
 }
 
 // 截取指定长度字符的命令处理函数
@@ -42,6 +47,9 @@ impl TemplateEngine {
         let mut commands = HashMap::new();
         commands.insert("current_date".to_string(), current_date as CommandFn);
         commands.insert("cd".to_string(), current_date as CommandFn);
+
+        commands.insert("current_time".to_string(), current_time as CommandFn);
+        commands.insert("ct".to_string(), current_time as CommandFn);
 
         commands.insert("sub_start".to_string(), sub_start as CommandFn);
 
