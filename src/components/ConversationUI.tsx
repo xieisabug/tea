@@ -61,6 +61,12 @@ const MessageItem = React.memo(({ message }: any) => (
 ));
 
 function ConversationUI({ conversationId, onChangeConversationId }: ConversationUIProps) {
+    const scroll = throttle(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+    }, 300);
+    
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -94,11 +100,10 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         };
     }, [conversationId]);
 
-    const scroll = throttle(() => {
-        if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-    }, 300);
+    useEffect(() => {
+        scroll();
+    }, [messages]);
+
     const [inputText, setInputText] = useState("");
     const handleSend = useCallback(() => {
         if (inputText.trim() === "") {
@@ -161,7 +166,6 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                                     ...newMessages[index],
                                     content: event.payload as string
                                 };
-
                                 scroll();
                             }
                             return newMessages;
