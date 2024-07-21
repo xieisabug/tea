@@ -10,6 +10,7 @@ import 'katex/dist/katex.min.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { listen } from "@tauri-apps/api/event";
+import {throttle} from 'lodash';
 
 interface AssistantListItem {
     id: number;
@@ -93,14 +94,12 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         };
     }, [conversationId]);
 
-    useEffect(() => {
+    const scroll = throttle(() => {
         if (messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
-    }, [messages]);
-
+    }, 300);
     const [inputText, setInputText] = useState("");
-
     const handleSend = useCallback(() => {
         if (inputText.trim() === "") {
             setInputText("");
@@ -151,6 +150,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     }
                     
                     console.log("Listening for response", `message_${res.add_message_id}`);
+                    
                     unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
                         // 更新messages的最后一个对象
                         setMessages(prevMessages => {
@@ -161,6 +161,8 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                                     ...newMessages[index],
                                     content: event.payload as string
                                 };
+
+                                scroll();
                             }
                             return newMessages;
                         });
