@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
 use crate::db::system_db::FeatureConfig;
 use crate::errors::AppError;
-use crate::template_engine::{self, TemplateEngine};
+use crate::template_engine::TemplateEngine;
 use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
 use crate::db::assistant_db::AssistantModelConfig;
@@ -13,6 +13,8 @@ use tauri::State;
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::sync::mpsc;
+
+use super::assistant_api::AssistantDetail;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AiRequest {
@@ -50,35 +52,11 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
         return Err(AppError::NoModelFound);
     }
 
-    let mut init_message_list: Vec<(String, String)> = vec![];
-    let mut new_message_id = None;
-    let mut conversation_id = 0;
     let need_generate_title = request.conversation_id.is_empty();
     let request_prompt = request.prompt.clone();
 
-    if request.conversation_id.is_empty() {
-        init_message_list = vec![(String::from("system"), assistant_prompt_result.to_string()), (String::from("user"), request.prompt.clone())];
-        let conversation = init_conversation(request.assistant_id, assistant_detail.model[0].model_id.parse::<i64>().unwrap(), &init_message_list).unwrap();
-        conversation_id = conversation.0.id;
-
-        let add_message = add_message(conversation.0.id, "assistant".to_string(), String::new(), Some(assistant_detail.model[0].model_id.parse::<i64>().unwrap()), 0).unwrap();
-        new_message_id = Some(add_message.id);
-    } else {
-        let db = ConversationDatabase::new().map_err(|e| AppError::from(e))?;
-        conversation_id = request.conversation_id.parse::<i64>().unwrap();
-
-        let mut message_list = vec![];
-        for message in Message::list_by_conversation_id(&db.conn, conversation_id).unwrap() {
-            message_list.push((message.message_type.clone(), message.content.clone()));
-        }
-
-        let _ = add_message(conversation_id, "user".to_string(), request.prompt.clone(), Some(assistant_detail.model[0].model_id.parse::<i64>().unwrap()), 0).unwrap();
-        message_list.push((String::from("user"), request.prompt.clone()));
-        init_message_list = message_list;
-        let add_assistant_message = add_message(conversation_id, "assistant".to_string(), String::new(), Some(assistant_detail.model[0].model_id.parse::<i64>().unwrap()), 0).unwrap();
-
-        new_message_id = Some(add_assistant_message.id);
-    }
+    let (conversation_id, new_message_id, init_message_list) = 
+        initialize_conversation(&request, &assistant_detail, assistant_prompt_result).await?;
 
     if new_message_id.is_some() {
         let window_clone = window.clone();
@@ -185,13 +163,68 @@ fn add_message(conversation_id: i64, message_type: String, content: String, llm_
     Ok(message.clone())
 }
 
+async fn initialize_conversation(
+    request: &AiRequest,
+    assistant_detail: &AssistantDetail,
+    assistant_prompt_result: String,
+) -> Result<(i64, Option<i64>, Vec<(String, String)>), AppError> {
+    let db = get_conversation_db()?;
+    let (conversation_id, add_message_id, init_message_list) = if request.conversation_id.is_empty() {
+        // 新对话逻辑
+        let init_message_list = vec![
+            (String::from("system"), assistant_prompt_result),
+            (String::from("user"), request.prompt.clone()),
+        ];
+        let (conversation, _) = init_conversation(
+            request.assistant_id,
+            assistant_detail.model[0].model_id.parse::<i64>()?,
+            &init_message_list,
+        )?;
+        let add_message = add_message(
+            conversation.id,
+            "assistant".to_string(),
+            String::new(),
+            Some(assistant_detail.model[0].model_id.parse::<i64>()?),
+            0,
+        )?;
+        (conversation.id, Some(add_message.id), init_message_list)
+    } else {
+        // 已存在对话逻辑
+        let conversation_id = request.conversation_id.parse::<i64>()?;
+        let message_list = Message::list_by_conversation_id(&db.conn, conversation_id)?
+            .into_iter()
+            .map(|m| (m.message_type, m.content))
+            .collect::<Vec<_>>();
+
+        let _ = add_message(
+            conversation_id,
+            "user".to_string(),
+            request.prompt.clone(),
+            Some(assistant_detail.model[0].model_id.parse::<i64>()?),
+            0,
+        )?;
+        let mut updated_message_list = message_list;
+        updated_message_list.push((String::from("user"), request.prompt.clone()));
+
+        let add_assistant_message = add_message(
+            conversation_id,
+            "assistant".to_string(),
+            String::new(),
+            Some(assistant_detail.model[0].model_id.parse::<i64>()?),
+            0,
+        )?;
+        (conversation_id, Some(add_assistant_message.id), updated_message_list)
+    };
+    Ok((conversation_id, add_message_id, init_message_list))
+}
+
 async fn generate_title(
     conversation_id: i64,
     user_prompt: String,
     content: String,
     config_feature_map: HashMap<String, HashMap<String, FeatureConfig>>,
     window: tauri::Window,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let feature_config = config_feature_map.get("conversation_summary");
     if let Some(config) = feature_config {
         // model_id, prompt, summary_length
@@ -244,10 +277,10 @@ async fn generate_title(
     Ok(())
 }
 
-fn get_conversation_db() -> Result<ConversationDatabase, String> {
-    ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string())
+fn get_conversation_db() -> Result<ConversationDatabase, AppError> {
+    ConversationDatabase::new().map_err(AppError::from)
 }
 
-fn get_llm_db() -> Result<LLMDatabase, String> {
-    LLMDatabase::new().map_err(|e| e.to_string())
+fn get_llm_db() -> Result<LLMDatabase, AppError> {
+    LLMDatabase::new().map_err(AppError::from)
 }
