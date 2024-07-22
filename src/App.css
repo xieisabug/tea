@@ -10,14 +10,6 @@ body {
   height: 100vh;
 }
 
-.ask-window {
-  user-select: none;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
 .config-window {
   display: flex;
   user-select: none;
@@ -30,7 +22,7 @@ body {
   padding: 20px;
 }
 
-.chat-container, .config-container {
+.config-container {
   background-color: white;
   padding: 20px;
   border-radius: 8px;
@@ -44,41 +36,6 @@ form {
   margin-bottom: 20px;
 }
 
-input[type="text"], input[type="password"] {
-  flex-grow: 1;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-left: 10px;
-}
-button.mini {
-  font-size: 12px;
-  height: 20px;
-  padding: 2px 5px;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-.response {
-  margin-top: 20px;
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-}
-
 select {
   width: 100%;
   padding: 10px;
@@ -88,4 +45,16 @@ select {
 
 h2 {
   margin-top: 0;
+}
+
+.ask-ai-hint {
+  display: inline-block;
+  padding: 10px;
+  background-color: rgba(17, 133, 83, 1);
+  animation: fadeInOut 2s infinite;
+  color: white;
+}
+@keyframes fadeInOut {
+  0%, 100% { opacity: 1; } /* 动画开始和结束时，透明度为1 */
+  50% { opacity: 0.2; } /* 动画中间时，透明度为20% */
 }

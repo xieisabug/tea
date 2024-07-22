@@ -2,13 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { appWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
-import './App.css';
+import './styles/AskWindow.css';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+import UpArrow from './assets/up-arrow.svg';
+import OpenFullUI from './assets/open-fullui.svg';
+import Setting from './assets/setting.svg';
+import AskWindowPrepare from './components/AskWindowPrepare';
+import AskAIHint from './components/AskAIHint';
 
 interface AiResponse {
     conversation_id: number;
@@ -18,16 +24,30 @@ interface AiResponse {
 function AskWindow() {
     const [query, setQuery] = useState<string>('');
     const [response, setResponse] = useState<string>('');
-    const inputRef = useRef<HTMLInputElement>(null);
+    const [messageId, setMessageId] = useState<number>(-1);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     let unsubscribe: Promise<() => void> | null = null;
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          if (e.shiftKey) {
+            // Shift + Enter for new line
+            return;
+          } else {
+            // Enter for submit
+            e.preventDefault();
+            handleSubmit();
+          }
+        }
+    };
+
+    const handleSubmit = () => {
         setResponse('');
         try {
             invoke<AiResponse>('ask_ai', { request: { prompt: query, conversation_id: "", assistant_id: 1 } })
                 .then((res) => {
+                    setMessageId(res.add_message_id);
                     console.log("ask ai response", res);
                     if (unsubscribe) {
                         console.log('Unsubscribing from previous event listener');
@@ -82,17 +102,21 @@ function AskWindow() {
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
                 <form onSubmit={handleSubmit}>
-                    <input
+                    <textarea
+                        className='ask-window-input'
                         ref={inputRef}
-                        type="text"
                         value={query}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setQuery(e.target.value)}
                         placeholder="Ask AI..."
-                    />
-                    <button type="submit">Send</button>
+                    ></textarea>
+                    <button className='ask-window-submit-button' type="submit">
+                        <img src={UpArrow} alt="submit" width="16" height="16" />
+                    </button>
                 </form>
                 <div className="response">
-                    <ReactMarkdown 
+                    {
+                        messageId !== -1 ? ( response == "" ? <AskAIHint /> : <ReactMarkdown 
                         children={response}
                         remarkPlugins={[remarkMath]}
                         rehypePlugins={[rehypeRaw, rehypeKatex]}
@@ -113,13 +137,20 @@ function AskWindow() {
                                 </code>
                                 )
                             }
-                            }}
-                    />
+                        }}
+                    />) : <AskWindowPrepare />
+                    }
+                    
+                </div>
+                <div className='tools'>
+                    <button className='icon-button' onClick={openChatUI}>
+                        <img src={OpenFullUI} alt="open chat ui" width="16" height="16" />
+                    </button>
+                    <button className='icon-button' onClick={openConfig}>
+                        <img src={Setting} alt="open settings" width="16" height="16" />
+                    </button>
                 </div>
             </div>
-            <button onClick={openChatUI}>完整UI</button>
-            <button onClick={openConfig}>设置</button>
-
         </div>
     );
 }
