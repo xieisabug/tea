@@ -1,18 +1,19 @@
-import { invoke } from "@tauri-apps/api/tauri";
+import { message } from "@tauri-apps/api/dialog";
 
 interface ChatUIToolbarProps {
     onNewConversation: () => void;
 }
 
 function ChatUIToolbar({onNewConversation} : ChatUIToolbarProps) {
-    const openConfig = async () => {
-        await invoke('open_config_window')
+
+    const onSearch = async () => {
+        message("暂未实现", "很抱歉")
     }
 
     return (
         <div className="chat-ui-toolbar">
-            <button onClick={onNewConversation}>新对话</button>
-            <button onClick={openConfig}>设置</button>
+            <button onClick={onSearch}>搜索</button>
+            <button className="main" onClick={onNewConversation}>新对话</button>
         </div>
     );
 }

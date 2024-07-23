@@ -79,14 +79,18 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
                         console.log(`click : ${JSON.stringify(conversation)}`)
                         onSelectConversation(conversation.id);
                     }}>
-                        <div>{conversation.name}</div>
-                        <button className="mini" onClick={(e) => {
-                            e.stopPropagation();
-                            deleteConversation(conversation.id)
-                        }} >删除</button>
+                        <div className="conversation-list-item-name">{conversation.name}</div>
+                        <div className="conversation-list-item-assistant-name">快速助手</div>
                     </li>
                 ))}
             </ul>
+
+            <div className="conversation-list-menu">
+                <button className="mini" onClick={(e) => {
+                    e.stopPropagation();
+                    // deleteConversation(conversation.id)
+                }} >删除</button>
+            </div>
         </div>
     );
 }
