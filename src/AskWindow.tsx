@@ -15,6 +15,7 @@ import OpenFullUI from './assets/open-fullui.svg';
 import Setting from './assets/setting.svg';
 import AskWindowPrepare from './components/AskWindowPrepare';
 import AskAIHint from './components/AskAIHint';
+import IconButton from './components/IconButton';
 
 interface AiResponse {
     conversation_id: number;
@@ -143,12 +144,8 @@ function AskWindow() {
                     
                 </div>
                 <div className='tools'>
-                    <button className='icon-button' onClick={openChatUI}>
-                        <img src={OpenFullUI} alt="open chat ui" width="16" height="16" />
-                    </button>
-                    <button className='icon-button' onClick={openConfig}>
-                        <img src={Setting} alt="open settings" width="16" height="16" />
-                    </button>
+                    <IconButton icon={OpenFullUI} onClick={openChatUI} />
+                    <IconButton icon={Setting} onClick={openConfig} />
                 </div>
             </div>
         </div>

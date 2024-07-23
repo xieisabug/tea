@@ -21,7 +21,7 @@
 
 .chat-ui-toolbar {
     display: flex;
-    flex: 0 0 110px;
+    flex: 0 0 90px;
     align-items: center;
     justify-content: center;
 }
@@ -81,8 +81,8 @@
     font-size: 12px;
 }
 
-.chat-ui-information p {
-    margin: 10px 0;
+.chat-ui-information {
+    display: flex;
 }
 
 .conversation-ui {
@@ -110,7 +110,7 @@
     max-width: 60%;
     font-size: 14px;
 }
-.message-item p{
+.message-item p {
     margin: 0;
 }
 .user-message {
@@ -118,14 +118,25 @@
     background: rgba(17, 133, 83, 1);
     color: white;
 }
-
 .bot-message {
     align-self: flex-start;
 }
 
 .message-item-button-container {
+    display: none;
+    align-items: center;
     position: absolute;
-    bottom: -20px;
+    bottom: -30px;
+    padding: 13px 17px;
+    box-sizing: border-box;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(179, 179, 179, 1);
+    background-color: white;
+}
+
+.message-item:hover .message-item-button-container {
+    display: flex;
 }
 
 .user-message .message-item-button-container {
@@ -136,14 +147,14 @@
 }
 
 .message-anchor {
-    flex: 0 0 150px;
+    flex: 0 0 120px;
 }
 
 .input-area {
     padding: 10px 0;
     box-sizing: border-box;
     position: relative;
-    bottom: 50px;
+    bottom: 30px;
 }
 
 .input-area-textarea {
@@ -174,8 +185,12 @@
 }
 
 .input-area-send-button {
-    bottom: 89px;
+    bottom: 69px;
     right: 110px;
+}
+.input-area-add-button {
+    bottom: 69px;
+    right: 155px;
 }
 
 .new-chat {

@@ -13,7 +13,12 @@ import { listen } from "@tauri-apps/api/event";
 import {throttle} from 'lodash';
 import NewChatComponent from "./NewChatComponent";
 import CircleButton from "./CircleButton";
+import IconButton from "./IconButton";
 import UpArrow from '../assets/up-arrow.svg';
+import Add from '../assets/add.svg';
+import Delete from '../assets/delete.svg';
+import Copy from '../assets/copy.svg';
+import Refresh from '../assets/refresh.svg';
 
 interface AssistantListItem {
     id: number;
@@ -56,9 +61,9 @@ const MessageItem = React.memo(({ message }: any) => (
             }}
         />
         <div className="message-item-button-container">
-            <button className="mini" onClick={() => writeText(message.content)}>复制</button>
-            <button className="mini" disabled>刷新</button>
-            <button className="mini" disabled>删除</button>
+            <IconButton icon={Delete} onClick={() => {}} />
+            <IconButton icon={Refresh} onClick={() => {}} />
+            <IconButton icon={Copy} onClick={() => writeText(message.content)} />
         </div>
     </div>
 ));
@@ -213,6 +218,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     onKeyDown={handleKeyDown}
                 />
                 
+                <CircleButton onClick={() => {}} icon={Add} className="input-area-add-button" />
                 <CircleButton onClick={handleSend} icon={UpArrow} primary className="input-area-send-button" />
 
             </div>
