@@ -186,9 +186,16 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         setInputText("");
     }, [inputText, conversation]);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (event.key === 'Enter') {
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          if (e.shiftKey) {
+            // Shift + Enter for new line
+            return;
+          } else {
+            // Enter for submit
+            e.preventDefault();
             handleSend();
+          }
         }
     };
 
