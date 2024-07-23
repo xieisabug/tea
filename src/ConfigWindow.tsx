@@ -3,6 +3,9 @@ import SideMenu from "./components/SideMenu.tsx";
 import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
 import AssistantConfig from "./components/AssistantConfig.tsx";
 import FeatureAssistantConfig from "./components/FeatureAssistantConfig.tsx";
+import Model from "./assets/model.svg";
+import Assistant from "./assets/assistant.svg";
+import Program from "./assets/program.svg";
 
 interface MenuItem {
     id: string;
@@ -18,9 +21,9 @@ const contentMap: Record<string, React.ReactElement> = {
 
 function ConfigWindow() {
     const menuList:Array<MenuItem> = [
-        {id: 'llm-provider-config', name: '大模型配置', icon: 'icon1'},
-        {id: 'assistant-config', name: '个人助手配置', icon: 'icon2'},
-        {id: 'feature-assistant-config', name: '程序助手配置', icon: 'icon3'},
+        {id: 'llm-provider-config', name: '大模型配置', icon: Model},
+        {id: 'assistant-config', name: '个人助手配置', icon: Assistant},
+        {id: 'feature-assistant-config', name: '程序助手配置', icon: Program},
     ];
 
     const [selectedMenu, setSelectedMenu] = useState<string>('llm-provider-config');

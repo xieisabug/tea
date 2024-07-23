@@ -1,0 +1,28 @@
+.menu {
+    flex: 0 0 210px;
+    width: 210px;
+    background-color: #fff;
+    padding: 30px 5px;
+}
+
+.menu-item {
+    padding: 10px 30px;
+    cursor: pointer;
+    box-sizing: border-box;
+    height: 64px;
+    display: flex;
+    align-items: center;
+}
+.menu-item svg {
+    fill: #000;
+}
+
+.menu-item.selected {
+    background: rgba(17, 133, 83, 1);
+    font-weight: bold;
+    color: white;
+}
+
+.menu-item.selected svg {
+    fill: #fff;
+}
