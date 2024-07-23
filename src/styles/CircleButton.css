@@ -1,0 +1,17 @@
+.circle-button {
+    position: fixed;
+    height: 32px;
+    width: 32px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0px 2px 4px  rgba(0, 0, 0, 0.25);
+    border: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.circle-button.primary {
+    background: rgba(17, 133, 83, 1);
+}

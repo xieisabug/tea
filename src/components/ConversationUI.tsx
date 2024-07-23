@@ -12,6 +12,8 @@ import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { listen } from "@tauri-apps/api/event";
 import {throttle} from 'lodash';
 import NewChatComponent from "./NewChatComponent";
+import CircleButton from "./CircleButton";
+import UpArrow from '../assets/up-arrow.svg';
 
 interface AssistantListItem {
     id: number;
@@ -179,7 +181,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         setInputText("");
     }, [inputText, conversation]);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.key === 'Enter') {
             handleSend();
         }
@@ -200,16 +202,19 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                             assistants={assistants} 
                             setSelectedAssistant={setSelectedAssistant} />
                 }
+                <div className="message-anchor"></div>
                 <div ref={messagesEndRef} />
             </div>
             <div className="input-area">
-                <input
-                    type="text"
+                <textarea
+                    className="input-area-textarea"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={handleKeyDown}
                 />
-                <button onClick={handleSend}>Send</button>
+                
+                <CircleButton onClick={handleSend} icon={UpArrow} primary className="input-area-send-button" />
+
             </div>
         </div>
     );
