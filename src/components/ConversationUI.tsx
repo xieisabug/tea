@@ -11,6 +11,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { listen } from "@tauri-apps/api/event";
 import {throttle} from 'lodash';
+import NewChatComponent from "./NewChatComponent";
 
 interface AssistantListItem {
     id: number;
@@ -191,16 +192,14 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     return (
         <div className="conversation-ui">
             <div className="messages">
-                {conversationId ? filteredMessages.map((message, index) => (
-                    <MessageItem key={index} message={message} />
-                )): <div>
-                    <div>请选择一个对话，或者选择一个助手开始新聊天</div>
-                    <select value={selectedAssistant} onChange={(e) => setSelectedAssistant(+e.target.value)}>
-                        {assistants.map((assistant) => (
-                            <option key={assistant.id} value={assistant.id}>{assistant.name}</option>
-                        ))}
-                    </select>
-                    </div>}
+                {conversationId ? 
+                    filteredMessages.map((message, index) => (
+                        <MessageItem key={index} message={message} />
+                    )): <NewChatComponent 
+                            selectedAssistant={selectedAssistant} 
+                            assistants={assistants} 
+                            setSelectedAssistant={setSelectedAssistant} />
+                }
                 <div ref={messagesEndRef} />
             </div>
             <div className="input-area">
