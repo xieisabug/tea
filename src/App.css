@@ -47,6 +47,17 @@ h2 {
   margin-top: 0;
 }
 
+.form-input {
+  height: 35px;
+  border-radius: 4px;
+  border: 1px solid rgb(161, 161, 161);
+  padding: 0 10px;
+}
+.form-input:focus {
+  outline: none;
+  border-color: rgb(17, 133, 83);
+}
+
 .ask-ai-hint {
   display: inline-block;
   padding: 10px;

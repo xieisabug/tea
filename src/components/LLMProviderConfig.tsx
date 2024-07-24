@@ -1,7 +1,8 @@
 import React, {useEffect, useState} from 'react';
-import './LLMProviderConfig.css';
+import '../styles/LLMProviderConfig.css';
 import {invoke} from "@tauri-apps/api/tauri";
 import LLMProviderConfigForm from "./LLMProviderConfigForm.tsx";
+import RoundButton from './RoundButton.tsx';
 
 interface LLMProvider {
     id: string;
@@ -14,8 +15,6 @@ interface LLMProvider {
 
 const LLMProviderConfig: React.FC = () => {
     const [LLMProviders, setLLMProviders] = useState<Array<LLMProvider>>([]);
-    const [configFormShow, setConfigFormShow] = useState<boolean>(false);
-    const [configFormId, setConfigFormId] = useState<string>('');
 
     const handleToggle = (index: number) => {
         const newProviders = [...LLMProviders];
@@ -36,33 +35,30 @@ const LLMProviderConfig: React.FC = () => {
         invoke<Array<LLMProvider>>('get_llm_providers').then(setLLMProviders);
     }, []);
 
-    const collapseConfigForm = (id: string) => {
-        setConfigFormShow(!configFormShow);
-        setConfigFormId(id)
-    }
 
     return (
         <div className="model-config">
-            <h2>大模型配置</h2>
-            <div className="providers-grid">
-                {LLMProviders.map((provider, index) => (
-                    <div key={provider.name} className="provider-item">
-                        <label>
-                            {provider.name} 启用:
-                            <input
-                                type="checkbox"
-                                checked={provider.is_enabled}
-                                onChange={() => handleToggle(index)}
-                            />
-                        </label>
-                        {provider.is_enabled && <button onClick={() => collapseConfigForm(provider.id)}>设置</button>}
-                    </div>
-                ))}
-            </div>
-
             {
-                configFormShow && <LLMProviderConfigForm id={configFormId}/>
+                LLMProviders.map((provider, index) => {
+                    return <div className='provider-config-item'>
+                        <div className='provider-config-item-title'>
+                            <span className='provider-config-item-title-provider-name'>{provider.name}</span>
+                            <label>
+                                启用:
+                                <input
+                                    type="checkbox"
+                                    checked={provider.is_enabled}
+                                    onChange={() => handleToggle(index)}
+                                />
+                            </label>
+                            <span>toggle</span>
+                        </div>
+
+                        <LLMProviderConfigForm id={provider.id} apiType={provider.api_type}/>
+                    </div>
+                })
             }
+            <RoundButton text='新增' onClick={() => {}} />
         </div>
     );
 }

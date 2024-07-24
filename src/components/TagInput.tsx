@@ -1,15 +1,16 @@
 import React, { useState, KeyboardEvent, ChangeEvent } from 'react';
-import './TagInput.css';
+import '../styles/TagInput.css';
 
 // 定义TagInputProps接口
 interface TagInputProps {
     tags: string[];
+    placeholder?: string;
     onAddTag: (tag: string) => void;
     onRemoveTag: (index: number) => void;
 }
 
 // TagInput组件
-const TagInput: React.FC<TagInputProps> = ({ tags, onAddTag, onRemoveTag }) => {
+const TagInput: React.FC<TagInputProps> = ({ tags, placeholder, onAddTag, onRemoveTag }) => {
     const [inputValue, setInputValue] = useState<string>('');
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -40,8 +41,8 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onAddTag, onRemoveTag }) => {
                 value={inputValue}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Add a tag and press Enter"
-                className="tag-input"
+                placeholder={placeholder}
+                className="form-input tag-input"
             />
         </div>
     );

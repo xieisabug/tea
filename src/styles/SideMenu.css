@@ -3,6 +3,7 @@
     width: 210px;
     background-color: #fff;
     padding: 30px 5px;
+    border-right: 1px solid #ccc;
 }
 
 .menu-item {

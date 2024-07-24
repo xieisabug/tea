@@ -1,0 +1,47 @@
+.model-config {
+    padding: 20px 50px;
+}
+
+.provider-config-item {
+    box-shadow: 0px 2px 4px  rgba(0, 0, 0, 0.25);
+    margin-bottom: 30px;
+    border-radius: 5px;
+}
+
+.provider-config-item-title {
+    height: 64px;
+    border-radius: 5px;
+    background: rgba(17, 133, 83, 1);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    color: white;
+}
+
+.provider-config-item-title-provider-name {
+    font-size: 24px;
+    flex: 1;
+}
+
+.provider-config-item-form {
+    display: flex;
+    flex-direction: row;
+    padding: 20px;
+}
+.form-group {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+.form-group label {
+    flex: 0 0 100px;
+}
+.form-group input {
+    flex: 1;
+}
+
+.provider-config-item-form-property-container {
+    flex: 0 0 350px;
+    margin-right: 60px;
+}
