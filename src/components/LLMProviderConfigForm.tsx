@@ -101,7 +101,7 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
                     <label>API Key</label>
                     <input
                         className='form-input'
-                        type="text"
+                        type="password"
                         value={config.api_key || ''}
                         onChange={(e) => handleInputChange('api_key', e.target.value)}
                     />

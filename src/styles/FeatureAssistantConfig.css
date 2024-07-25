@@ -1,0 +1,23 @@
+.feature-assistant-editor {
+    margin: 0 auto;
+    padding: 20px 50px;
+}
+.feature-assistant-config-grid {
+    display: flex;
+    flex-direction: row;
+}
+
+.feature-assistant-properties {
+    flex: 0 0 350px;
+    margin-right: 60px;
+}
+
+.feature-assistant-prompts {
+    flex: 1;
+}
+
+.feature-assistant-prompt-textarea {
+    width: 100%;
+    height: 80px;
+    margin-top: 10px;
+}

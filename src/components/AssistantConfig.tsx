@@ -149,26 +149,26 @@ const AssistantConfig: React.FC = () => {
         }
     };
 
-    const [newParamKey, setNewParamKey] = useState('');
-    const [newParamValue, setNewParamValue] = useState('');
-    const handleAddParam = () => {
-        if (currentAssistant && newParamKey) {
-            setCurrentAssistant({
-                ...currentAssistant,
-                model_configs: [
-                    ...currentAssistant.model_configs,
-                    {
-                        id: 0,
-                        assistant_id: currentAssistant.assistant.id,
-                        name: newParamKey,
-                        value: newParamValue,
-                    },
-                ]
-            });
-            setNewParamKey('');
-            setNewParamValue('');
-        }
-    };
+    // const [newParamKey, setNewParamKey] = useState('');
+    // const [newParamValue, setNewParamValue] = useState('');
+    // const handleAddParam = () => {
+    //     if (currentAssistant && newParamKey) {
+    //         setCurrentAssistant({
+    //             ...currentAssistant,
+    //             model_configs: [
+    //                 ...currentAssistant.model_configs,
+    //                 {
+    //                     id: 0,
+    //                     assistant_id: currentAssistant.assistant.id,
+    //                     name: newParamKey,
+    //                     value: newParamValue,
+    //                 },
+    //             ]
+    //         });
+    //         setNewParamKey('');
+    //         setNewParamValue('');
+    //     }
+    // };
 
     return (
         <div className="assistant-editor">
@@ -256,7 +256,7 @@ const AssistantConfig: React.FC = () => {
                             <div className='assistant-config-prompts'>
                                 <div>prompt</div>
                                 <textarea 
-                                    className='assistant-config-prompt-textarea'
+                                    className='form-textarea assistant-config-prompt-textarea'
                                     value={currentAssistant.prompts[0].prompt}
                                     onChange={(e) => handlePromptChange(e.target.value)}></textarea>
 

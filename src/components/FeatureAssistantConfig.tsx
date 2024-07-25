@@ -1,10 +1,8 @@
 import React, {useEffect, useState} from 'react';
 import {invoke} from "@tauri-apps/api/tauri";
-
-interface AssistantListItem {
-    id: number;
-    name: string;
-}
+import CustomSelect from './CustomSelect';
+import RoundButton from './RoundButton';
+import '../styles/FeatureAssistantConfig.css';
 
 interface ModelForSelect {
     name: string;
@@ -65,51 +63,50 @@ const FeatureAssistantConfig: React.FC = () => {
 
     return (
         <div className="feature-assistant-editor">
-            <div className="assistant-config">
-                <h1>对话总结</h1>
-                <span>对话开始时总结该对话并且生成标题</span>
-                <form>
-                    <div className="config-grid">
-
-                        <div>
-                            <span>模型</span>
-                            <select value={featureConfig.get('conversation_summary')?.get('model_id')}
-                                    onChange={(e) => {
-                                        handleConfigChange('conversation_summary', 'model_id', e.target.value);
-                                        console.log(e.target.value)
-                                    }
-                            }>
-                                <option value="">请选择模型</option>
-                                {models.map((model) => (
-                                    <option key={model.id} value={model.id}>{model.name}</option>
-                                ))}
-                            </select>
-                            <div className="config-item">
+            <div className="config-window-container">
+                <div className='config-window-title'>
+                    <div className='config-window-title-text-container'>
+                        <span className='config-window-title-name'>对话总结</span>
+                        <span className='config-window-title-description'>对话开始时总结该对话并且生成标题</span>    
+                    </div>                      
+                </div>
+                
+                <form className='config-window-form'>
+                    <div className="feature-assistant-config-grid">
+                        <div className='feature-assistant-properties'>
+                            <div className='form-group'>
+                                <label>model</label>
+                                <CustomSelect options={models.map(m => ({value: m.id + "", label: m.name}))} value={featureConfig.get('conversation_summary')?.get('model_id') + ""} onChange={(v) => {
+                                    handleConfigChange('conversation_summary', 'model_id', v);
+                                }} />
+                                
+                            </div>
+                            
+                            <div className="form-group">
                                 <label>总结文本长度</label>
-                                <select value={featureConfig.get('conversation_summary')?.get('summary_length')}
-                                        onChange={(e) => {
-                                            handleConfigChange('conversation_summary', 'summary_length', e.target.value);
-                                        }
-                                }>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
-                                    <option value="300">300</option>
-                                    <option value="500">500</option>
-                                    <option value="1000">1000</option>
-                                    <option value="-1">所有</option>
-                                </select>
+                                <CustomSelect options={[50, 100, 300, 500, 1000, -1].map(m => ({value: m + "", label: m === -1 ? "所有": (m + "")}))} 
+                                        value={featureConfig.get('conversation_summary')?.get('summary_length') + ""} 
+                                        onChange={(v) => {
+                                            handleConfigChange('conversation_summary', 'summary_length', v);
+                                        }} 
+                                />
                             </div>
                         </div>
-                        <div>
-                            <span>Prompt</span>
-                            <textarea value={featureConfig.get('conversation_summary')?.get('prompt')}
-                                        onChange={(e) => {
-                                            handleConfigChange('conversation_summary', 'prompt', e.target.value);
-                                        }}></textarea>
-                            <button className="save-button" type="button" onClick={() => handleSave('conversation_summary')}>保存</button>
+                        <div className='feature-assistant-prompts'>
+                            <span>prompt</span>
+                            <textarea 
+                                className='form-textarea feature-assistant-prompt-textarea'
+                                value={featureConfig.get('conversation_summary')?.get('prompt')}
+                                onChange={(e) => {
+                                    handleConfigChange('conversation_summary', 'prompt', e.target.value);
+                                }}></textarea>
 
                         </div>
                     </div>
+                    <div>
+                        <RoundButton primary text='保存' onClick={() => handleSave('conversation_summary')} />
+                    </div>
+                    
                 </form>
 
             </div>
