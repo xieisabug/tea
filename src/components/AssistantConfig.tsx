@@ -186,17 +186,17 @@ const AssistantConfig: React.FC = () => {
 
             </div>
             {currentAssistant && (
-                <div className="assistant-config">
-                    <div className='assistant-config-title'>
-                        <div className='assistant-config-title-text-container'>
-                            <span className='assistant-config-title-name'>{currentAssistant.assistant.name}</span>
-                            <span className='assistant-config-title-description'>{currentAssistant.assistant.description}</span>    
+                <div className="config-window-container">
+                    <div className='config-window-title'>
+                        <div className='config-window-title-text-container'>
+                            <span className='config-window-title-name'>{currentAssistant.assistant.name}</span>
+                            <span className='config-window-title-description'>{currentAssistant.assistant.description}</span>    
                         </div>
                         <div>
                             <IconButton icon={Edit} onClick={() => {}} />
-                        </div>                        
+                        </div>
                     </div>
-                    <form className='assistant-config-form'>
+                    <form className='config-window-form'>
                         <div className='form-group'>
                             <label>助手类型</label>
                             <div>对话</div>

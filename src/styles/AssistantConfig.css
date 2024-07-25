@@ -2,6 +2,11 @@
     margin: 0 auto;
     padding: 20px 50px;
 }
+
+.assistant-list {
+    margin-bottom: 30px;
+}
+
 .assistant-button {
     margin-right: 16px;
 }
