@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import "./AssistantConfig.css";
 import {invoke} from "@tauri-apps/api/tauri";
 
 interface AssistantListItem {

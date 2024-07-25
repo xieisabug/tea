@@ -1,6 +1,10 @@
 import React, {useEffect, useState} from 'react';
-import "./AssistantConfig.css";
+import "../styles/AssistantConfig.css";
 import {invoke} from "@tauri-apps/api/tauri";
+import RoundButton from './RoundButton';
+import IconButton from './IconButton';
+import Edit from '../assets/edit.svg';
+import CustomSelect from './CustomSelect';
 
 interface AssistantListItem {
     id: number;
@@ -78,6 +82,10 @@ const AssistantConfig: React.FC = () => {
     useEffect(() => {
         invoke<Array<AssistantListItem>>("get_assistants").then((assistantList) => {
             setAssistants(assistantList);
+
+            if (assistantList.length) {
+                handleChooseAssistant(assistantList[0])
+            }
         });
     }, []);
     const onSave = (assistant: AssistantDetail) => {
@@ -93,14 +101,10 @@ const AssistantConfig: React.FC = () => {
         // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
 
-    const [expanded, setExpanded] = useState(true);
     const handleChooseAssistant = (assistant: AssistantListItem) => {
-        if (currentAssistant && currentAssistant.assistant.id === assistant.id) {
-            setExpanded(!expanded);
-        } else {
+        if (!currentAssistant || currentAssistant.assistant.id !== assistant.id) {
             invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id }).then((assistant: AssistantDetail) => {
                 setCurrentAssistant(assistant);
-                setExpanded(true);
             });
         }
     }
@@ -168,87 +172,104 @@ const AssistantConfig: React.FC = () => {
 
     return (
         <div className="assistant-editor">
-            <h2>助手列表</h2>
-            <button className="add-button" onClick={onAdd}>添加</button>
             <div className="assistant-list">
                 {assistants.map((assistant, index) => (
-                    <div className={`assistant-item ${currentAssistant?.assistant.id === assistant.id ? 'active' : ''}`}
-                         key={index} onClick={() => handleChooseAssistant(assistant)}>
-                        {assistant.name}
-
-                        <span className="expand-button">
-                            {expanded ? '▼' : '▲'}
-                        </span>
-                    </div>
+                    <RoundButton 
+                        key={index} 
+                        text={assistant.name} 
+                        onClick={() => handleChooseAssistant(assistant)} 
+                        primary={currentAssistant?.assistant.id === assistant.id} 
+                        className='assistant-button'
+                    />
                 ))}
+                <RoundButton text='新增' onClick={onAdd} />
+
             </div>
             {currentAssistant && (
                 <div className="assistant-config">
-                    {expanded && (
-                        <form>
-                            <div className="config-grid">
-
-                                <div>
-                                    <span>Model</span>
-                                    <select value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_id: -1}
-                                            onChange={(e) => {
-                                                if (currentAssistant?.model.length > 0) {
-                                                    setCurrentAssistant({
-                                                        ...currentAssistant,
-                                                        model: [{...currentAssistant?.model[0], model_id: e.target.value}]
-                                                    })
-                                                } else {
-                                                    setCurrentAssistant({
-                                                        ...currentAssistant,
-                                                        model: [{id: 0, assistant_id: currentAssistant.assistant.id, model_id: e.target.value, alias: ''}]
-                                                    })
-                                                }
-                                            }
-                                    }>
-                                        <option value="">请选择模型</option>
-                                        {models.map((model) => (
-                                            <option key={model.id} value={model.id}>{model.name}</option>
-                                        ))}
-                                    </select>
-                                    {(currentAssistant.model_configs || []).map(config => (
-                                        <div className="config-item" key={config.name}>
-                                            <label>{config.name}</label>
-                                            <input
-                                                type={config.value === 'true' || config.value === 'false' ? 'checkbox' : 'text'}
-                                                value={config.value}
-                                                checked={config.value === 'true'}
-                                                onChange={(e) => handleConfigChange(config.name, e.target.type === 'checkbox' ? e.target.checked : e.target.value)}
-                                            />
-                                        </div>
-                                    ))}
-                                    <div className="config-item">
+                    <div className='assistant-config-title'>
+                        <div className='assistant-config-title-text-container'>
+                            <span className='assistant-config-title-name'>{currentAssistant.assistant.name}</span>
+                            <span className='assistant-config-title-description'>{currentAssistant.assistant.description}</span>    
+                        </div>
+                        <div>
+                            <IconButton icon={Edit} onClick={() => {}} />
+                        </div>                        
+                    </div>
+                    <form className='assistant-config-form'>
+                        <div className='form-group'>
+                            <label>助手类型</label>
+                            <div>对话</div>
+                        </div>
+                        <div className="assistant-config-grid">
+                            
+                            <div className='assistant-config-properties'>
+                                <div className='form-group'>
+                                    <label>model</label>
+                                    <CustomSelect options={models.map(i => ({value: i.id + "", label: i.name}))} value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_id + "": "-1"} onChange={(v) => {
+                                        if (currentAssistant?.model.length > 0) {
+                                            setCurrentAssistant({
+                                                ...currentAssistant,
+                                                model: [{...currentAssistant?.model[0], model_id: v}]
+                                            })
+                                        } else {
+                                            setCurrentAssistant({
+                                                ...currentAssistant,
+                                                model: [{id: 0, assistant_id: currentAssistant.assistant.id, model_id: v, alias: ''}]
+                                            })
+                                        }
+                                    }} />
+                                </div>
+                                {(currentAssistant.model_configs || []).map(config => (
+                                    <div className='form-group' key={config.name}>
+                                        <label>{config.name}</label>
                                         <input
-                                            type="text"
-                                            placeholder="新参数名"
-                                            value={newParamKey}
-                                            onChange={(e) => setNewParamKey(e.target.value)}
+                                            className='form-input'
+                                            type={config.value === 'true' || config.value === 'false' ? 'checkbox' : 'text'}
+                                            value={config.value}
+                                            checked={config.value === 'true'}
+                                            onChange={(e) => handleConfigChange(config.name, e.target.type === 'checkbox' ? e.target.checked : e.target.value)}
                                         />
-                                        <input
-                                            type="text"
-                                            placeholder="新参数值"
-                                            value={newParamValue}
-                                            onChange={(e) => setNewParamValue(e.target.value)}
-                                        />
-                                        <button type="button" onClick={handleAddParam}>添加参数</button>
                                     </div>
-                                </div>
-                                <div>
-                                    <span>Prompt</span>
-                                    <textarea value={currentAssistant.prompts[0].prompt}
-                                              onChange={(e) => handlePromptChange(e.target.value)}></textarea>
-                                    <button className="save-button" type="button" onClick={handleSave}>保存</button>
-
-                                </div>
+                                ))}
                             </div>
-                        </form>
-                    )}
+                            
+                            
+                            {/* <div className="form-group">
+                                <input
+                                    className='form-input'
+                                    type="text"
+                                    placeholder="新参数名"
+                                    value={newParamKey}
+                                    onChange={(e) => setNewParamKey(e.target.value)}
+                                />
+                                <input
+                                    className='form-input'
+                                    type="text"
+                                    placeholder="新参数值"
+                                    value={newParamValue}
+                                    onChange={(e) => setNewParamValue(e.target.value)}
+                                />
+                                <CustomSelect options={[{value: "query", label: "query"}, {value: "header", label: "header"}]} value={"header"} onChange={(v) => {}} />
+                                <button type="button" onClick={handleAddParam}>添加参数</button>
+                            </div> */}
+                            <div className='assistant-config-prompts'>
+                                <div>prompt</div>
+                                <textarea 
+                                    className='assistant-config-prompt-textarea'
+                                    value={currentAssistant.prompts[0].prompt}
+                                    onChange={(e) => handlePromptChange(e.target.value)}></textarea>
+
+                            </div>
+                        </div>
+                        <div>
+                            <RoundButton primary text='保存' onClick={handleSave} />
+                        </div>
+                    </form>
+
                 </div>
             )}
+
         </div>
     );
 };

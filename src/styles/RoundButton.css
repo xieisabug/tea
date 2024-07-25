@@ -4,5 +4,11 @@
     border: 0px;
     border-radius: 15px;
     background: rgba(255, 255, 255, 1);
-    box-shadow: 0px 2px 4px  rgba(0, 0, 0, 0.25);
+    box-shadow: 0px 2px 4px  rgba(226, 154, 154, 0.25);
+    cursor: pointer;
+}
+
+.round-button.primary {
+    color: white;
+    background: rgba(17, 133, 83, 1);
 }

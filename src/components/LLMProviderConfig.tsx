@@ -40,7 +40,7 @@ const LLMProviderConfig: React.FC = () => {
         <div className="model-config">
             {
                 LLMProviders.map((provider, index) => {
-                    return <div className='provider-config-item'>
+                    return <div className='provider-config-item' key={index}>
                         <div className='provider-config-item-title'>
                             <span className='provider-config-item-title-provider-name'>{provider.name}</span>
                             <label>
