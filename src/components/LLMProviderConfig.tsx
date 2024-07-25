@@ -3,6 +3,7 @@ import '../styles/LLMProviderConfig.css';
 import {invoke} from "@tauri-apps/api/tauri";
 import LLMProviderConfigForm from "./LLMProviderConfigForm.tsx";
 import RoundButton from './RoundButton.tsx';
+import Switch from './Switch.tsx';
 
 interface LLMProvider {
     id: string;
@@ -20,7 +21,6 @@ const LLMProviderConfig: React.FC = () => {
         const newProviders = [...LLMProviders];
         newProviders[index].is_enabled = !newProviders[index].is_enabled;
         setLLMProviders(newProviders);
-        console.log(LLMProviders[index])
 
         invoke('update_llm_provider', {
             id: LLMProviders[index].id,
@@ -47,14 +47,8 @@ const LLMProviderConfig: React.FC = () => {
                             </div>
                             
                             <label>
-                                启用:
-                                <input
-                                    type="checkbox"
-                                    checked={provider.is_enabled}
-                                    onChange={() => handleToggle(index)}
-                                />
+                                <Switch state={provider.is_enabled} onChange={() => handleToggle(index)} />
                             </label>
-                            <span>toggle</span>
                         </div>
 
                         <LLMProviderConfigForm id={provider.id} apiType={provider.api_type}/>
