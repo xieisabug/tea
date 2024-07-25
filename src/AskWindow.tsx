@@ -11,11 +11,16 @@ import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 import UpArrow from './assets/up-arrow.svg';
+import Stop from './assets/stop.svg';
+import Copy from './assets/copy.svg';
+import Ok from './assets/ok.svg';
 import OpenFullUI from './assets/open-fullui.svg';
 import Setting from './assets/setting.svg';
 import AskWindowPrepare from './components/AskWindowPrepare';
 import AskAIHint from './components/AskAIHint';
 import IconButton from './components/IconButton';
+import { throttle } from 'lodash';
+import { writeText } from '@tauri-apps/api/clipboard';
 
 interface AiResponse {
     conversation_id: number;
@@ -27,6 +32,8 @@ function AskWindow() {
     const [response, setResponse] = useState<string>('');
     const [messageId, setMessageId] = useState<number>(-1);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const [aiIsResponsing, setAiIsResponsing] = useState<boolean>(false);
+    const [copySuccess, setCopySuccess] = useState<boolean>(false);
 
     let unsubscribe: Promise<() => void> | null = null;
 
@@ -43,12 +50,17 @@ function AskWindow() {
         }
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = throttle(() => {
+        if (aiIsResponsing) {
+            return;
+        }
+        setAiIsResponsing(true);
         setResponse('');
         try {
             invoke<AiResponse>('ask_ai', { request: { prompt: query, conversation_id: "", assistant_id: 1 } })
                 .then((res) => {
                     setMessageId(res.add_message_id);
+
                     console.log("ask ai response", res);
                     if (unsubscribe) {
                         console.log('Unsubscribing from previous event listener');
@@ -57,14 +69,19 @@ function AskWindow() {
 
                     console.log("Listening for response", `message_${res.add_message_id}`);
                     unsubscribe = listen(`message_${res.add_message_id}`, (event) => {
-                        setResponse(event.payload as string);
+                        const payload = event.payload as string
+                        if (payload !== "Tea::Event::MessageFinish") {
+                            setResponse(payload);
+                        } else {
+                            setAiIsResponsing(false);
+                        }
                     });
                 });
         } catch (error) {
             console.error('Error:', error);
             setResponse('An error occurred while processing your request.');
         }
-    };
+    }, 200);
 
     useEffect(() => {
         const handleShortcut = async (event: KeyboardEvent) => {
@@ -112,7 +129,7 @@ function AskWindow() {
                         placeholder="Ask AI..."
                     ></textarea>
                     <button className='ask-window-submit-button' type="submit">
-                        <img src={UpArrow} alt="submit" width="16" height="16" />
+                        <img src={aiIsResponsing ? Stop:UpArrow} alt="submit" width="16" height="16" />
                     </button>
                 </form>
                 <div className="response">
@@ -144,6 +161,17 @@ function AskWindow() {
                     
                 </div>
                 <div className='tools'>
+                    {
+                        messageId !== -1 && !aiIsResponsing ?
+                            <IconButton icon={copySuccess ? Ok : Copy} onClick={() => {
+                                writeText(response);
+                                setCopySuccess(true);
+                                setTimeout(() => {
+                                    setCopySuccess(false);
+                                }, 1500)
+                            }} /> : null
+                    }
+                    
                     <IconButton icon={OpenFullUI} onClick={openChatUI} />
                     <IconButton icon={Setting} onClick={openConfig} />
                 </div>

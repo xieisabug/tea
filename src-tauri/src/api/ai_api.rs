@@ -119,6 +119,8 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
                             let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string()).unwrap();
                             let _ = Message::update(&conversation_db.conn, new_message_id.unwrap(), conversation_id, content.clone(), 0);
 
+                            window_clone.emit(format!("message_{}", id).as_str(), "Tea::Event::MessageFinish")
+                                .map_err(|e| e.to_string()).unwrap();
                             if need_generate_title {
                                 generate_title(conversation_id, request_prompt.clone(), content.clone(), config_feature_map.clone(), window_clone.clone()).await.map_err(|e| e.to_string()).unwrap();
                             }
