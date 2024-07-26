@@ -17,6 +17,7 @@
 .center-content {
     flex: 1;
     background-color: #fff;
+    overflow: auto;
 }
 
 .chat-ui-toolbar {
@@ -66,6 +67,7 @@
     justify-content: center;
     padding: 5px 40px;
     box-sizing: border-box;
+    position: relative;
 }
 .conversation-list li.selected {
     font-weight: bolder;
@@ -79,6 +81,37 @@
 }
 .conversation-list-item-assistant-name {
     font-size: 12px;
+}
+
+.conversation-menu-icon {
+    display: none;
+    position: absolute;
+    right: 14px;
+    top: 10px;
+}
+
+.conversation-list li:hover .conversation-menu-icon {
+    display: block;
+}
+
+.conversation-menu {
+    position: absolute;
+    right: 30px;
+    top: 20px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #ccc;
+}
+.conversation-menu-item {
+    width: 100px;
+    height: 30px;
+    background-color: white;
+    border: 0px;
+    z-index: 1;
+    cursor: pointer;
+}
+.conversation-menu-item:hover {
+    background-color: #eee;
 }
 
 .chat-ui-information {

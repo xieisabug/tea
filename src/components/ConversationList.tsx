@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
-import {invoke} from "@tauri-apps/api/tauri";
+import { MouseEventHandler, useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import { confirm } from '@tauri-apps/api/dialog';
+import MenuIcon from "../assets/menu.svg";
+import IconButton from "./IconButton";
 
 interface ConversationListProps {
     onSelectConversation: (conversation: string) => void;
@@ -13,12 +15,30 @@ interface Conversation {
     name: string;
 }
 
-function ConversationList({onSelectConversation, conversationId}: ConversationListProps) {
+interface MenuProps {
+    items: Array<{ label: string, onClick: MouseEventHandler<HTMLButtonElement> }>;
+}
+
+function Menu({ items }: MenuProps) {
+    return (
+        <div
+            className="conversation-menu"
+        >
+            {
+                items.map((item) => {
+                    return <button className="conversation-menu-item" onClick={item.onClick}>{item.label}</button>
+                })
+            }
+        </div>
+    );
+};
+
+function ConversationList({ onSelectConversation, conversationId }: ConversationListProps) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
 
     useEffect(() => {
         // Fetch conversations from the server
-        invoke<Array<Conversation>>("list_conversations", {page: 1, pageSize: 100}).then((conversations: Conversation[]) => {
+        invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 }).then((conversations: Conversation[]) => {
             setConversations(conversations);
         });
     }, []);
@@ -27,7 +47,7 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
         console.log(`conversationId change : ${conversationId} type : ${typeof conversationId}`);
         // Fetch conversations from the server
         if (conversations.findIndex((conversation) => conversation.id === conversationId) === -1) {
-            invoke<Array<Conversation>>("list_conversations", {page: 1, pageSize: 100}).then((conversations: Conversation[]) => {
+            invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 }).then((conversations: Conversation[]) => {
                 setConversations(conversations);
             });
         }
@@ -35,15 +55,12 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
 
     useEffect(() => {
         const unsubscribe = listen("title_change", (event) => {
-            console.log("title change", event.payload);
             const [conversationId, title] = event.payload as [string, string];
-            
-            console.log("conversations", conversations);
+
             const index = conversations.findIndex((conversation) => conversation.id == conversationId);
-            console.log("find index", index);
             if (index !== -1) {
                 const newConversations = [...conversations];
-                newConversations[index] = {...newConversations[index], name: title};
+                newConversations[index] = { ...newConversations[index], name: title };
                 setConversations(newConversations);
             }
         });
@@ -58,39 +75,66 @@ function ConversationList({onSelectConversation, conversationId}: ConversationLi
                 unsubscribe.then((f) => f());
             }
         };
-    }, [conversations])
+    }, [conversations]);
 
     const deleteConversation = async (id: string) => {
-        const confirmed = await confirm('This action cannot be reverted. Are you sure?', { title: 'Tauri', type: 'warning' });
+        const confirmed = await confirm('该动作不可逆，是否确认删除对话?', { title: '删除对话', type: 'warning' });
         if (confirmed) {
-            invoke("delete_conversation", {conversationId: id}).then(() => {
-                return invoke<Array<Conversation>>("list_conversations", {page: 1, pageSize: 100});
+            invoke("delete_conversation", { conversationId: id }).then(() => {
+                return invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 });
             }).then((conversations: Conversation[]) => {
                 setConversations(conversations);
             });
         }
     }
 
+    const [menuShow, setMenuShow] = useState(false);
+    const [menuShowConversationId, setMenuShowConversationId] = useState("");
+
+    const onMenuClick = useCallback((e: React.MouseEvent<HTMLButtonElement, MouseEvent>, conversationId: string) => {
+        e.stopPropagation();
+        setMenuShow(true);
+        setMenuShowConversationId(conversationId);
+    }, []);
+
+    useEffect(() => {
+        const handleOutsideClick = () => {
+            if (menuShow) {
+                setMenuShow(false);
+            }
+        };
+    
+        document.addEventListener('click', handleOutsideClick);
+    
+        return () => {
+          document.removeEventListener('click', handleOutsideClick);
+        };
+    }, [menuShow, onMenuClick]);
+
     return (
         <div className="conversation-list">
             <ul>
                 {conversations.map((conversation) => (
-                    <li className={`${conversationId == conversation.id? "selected": ""}`} key={conversation.id} onClick={() => {
-                        console.log(`click : ${JSON.stringify(conversation)}`)
+                    <li className={`conversation-item ${conversationId == conversation.id ? "selected" : ""}`} key={conversation.id} onClick={() => {
                         onSelectConversation(conversation.id);
                     }}>
                         <div className="conversation-list-item-name">{conversation.name}</div>
                         <div className="conversation-list-item-assistant-name">快速助手</div>
+
+                        <IconButton className="conversation-menu-icon" icon={MenuIcon} onClick={(e) => onMenuClick(e, conversation.id)} />
+
+                        {
+                            menuShow && menuShowConversationId === conversation.id ? 
+                                <Menu items={[
+                                    {label: "编辑", onClick: (e) => {}},
+                                    {label: "删除", onClick: (e) => {e.stopPropagation(); deleteConversation(conversation.id);}},
+                                ]} /> : null
+                        }
                     </li>
                 ))}
             </ul>
 
-            <div className="conversation-list-menu">
-                <button className="mini" onClick={(e) => {
-                    e.stopPropagation();
-                    // deleteConversation(conversation.id)
-                }} >删除</button>
-            </div>
+            
         </div>
     );
 }

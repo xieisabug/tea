@@ -1,8 +1,9 @@
+import { MouseEventHandler } from 'react';
 import '../styles/IconButton.css';
 
 interface IconButtonProps {
     icon: string;
-    onClick: () => void;
+    onClick: MouseEventHandler<HTMLButtonElement>;
     className?: string;
 }
 
