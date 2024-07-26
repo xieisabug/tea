@@ -160,10 +160,10 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn delete_assistant_prompt(&self, id: i64) -> Result<()> {
+    pub fn delete_assistant_prompt_by_assistant_id(&self, assistant_id: i64) -> Result<()> {
         self.conn.execute(
-            "DELETE FROM assistant_prompt WHERE id = ?",
-            params![id],
+            "DELETE FROM assistant_prompt WHERE assistant_id = ?",
+            params![assistant_id],
         )?;
         Ok(())
     }
@@ -202,10 +202,10 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn delete_assistant_model_config(&self, id: i64) -> Result<()> {
+    pub fn delete_assistant_model_config_by_assistant_id(&self, assistant_id: i64) -> Result<()> {
         self.conn.execute(
-            "DELETE FROM assistant_model_config WHERE id = ?",
-            params![id],
+            "DELETE FROM assistant_model_config WHERE assistant_id = ?",
+            params![assistant_id],
         )?;
         Ok(())
     }
@@ -226,10 +226,10 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn delete_assistant_prompt_param(&self, id: i64) -> Result<()> {
+    pub fn delete_assistant_prompt_param_by_assistant_id(&self, assistant_id: i64) -> Result<()> {
         self.conn.execute(
-            "DELETE FROM assistant_prompt_param WHERE id = ?",
-            params![id],
+            "DELETE FROM assistant_prompt_param WHERE assistant_id = ?",
+            params![assistant_id],
         )?;
         Ok(())
     }

@@ -1,4 +1,4 @@
-use crate::db::assistant_db::{Assistant, AssistantDatabase, AssistantModel, AssistantModelConfig, AssistantPrompt, AssistantPromptParam};
+use crate::db::{assistant_db::{Assistant, AssistantDatabase, AssistantModel, AssistantModelConfig, AssistantPrompt, AssistantPromptParam}, conversation_db::ConversationDatabase};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct AssistantDetail {
@@ -212,4 +212,17 @@ pub fn add_assistant() -> Result<AssistantDetail, String> {
     };
 
     Ok(assistant_detail)
+}
+
+#[tauri::command]
+pub fn delete_assistant(assistant_id: i64) -> Result<(), String> {
+    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+    let _ = assistant_db.delete_assistant_model_config_by_assistant_id(assistant_id).map_err(|e| e.to_string());
+    let _ = assistant_db.delete_assistant_prompt_by_assistant_id(assistant_id).map_err(|e| e.to_string());
+    let _ = assistant_db.delete_assistant_prompt_param_by_assistant_id(assistant_id).map_err(|e| e.to_string());
+
+    let conversation_db = ConversationDatabase::new().map_err(|e| e.to_string())?;
+    let _ = conversation_db.update_conversation_assistant_id(assistant_id, Some(1)).map_err(|e| e.to_string())?;
+
+    assistant_db.delete_assistant(assistant_id).map_err(|e| e.to_string())
 }

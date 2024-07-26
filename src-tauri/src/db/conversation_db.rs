@@ -176,4 +176,9 @@ impl ConversationDatabase {
         Conversation::delete(&self.conn, conversation_id)?;
         Ok(())
     }
+
+    pub fn update_conversation_assistant_id(&self, origin_assistant_id: i64, assistant_id: Option<i64>) -> Result<()> {
+        self.conn.execute("UPDATE conversation SET assistant_id = ?1 WHERE assistant_id = ?2", (&assistant_id, &origin_assistant_id))?;
+        Ok(())
+    }
 }

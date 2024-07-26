@@ -1,10 +1,12 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import "../styles/AssistantConfig.css";
 import {invoke} from "@tauri-apps/api/tauri";
 import RoundButton from './RoundButton';
 import IconButton from './IconButton';
 import Edit from '../assets/edit.svg';
+import Delete from '../assets/delete.svg';
 import CustomSelect from './CustomSelect';
+import ConfirmDialog from './ConfirmDialog';
 
 interface AssistantListItem {
     id: number;
@@ -170,6 +172,29 @@ const AssistantConfig: React.FC = () => {
     //     }
     // };
 
+    const [confirmDialogIsOpen, setConfirmDialogIsOpen] = useState<boolean>(false);
+    const closeConfirmDialog = useCallback(() => {
+        setConfirmDialogIsOpen(false);
+    }, []);
+    const openConfigDialog = useCallback(() => {
+        setConfirmDialogIsOpen(true);
+    }, []);
+    const handleDelete = useCallback(() => {
+        if (currentAssistant) {
+            invoke("delete_assistant", { assistantId: currentAssistant.assistant.id }).then(() => {
+                const newAssistants = assistants.filter((assistant) => assistant.id !== currentAssistant.assistant.id);
+                setAssistants(newAssistants);
+                if (newAssistants.length > 0) {
+                    handleChooseAssistant(newAssistants[0]);
+                } else {
+                    setCurrentAssistant(null);
+                }
+                setConfirmDialogIsOpen(false);
+                // 展示一个tips
+            });
+        }
+    }, [currentAssistant, assistants]);
+
     return (
         <div className="assistant-editor">
             <div className="assistant-list">
@@ -192,7 +217,8 @@ const AssistantConfig: React.FC = () => {
                             <span className='config-window-title-name'>{currentAssistant.assistant.name}</span>
                             <span className='config-window-title-description'>{currentAssistant.assistant.description}</span>    
                         </div>
-                        <div>
+                        <div className='config-window-icon-button-group'>
+                            <IconButton icon={Delete} onClick={openConfigDialog} />
                             <IconButton icon={Edit} onClick={() => {}} />
                         </div>
                     </div>
@@ -269,7 +295,15 @@ const AssistantConfig: React.FC = () => {
 
                 </div>
             )}
-
+            <ConfirmDialog
+                title="确认操作"
+                confirmText="该操作不可逆，确认执行删除助手操作吗？删除后，配置将会删除，并且该助手的对话将转移到 快速使用助手 ，且不可恢复。"
+                onConfirm={() => {
+                    handleDelete();
+                }}
+                onCancel={closeConfirmDialog}
+                isOpen={confirmDialogIsOpen}
+            />
         </div>
     );
 };

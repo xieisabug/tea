@@ -87,7 +87,10 @@ h2 {
     padding: 0 20px;
     color: white;
 }
-
+.config-window-icon-button-group {
+    display: flex;
+    flex-direction: row;
+}
 .config-window-title-text-container {
     flex: 1;
 }
