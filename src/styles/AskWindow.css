@@ -83,3 +83,18 @@
 .ask-window-prepare {
     font-size: 12px;
 }
+
+.bang-tag {
+    padding: 5px 10px;
+    background-color: rgba(17, 133, 83, 1);
+    border-radius: 10px;
+    color: white;
+    margin-right: 10px;
+    flex: 0 0 20px;
+    cursor: pointer;
+}
+.bang-container {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+}
