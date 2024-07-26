@@ -15,6 +15,7 @@ import NewChatComponent from "./NewChatComponent";
 import CircleButton from "./CircleButton";
 import IconButton from "./IconButton";
 import UpArrow from '../assets/up-arrow.svg';
+import Stop from '../assets/stop.svg';
 import Add from '../assets/add.svg';
 import Delete from '../assets/delete.svg';
 import Copy from '../assets/copy.svg';
@@ -113,11 +114,17 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     }, [messages]);
 
     const [inputText, setInputText] = useState("");
+    const [aiIsResponsing, setAiIsResponsing] = useState<boolean>(false);
     const handleSend = useCallback(() => {
         if (inputText.trim() === "") {
             setInputText("");
             return;
         }
+        if (aiIsResponsing) {
+            return;
+        }
+        setAiIsResponsing(true);
+
         let conversationId = "";
         let assistantId = "";
         if (!conversation || !conversation.id) {
@@ -165,19 +172,25 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     console.log("Listening for response", `message_${res.add_message_id}`);
                     
                     unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
-                        // 更新messages的最后一个对象
-                        setMessages(prevMessages => {
-                            const newMessages = [...prevMessages];
-                            const index = newMessages.findIndex(msg => msg.id === res.add_message_id);
-                            if (index !== -1) {
-                                newMessages[index] = {
-                                    ...newMessages[index],
-                                    content: event.payload as string
-                                };
-                                scroll();
-                            }
-                            return newMessages;
-                        });
+                        const payload = event.payload as string;
+                        if (payload !== "Tea::Event::MessageFinish") {
+                            // 更新messages的最后一个对象
+                            setMessages(prevMessages => {
+                                const newMessages = [...prevMessages];
+                                const index = newMessages.findIndex(msg => msg.id === res.add_message_id);
+                                if (index !== -1) {
+                                    newMessages[index] = {
+                                        ...newMessages[index],
+                                        content: event.payload as string
+                                    };
+                                    scroll();
+                                }
+                                return newMessages;
+                            });
+                        } else {
+                            setAiIsResponsing(false);
+                        }
+                        
                     });
                 });
         } catch (error) {
@@ -226,7 +239,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 />
                 
                 <CircleButton onClick={() => {}} icon={Add} className="input-area-add-button" />
-                <CircleButton onClick={handleSend} icon={UpArrow} primary className="input-area-send-button" />
+                <CircleButton onClick={handleSend} icon={aiIsResponsing ? Stop:UpArrow} primary className="input-area-send-button" />
 
             </div>
         </div>

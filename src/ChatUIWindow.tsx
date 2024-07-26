@@ -4,7 +4,7 @@ import ConversationList from "./components/ConversationList";
 import ChatUIInfomation from "./components/ChatUIInfomation";
 import ConversationUI from "./components/ConversationUI";
 
-import "./components/ChatUIWindow.css";
+import "./styles/ChatUIWindow.css";
 
 function ChatUIWindow() {
 
