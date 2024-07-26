@@ -42,8 +42,11 @@
 }
 
 .provider-config-item-form-property-container {
-    flex: 0 0 350px;
-    margin-right: 60px;
+    flex: 1;
+    margin-right: 40px;
+}
+.provider-config-item-form-model-list-container {
+    flex: 1;
 }
 
 .provider-config-window {

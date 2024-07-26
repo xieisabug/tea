@@ -8,8 +8,8 @@
 }
 
 .feature-assistant-properties {
-    flex: 0 0 350px;
-    margin-right: 60px;
+    flex: 1;
+    margin-right: 40px;
 }
 
 .feature-assistant-prompts {
