@@ -92,9 +92,7 @@ const AssistantConfig: React.FC = () => {
         });
     }, []);
     const onSave = (assistant: AssistantDetail) => {
-        invoke("save_assistant", { assistantDetail: assistant}).then(() => {
-
-        });
+        return invoke("save_assistant", { assistantDetail: assistant});
     }
     const onAdd = () => {
         invoke<AssistantDetail>("add_assistant").then((assistantDetail: AssistantDetail) => {
@@ -207,6 +205,28 @@ const AssistantConfig: React.FC = () => {
     }, []);
     const [formAssistantName, setFormAssistantName] = useState<string>("");
     const [formAssistantDescription, setFormAssistantDescription] = useState<string>("");
+    const handleFormSubmit = useCallback(() => {
+        if (currentAssistant) {
+            const newCurrentAssistant = {
+                ...currentAssistant,
+                assistant: {
+                    ...currentAssistant.assistant,
+                    name: formAssistantName,
+                    description: formAssistantDescription,
+                },
+            };
+            onSave(newCurrentAssistant).then(() => {
+                setCurrentAssistant(newCurrentAssistant);
+                setFormDialogIsOpen(false);
+                const index = assistants.findIndex((assistant) => assistant.id === currentAssistant.assistant.id);
+                if (index >= 0) {
+                    const newAssistants = [...assistants];
+                    newAssistants[index] = { id: currentAssistant.assistant.id, name: formAssistantName };
+                    setAssistants(newAssistants);
+                }
+            })
+        }
+    }, [currentAssistant, formAssistantName, formAssistantDescription]);
 
     return (
         <div className="assistant-editor">
@@ -319,10 +339,7 @@ const AssistantConfig: React.FC = () => {
             />
             <FormDialog
                 title={"修改助手 : " + currentAssistant?.assistant.name}
-                onSubmit={() => {
-                    alert('表单已提交');
-                    closeFormDialog();
-                }}
+                onSubmit={handleFormSubmit}
                 onClose={closeFormDialog}
                 isOpen={formDialogIsOpen}
             >

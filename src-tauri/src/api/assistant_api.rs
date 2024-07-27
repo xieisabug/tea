@@ -65,14 +65,13 @@ pub fn save_assistant(assistant_detail: AssistantDetail) -> Result<(), String> {
             &assistant_detail.assistant.name,
             assistant_detail.assistant.description.as_deref().unwrap_or(""),
             assistant_detail.assistant.assistant_type,
-            assistant_detail.assistant.is_addition,
+            true,
         ).map_err(|e| e.to_string())?;
     } else {
         assistant_db.update_assistant(
             assistant_detail.assistant.id,
             &assistant_detail.assistant.name,
-            assistant_detail.assistant.description.as_deref().unwrap_or(""),
-            assistant_detail.assistant.is_addition,
+            assistant_detail.assistant.description.as_deref().unwrap_or("")
         ).map_err(|e| e.to_string())?;
     }
 

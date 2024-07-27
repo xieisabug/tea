@@ -127,10 +127,10 @@ impl AssistantDatabase {
         Ok(id)
     }
 
-    pub fn update_assistant(&self, id: i64, name: &str, description: &str, is_addition: bool) -> Result<()> {
+    pub fn update_assistant(&self, id: i64, name: &str, description: &str) -> Result<()> {
         self.conn.execute(
-            "UPDATE assistant SET name = ?, description = ?, is_addition = ? WHERE id = ?",
-            params![name, description, is_addition, id],
+            "UPDATE assistant SET name = ?, description = ? WHERE id = ?",
+            params![name, description, id],
         )?;
         Ok(())
     }
