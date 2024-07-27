@@ -178,6 +178,20 @@
 .bot-message .message-item-button-container {
     left: 0;
 }
+.message-code-container {
+    position: relative;
+}
+.message-code-button-group {
+    position: absolute;
+    right: 0;
+    top: 0;
+    display: flex;
+    background-color: white;
+    opacity: 0.3;
+}
+.message-code-button-group:hover {
+    opacity: 1;
+}
 
 .message-anchor {
     flex: 0 0 120px;

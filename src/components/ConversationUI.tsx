@@ -7,8 +7,9 @@ import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
 import 'katex/dist/katex.min.css';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import SyntaxHighlighter from 'react-syntax-highlighter'
+// srcery   railscasts   nnfx-dark    atelier-estuary-dark
+import { srcery } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { listen } from "@tauri-apps/api/event";
 import {throttle} from 'lodash';
 import NewChatComponent from "./NewChatComponent";
@@ -17,6 +18,7 @@ import IconButton from "./IconButton";
 import UpArrow from '../assets/up-arrow.svg';
 import Stop from '../assets/stop.svg';
 import Add from '../assets/add.svg';
+import Run from '../assets/run.svg';
 import Delete from '../assets/delete.svg';
 import Copy from '../assets/copy.svg';
 import Refresh from '../assets/refresh.svg';
@@ -46,13 +48,19 @@ const MessageItem = React.memo(({ message }: any) => (
                 code({ node, className, children, ref, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
                     return match ? (
-                        <SyntaxHighlighter
-                            {...props}
-                            PreTag="div"
-                            children={String(children).replace(/\n$/, '')}
-                            language={match[1]}
-                            style={dark}
-                        />
+                        <div className="message-code-container">
+                            <div className="message-code-button-group">
+                                <IconButton icon={Copy} onClick={() => writeText(String(children).replace(/\n$/, ''))} />
+                                <IconButton icon={Run} onClick={() => writeText(String(children).replace(/\n$/, ''))} />
+                            </div>
+                            <SyntaxHighlighter
+                                {...props}
+                                PreTag="div"
+                                children={String(children).replace(/\n$/, '')}
+                                language={match[1]}
+                                style={srcery}
+                            />
+                        </div>
                     ) : (
                         <code {...props} ref={ref} className={className}>
                             {children}
