@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { confirm } from '@tauri-apps/api/dialog';
 import MenuIcon from "../assets/menu.svg";
 import IconButton from "./IconButton";
+import FormDialog from "./FormDialog";
 
 interface ConversationListProps {
     onSelectConversation: (conversation: string) => void;
@@ -44,7 +45,6 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
     }, []);
 
     useEffect(() => {
-        console.log(`conversationId change : ${conversationId} type : ${typeof conversationId}`);
         // Fetch conversations from the server
         if (conversations.findIndex((conversation) => conversation.id === conversationId) === -1) {
             invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 }).then((conversations: Conversation[]) => {
@@ -111,6 +111,30 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
         };
     }, [menuShow, onMenuClick]);
 
+    const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
+    const openFormDialog = useCallback((title: string) => {
+        setFormConversationTitle(title || "");
+        setFormDialogIsOpen(true);
+    }, []);
+    const closeFormDialog = useCallback(() => {
+        setFormDialogIsOpen(false);
+    }, []);
+    const [formConversationTitle, setFormConversationTitle] = useState<string>("");
+
+    const handleFormSubmit = useCallback(() => {
+        invoke("update_conversation", { conversationId: menuShowConversationId, name: formConversationTitle }).then(() => {
+            const newConversations = 
+                conversations.map((conversation) => {
+                    if (conversation.id === menuShowConversationId) {
+                        return { ...conversation, name: formConversationTitle };
+                    }
+                    return conversation;
+                });
+            setConversations(newConversations);
+            closeFormDialog();
+        })
+    }, [menuShowConversationId, formConversationTitle]);
+
     return (
         <div className="conversation-list">
             <ul>
@@ -126,7 +150,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                         {
                             menuShow && menuShowConversationId === conversation.id ? 
                                 <Menu items={[
-                                    {label: "编辑", onClick: (e) => {}},
+                                    {label: "编辑", onClick: (e) => {e.stopPropagation(); setMenuShow(false); openFormDialog(conversation.name);}},
                                     {label: "删除", onClick: (e) => {e.stopPropagation(); deleteConversation(conversation.id);}},
                                 ]} /> : null
                         }
@@ -134,7 +158,19 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                 ))}
             </ul>
 
-            
+            <FormDialog
+                title={"修改对话标题"}
+                onSubmit={handleFormSubmit}
+                onClose={closeFormDialog}
+                isOpen={formDialogIsOpen}
+            >
+                <form className='form-group-container'>
+                    <div className='form-group'>
+                        <label>标题:</label>
+                        <input className='form-input' type="text" name="name" value={formConversationTitle} onChange={e => setFormConversationTitle(e.target.value)} />
+                    </div>
+                </form>
+            </FormDialog>
         </div>
     );
 }

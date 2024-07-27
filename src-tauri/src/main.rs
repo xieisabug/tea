@@ -21,7 +21,7 @@ use tokio::sync::Mutex as TokioMutex;
 use crate::api::system_api::{get_all_feature_config, save_feature_config};
 use crate::api::ai_api::ask_ai;
 use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant};
-use crate::api::conversation_api::{list_conversations, get_conversation_with_messages, delete_conversation};
+use crate::api::conversation_api::{list_conversations, get_conversation_with_messages, delete_conversation, update_conversation};
 use get_selected_text::get_selected_text;
 use crate::api::llm_api::{fetch_model_list, get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select, update_llm_provider, update_llm_provider_config};
 use crate::db::assistant_db::AssistantDatabase;
@@ -146,7 +146,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_llm_provider_config, update_llm_provider_config,
             get_llm_models, fetch_model_list, get_models_for_select,
             get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant,
-            list_conversations, get_conversation_with_messages, delete_conversation
+            list_conversations, get_conversation_with_messages, delete_conversation, update_conversation
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
