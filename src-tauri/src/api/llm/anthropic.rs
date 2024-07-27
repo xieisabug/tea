@@ -1,13 +1,9 @@
 use std::collections::HashMap;
-
 use reqwest::Client;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::json;
-
 use crate::{api::llm_api::LlmModel, db::llm_db::LLMProviderConfig};
-
 use super::ModelProvider;
-use futures::StreamExt;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelsResponse {
@@ -19,6 +15,87 @@ struct Model {
     name: String,
     description: String,
     max_tokens: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnthropicUsage {
+    pub input_tokens: Option<u32>,
+    pub output_tokens: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnthropicContentBlock {
+    #[serde(rename = "type")]
+    pub content_type: String,
+    pub text: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnthropicTextDelta {
+    #[serde(rename = "type")]
+    pub delta_type: Option<String>,
+    pub text: Option<String>,
+    pub stop_reason: Option<String>,
+    pub stop_sequence: Option<String>,
+    pub usage: Option<AnthropicUsage>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnthropicMessage {
+    pub id: Option<String>,
+    #[serde(rename = "type")]
+    pub message_type: String,
+    pub role: Option<String>,
+    pub content: Option<Vec<AnthropicContentBlock>>,
+    pub model: Option<String>,
+    pub stop_reason: Option<String>,
+    pub stop_sequence: Option<String>,
+    pub usage: Option<AnthropicUsage>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type")]
+pub struct AnthropicChatCompletionChunk {
+    #[serde(rename = "type")]
+    pub event_type: String,
+    pub index: Option<usize>,
+    pub delta: Option<AnthropicTextDelta>,
+    pub message: Option<AnthropicMessage>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnthropicErrorMessage {
+    #[serde(rename = "type")]
+    pub error_type: String,
+    pub error: AnthropicErrorDetails,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnthropicErrorDetails {
+    pub details: Option<serde_json::Value>,
+    #[serde(rename = "type")]
+    pub error_type: String,
+    pub message: String,
+}
+
+#[derive(Debug)]
+pub enum ToolChoice {
+    Auto,
+    Any,
+    Tool(String),
+}
+
+impl Serialize for ToolChoice {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            ToolChoice::Auto => serde::Serialize::serialize(&serde_json::json!({"type": "auto"}), serializer),
+            ToolChoice::Any => serde::Serialize::serialize(&serde_json::json!({"type": "any"}), serializer),
+            ToolChoice::Tool(name) => serde::Serialize::serialize(&serde_json::json!({"type": "tool", "name": name}), serializer),
+        }
+    }
 }
 
 pub struct AnthropicProvider {
@@ -136,41 +213,85 @@ impl ModelProvider for AnthropicProvider {
                 });
                 println!("anthropic chat stream url: {} body: {:?}", url, body);
 
-                let response = client.post(&url)
+                let mut response = client.post(&url)
                     .header("X-API-Key", api_key)
                     .header("anthropic-version", "2023-06-01")
                     .json(&body)
                     .send()
                     .await?;
 
-                let mut stream = response.bytes_stream();
                 let mut full_text = String::new();
-                let mut buffer = Vec::new();
-                
-                while let Some(chunk) = stream.next().await {
-                    let chunk = chunk?;
-                    let text = String::from_utf8_lossy(&chunk);
-                    println!("anthropic chat stream text: {}", text);
-                    buffer.extend_from_slice(&chunk);
+                let mut buffer = String::new();
 
-                    // 处理粘包和拆包
-                    while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
-                        let chunk_data = buffer.drain(..=pos + 1).collect::<Vec<_>>();
-                        let chunk_str = String::from_utf8_lossy(&chunk_data);
+                while let Some(chunk) = response.chunk().await? {
+                    let s = std::str::from_utf8(&chunk)
+                        .map_err(|e| format!("Invalid UTF-8 sequence: {}", e))?;
+                    buffer.push_str(s);
+                    println!("anthropic chat stream text: {}", s);
+    
+                    loop {
+                        if let Some(index) = buffer.find("\n\n") {
+                            let chunk = buffer[..index].to_string();
+                            buffer.drain(..=index + 1);
+    
+                            let processed_chunk = chunk
+                                .trim_start_matches("event: message_start")
+                                .trim_start_matches("event: content_block_start")
+                                .trim_start_matches("event: ping")
+                                .trim_start_matches("event: content_block_delta")
+                                .trim_start_matches("event: content_block_stop")
+                                .trim_start_matches("event: message_delta")
+                                .trim_start_matches("event: message_stop")
+                                .to_string();
+    
+                            let cleaned_string = processed_chunk
+                                .trim_start()
+                                .strip_prefix("data: ")
+                                .unwrap_or(&processed_chunk);
+                            print!("clean string: {}", cleaned_string);
+    
+                            match serde_json::from_str::<AnthropicChatCompletionChunk>(cleaned_string) {
+                                Ok(d) => {
+                                    if let Some(delta) = d.delta {
+                                        println!("anthropic chat stream delta: {:?}", delta);
 
-                        if chunk_str.starts_with("data: ") {
-                            let json_str = &chunk_str["data: ".len()..];
-                            if json_str.trim() == "[DONE]" {
-                                tx.send((message_id, full_text.clone(), true)).await?;
-                                return Ok(());
-                            }
+                                        if let Some(content) = delta.text {
+                                            full_text.push_str(&content);
+                                            tx.send((message_id, full_text.clone(), false)).await?;
+                                        }
+                                    } else if d.event_type == "message_stop" {
 
-                            if let Ok(chunk_response) = serde_json::from_str::<serde_json::Value>(json_str) {
-                                if let Some(delta) = chunk_response["delta"]["text"].as_str() {
-                                    full_text.push_str(delta);
-                                    tx.send((message_id, full_text.clone(), false)).await?;
+                                        tx.send((message_id, full_text.clone(), true)).await?;
+                                        break;
+                                    } else {
+                                        eprintln!("Unknown AnthropicChatCompletionChunk: {:?}", d);
+                                    }
+                                }
+                                Err(_) => {
+                                    let processed_chunk = cleaned_string
+                                        .trim_start_matches("event: error")
+                                        .to_string();
+                                    let cleaned_string = &processed_chunk
+                                        .trim_start()
+                                        .strip_prefix("data: ")
+                                        .unwrap_or(&processed_chunk);
+                                    match serde_json::from_str::<AnthropicErrorMessage>(
+                                        &cleaned_string,
+                                    ) {
+                                        Ok(error_message) => {
+                                            eprintln!("{}: {}", error_message.error.error_type, error_message.error.message);
+                                        }
+                                        Err(_) => {
+                                            eprintln!(
+                                                "Couldn't parse AnthropicChatCompletionChunk or AnthropicErrorMessage: {}",
+                                                &cleaned_string
+                                            );
+                                        }
+                                    }
                                 }
                             }
+                        } else {
+                            break;
                         }
                     }
                 }
@@ -183,19 +304,22 @@ impl ModelProvider for AnthropicProvider {
         let mut result = Vec::new();
 
         let models = vec![
-            ("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet")
+            ("Claude 3 Opus", "claude-3-opus-20240229", "Powerful model for highly complex tasks"),
+            ("Claude 3.5 Sonnet", "claude-3-5-sonnet-20240620", "Most intelligent model"),
+            ("Claude 3 Sonnet", "claude-3-sonnet-20240229", "Balance of intelligence and speed"),
+            ("Claude 3 Haiku", "claude-3-haiku-20240307", "Fastest and most compact model for near-instant responsiveness")
         ];
 
         for model in models {
             let llm_model = LlmModel {
-            id: 0, // You need to set this according to your needs
-            name: model.0.to_string(),
-            llm_provider_id: 2, // Assuming Anthropic is provider_id 2
-            code: model.0.to_string(),
-            description: model.1.to_string(),
-            vision_support: false, // Set this according to your needs
-            audio_support: false, // Set this according to your needs
-            video_support: false, // Set this according to your needs
+                id: 0, // You need to set this according to your needs
+                name: model.0.to_string(),
+                llm_provider_id: 2, // Assuming Anthropic is provider_id 2
+                code: model.1.to_string(),
+                description: model.2.to_string(),
+                vision_support: true, // Set this according to your needs
+                audio_support: false, // Set this according to your needs
+                video_support: false, // Set this according to your needs
             };
             result.push(llm_model);
         }
