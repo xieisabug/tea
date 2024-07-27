@@ -171,6 +171,7 @@ const AssistantConfig: React.FC = () => {
     //     }
     // };
 
+    // 删除助手
     const [confirmDialogIsOpen, setConfirmDialogIsOpen] = useState<boolean>(false);
     const closeConfirmDialog = useCallback(() => {
         setConfirmDialogIsOpen(false);
@@ -194,6 +195,7 @@ const AssistantConfig: React.FC = () => {
         }
     }, [currentAssistant, assistants]);
 
+    // 修改助手名称与描述
     const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
     const openFormDialog = useCallback(() => {
         setFormAssistantName(currentAssistant?.assistant.name || "");
