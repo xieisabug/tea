@@ -49,6 +49,11 @@ h2 {
     margin-top: 0;
 }
 
+.form-group-container {
+    display: flex;
+    flex-direction: column;
+}
+
 .form-input {
     height: 35px;
     border-radius: 4px;

@@ -7,6 +7,7 @@ import Edit from '../assets/edit.svg';
 import Delete from '../assets/delete.svg';
 import CustomSelect from './CustomSelect';
 import ConfirmDialog from './ConfirmDialog';
+import FormDialog from './FormDialog';
 
 interface AssistantListItem {
     id: number;
@@ -195,6 +196,18 @@ const AssistantConfig: React.FC = () => {
         }
     }, [currentAssistant, assistants]);
 
+    const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
+    const openFormDialog = useCallback(() => {
+        setFormAssistantName(currentAssistant?.assistant.name || "");
+        setFormAssistantDescription(currentAssistant?.assistant.description || "");
+        setFormDialogIsOpen(true);
+    }, [currentAssistant]);
+    const closeFormDialog = useCallback(() => {
+        setFormDialogIsOpen(false);
+    }, []);
+    const [formAssistantName, setFormAssistantName] = useState<string>("");
+    const [formAssistantDescription, setFormAssistantDescription] = useState<string>("");
+
     return (
         <div className="assistant-editor">
             <div className="assistant-list">
@@ -219,7 +232,7 @@ const AssistantConfig: React.FC = () => {
                         </div>
                         <div className='config-window-icon-button-group'>
                             <IconButton icon={Delete} onClick={openConfigDialog} />
-                            <IconButton icon={Edit} onClick={() => {}} />
+                            <IconButton icon={Edit} onClick={openFormDialog} />
                         </div>
                     </div>
                     <form className='config-window-form'>
@@ -304,6 +317,26 @@ const AssistantConfig: React.FC = () => {
                 onCancel={closeConfirmDialog}
                 isOpen={confirmDialogIsOpen}
             />
+            <FormDialog
+                title={"修改助手 : " + currentAssistant?.assistant.name}
+                onSubmit={() => {
+                    alert('表单已提交');
+                    closeFormDialog();
+                }}
+                onClose={closeFormDialog}
+                isOpen={formDialogIsOpen}
+            >
+                <form className='form-group-container'>
+                    <div className='form-group'>
+                        <label>名称:</label>
+                        <input className='form-input' type="text" name="name" value={formAssistantName} onChange={e => setFormAssistantName(e.target.value)} />
+                    </div>
+                    <div className='form-group'>
+                        <label>描述:</label>
+                        <input className='form-input' type="text" name="description" value={formAssistantDescription} onChange={e => setFormAssistantDescription(e.target.value)}/>
+                    </div>
+                </form>
+            </FormDialog>
         </div>
     );
 };
