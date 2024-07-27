@@ -1,5 +1,4 @@
 use rusqlite::{Connection, params};
-use crate::api::llm_api::ModelForSelect;
 
 #[derive(Debug)]
 pub struct LLMProvider {
@@ -46,7 +45,7 @@ pub struct LLMDatabase {
 
 impl LLMDatabase {
     pub fn new() -> rusqlite::Result<Self> {
-        let conn = Connection::open("./dev.db")?;
+        let conn = Connection::open("./llm.db")?;
         Ok(LLMDatabase { conn })
     }
 

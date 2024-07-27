@@ -1,5 +1,3 @@
-use tauri::State;
-
 use crate::db::conversation_db::{ConversationDatabase, Conversation, Message};
 
 #[tauri::command]

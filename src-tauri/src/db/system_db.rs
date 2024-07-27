@@ -18,7 +18,7 @@ pub struct SystemDatabase {
 
 impl SystemDatabase {
     pub fn new() -> Result<Self> {
-        let conn = Connection::open("./dev.db")?;
+        let conn = Connection::open("./system.db")?;
         Ok(SystemDatabase { conn })
     }
 
