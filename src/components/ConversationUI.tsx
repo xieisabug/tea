@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { writeText } from '@tauri-apps/api/clipboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Conversation, Message } from "../data/Conversation";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { Components } from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
@@ -11,7 +11,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 // srcery   railscasts   nnfx-dark    atelier-estuary-dark
 import { srcery } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { listen } from "@tauri-apps/api/event";
-import {throttle} from 'lodash';
+import { throttle } from 'lodash';
 import NewChatComponent from "./NewChatComponent";
 import CircleButton from "./CircleButton";
 import IconButton from "./IconButton";
@@ -22,6 +22,10 @@ import Run from '../assets/run.svg';
 import Delete from '../assets/delete.svg';
 import Copy from '../assets/copy.svg';
 import Refresh from '../assets/refresh.svg';
+
+interface CustomComponents extends Components {
+    antthinking: React.ElementType;
+}
 
 interface AssistantListItem {
     id: number;
@@ -38,7 +42,7 @@ interface AiResponse {
     add_message_id: number;
 }
 
-const MessageItem = React.memo(({ message }: any) => (
+const MessageItem = React.memo(({ message, onCodeRun }: any) => (
     <div className={"message-item " + (message.message_type === "user" ? "user-message" : "bot-message")}>
         <ReactMarkdown
             children={message.content}
@@ -51,7 +55,7 @@ const MessageItem = React.memo(({ message }: any) => (
                         <div className="message-code-container">
                             <div className="message-code-button-group">
                                 <IconButton icon={Copy} onClick={() => writeText(String(children).replace(/\n$/, ''))} />
-                                <IconButton icon={Run} onClick={() => writeText(String(children).replace(/\n$/, ''))} />
+                                <IconButton icon={Run} onClick={() => onCodeRun(match[1], String(children).replace(/\n$/, ''))} />
                             </div>
                             <SyntaxHighlighter
                                 {...props}
@@ -62,16 +66,21 @@ const MessageItem = React.memo(({ message }: any) => (
                             />
                         </div>
                     ) : (
-                        <code {...props} ref={ref} className={className}>
+                        <code {...props} ref={ref} className={className} style={{ overflow: "auto" }}>
                             {children}
                         </code>
                     );
+                },
+                antthinking({ children }) {
+                    return <div>
+                        <div className="llm-thinking-badge" title={children} data-thinking={children}>思考...</div>
+                    </div>
                 }
-            }}
+            } as CustomComponents}
         />
         <div className="message-item-button-container">
-            <IconButton icon={Delete} onClick={() => {}} />
-            <IconButton icon={Refresh} onClick={() => {}} />
+            <IconButton icon={Delete} onClick={() => { }} />
+            <IconButton icon={Refresh} onClick={() => { }} />
             <IconButton icon={Copy} onClick={() => writeText(message.content)} />
         </div>
     </div>
@@ -83,7 +92,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
     }, 300);
-    
+
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -144,7 +153,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         try {
             const userMessage = {
                 id: 0,
-                conversation_id: conversationId? -1: +conversationId,
+                conversation_id: conversationId ? -1 : +conversationId,
                 llm_model_id: -1,
                 content: inputText,
                 token_count: 0,
@@ -166,19 +175,19 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     } else {
                         const assistantMessage = {
                             id: res.add_message_id,
-                            conversation_id: conversationId? -1: +conversationId,
+                            conversation_id: conversationId ? -1 : +conversationId,
                             llm_model_id: -1,
                             content: "",
                             token_count: 0,
                             message_type: "assistant",
                             created_time: new Date()
                         };
-    
+
                         setMessages(prevMessages => [...prevMessages, assistantMessage]);
                     }
-                    
+
                     console.log("Listening for response", `message_${res.add_message_id}`);
-                    
+
                     unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
                         const payload = event.payload as string;
                         if (payload !== "Tea::Event::MessageFinish") {
@@ -198,7 +207,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                         } else {
                             setAiIsResponsing(false);
                         }
-                        
+
                     });
                 });
         } catch (error) {
@@ -209,14 +218,14 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
-          if (e.shiftKey) {
-            // Shift + Enter for new line
-            return;
-          } else {
-            // Enter for submit
-            e.preventDefault();
-            handleSend();
-          }
+            if (e.shiftKey) {
+                // Shift + Enter for new line
+                return;
+            } else {
+                // Enter for submit
+                e.preventDefault();
+                handleSend();
+            }
         }
     };
 
@@ -224,16 +233,23 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
 
     const [selectedAssistant, setSelectedAssistant] = useState(-1);
 
+    const handleArtifact = useCallback((lang: string, inputStr: string) => {
+        invoke("run_artifacts", {lang, inputStr}).then((res) => {
+            console.log(res);
+        });
+    }, []);
+
     return (
         <div className="conversation-ui">
             <div className="messages">
-                {conversationId ? 
+                {conversationId ?
                     filteredMessages.map((message, index) => (
-                        <MessageItem key={index} message={message} />
-                    )): <NewChatComponent 
-                            selectedAssistant={selectedAssistant} 
-                            assistants={assistants} 
-                            setSelectedAssistant={setSelectedAssistant} />
+                        <MessageItem key={index} message={message} onCodeRun={handleArtifact} />
+                    )) : <NewChatComponent
+                        selectedAssistant={selectedAssistant}
+                        assistants={assistants}
+                        setSelectedAssistant={setSelectedAssistant} 
+                    />
                 }
                 <div className="message-anchor"></div>
                 <div ref={messagesEndRef} />
@@ -245,9 +261,9 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={handleKeyDown}
                 />
-                
-                <CircleButton onClick={() => {}} icon={Add} className="input-area-add-button" />
-                <CircleButton onClick={handleSend} icon={aiIsResponsing ? Stop:UpArrow} primary className="input-area-send-button" />
+
+                <CircleButton onClick={() => { }} icon={Add} className="input-area-add-button" />
+                <CircleButton onClick={handleSend} icon={aiIsResponsing ? Stop : UpArrow} primary className="input-area-send-button" />
 
             </div>
         </div>

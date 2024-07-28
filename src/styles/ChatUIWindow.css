@@ -261,3 +261,12 @@
     border-radius: 4px;
 
 }
+
+.llm-thinking-badge {
+    padding: 5px 20px;
+    background-color: rgba(17, 133, 83, 1);
+    color: white;
+    border-radius: 5px;
+    display: inline-block;
+    cursor: pointer;
+}

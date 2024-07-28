@@ -23,6 +23,9 @@ pub enum AppError {
 
     #[error("未知错误: {0}")]
     UnknownError(String),
+
+    #[error("运行代码错误: {0}")]
+    RunCodeError(String),
 }
 
 impl From<rusqlite::Error> for AppError {
