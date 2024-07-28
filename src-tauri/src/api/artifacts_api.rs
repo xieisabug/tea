@@ -19,6 +19,9 @@ pub async fn run_artifacts(lang: &str, input_str: &str) -> Result<String, AppErr
         ("TypeScript (通过 ts-node)", "ts-node filename.ts"),
         ("Swift (通过 Swift REPL)", "swift filename.swift"),
     ];
+
+    // Anthropic artifacts : code, markdown, html, svg, mermaid, react(引入了 lucid3-react, recharts, tailwind, shadcn/ui )
+    // 加上 vue, nextjs 引入更多的前端库( echarts, antd, element-ui )
     
     match lang {
         "powershell" => {
