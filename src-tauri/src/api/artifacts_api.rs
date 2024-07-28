@@ -1,4 +1,4 @@
-use crate::{artifacts::powershell::run_powershell, errors::AppError};
+use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell}, errors::AppError};
 
 #[tauri::command]
 pub async fn run_artifacts(lang: &str, input_str: &str) -> Result<String, AppError> {
@@ -23,6 +23,9 @@ pub async fn run_artifacts(lang: &str, input_str: &str) -> Result<String, AppErr
     match lang {
         "powershell" => {
             return Ok(run_powershell(input_str).map_err(|e| AppError::RunCodeError("PowerShell 脚本执行失败:".to_owned() + &e.to_string()))?);
+        }
+        "applescript" => {
+            return Ok(run_applescript(input_str).map_err(|e| AppError::RunCodeError("AppleScript 脚本执行失败:".to_owned() + &e.to_string()))?);
         }
         _ => {
             // Handle other languages here
