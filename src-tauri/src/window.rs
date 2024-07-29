@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use tauri::{AppHandle, Manager, WindowBuilder, WindowEvent, WindowUrl};
 
 pub fn create_ask_window(app: &AppHandle) {
@@ -120,5 +121,43 @@ pub async fn open_chat_ui_window(app_handle: AppHandle) -> Result<(), String> {
         window.set_focus().unwrap();
         app_handle.get_window("ask").unwrap().close().unwrap();
     }
+    Ok(())
+}
+
+pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Result<(), String> {
+    let window_builder = WindowBuilder::new(
+        &app_handle,
+        "preview_html",
+        WindowUrl::App("index.html".into())
+    )
+        .title("Tea")
+        .inner_size(1000.0, 800.0)
+        .fullscreen(false)
+        .resizable(true)
+        .decorations(true)
+        .center();
+
+    #[cfg(not(target_os = "macos"))]
+    let window_builder = window_builder.transparent(false);
+
+    match window_builder.build() {
+        Ok(window) => {
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::CloseRequested { .. } = event {
+                    window_clone.hide().unwrap();
+                }
+            });
+
+            let window = app_handle.get_window("preview_html").unwrap();
+            
+            window.clone().listen("preview-window-load", move |_| {
+                window.emit("preview_html", html.clone()).unwrap();
+            });
+            
+        },
+        Err(e) => eprintln!("Failed to build window: {}", e),
+    }
+
     Ok(())
 }

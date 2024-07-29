@@ -1,7 +1,7 @@
-use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell}, errors::AppError};
+use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell}, errors::AppError, window::open_preview_html_window};
 
 #[tauri::command]
-pub async fn run_artifacts(lang: &str, input_str: &str) -> Result<String, AppError> {
+pub async fn run_artifacts(app_handle: tauri::AppHandle, lang: &str, input_str: &str) -> Result<String, AppError> {
     let languages_and_commands = [
         ("HTML", "直接在浏览器中打开 .html 文件"),
         ("JavaScript (浏览器端)", "在 HTML 文件中引入 .js 文件，然后在浏览器中打开"),
@@ -29,6 +29,9 @@ pub async fn run_artifacts(lang: &str, input_str: &str) -> Result<String, AppErr
         }
         "applescript" => {
             return Ok(run_applescript(input_str).map_err(|e| AppError::RunCodeError("AppleScript 脚本执行失败:".to_owned() + &e.to_string()))?);
+        }
+        "xml" | "svg" | "html" => {
+            let _ = open_preview_html_window(app_handle, input_str.to_string()).await;
         }
         _ => {
             // Handle other languages here
