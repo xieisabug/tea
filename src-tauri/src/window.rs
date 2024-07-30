@@ -151,7 +151,7 @@ pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Re
 
             let window = app_handle.get_window("preview_html").unwrap();
             
-            window.clone().listen("preview-window-load", move |_| {
+            window.clone().once("preview-window-load", move |_| {
                 window.emit("preview_html", html.clone()).unwrap();
             });
             
