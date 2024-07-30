@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import SideMenu from "./components/SideMenu.tsx";
 import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
 import AssistantConfig from "./components/AssistantConfig.tsx";
@@ -6,6 +6,8 @@ import FeatureAssistantConfig from "./components/FeatureAssistantConfig.tsx";
 import Model from "./assets/model.svg";
 import Assistant from "./assets/assistant.svg";
 import Program from "./assets/program.svg";
+import { listen } from "@tauri-apps/api/event";
+import SuccessNotification from "./components/SuccessNotification.tsx";
 
 interface MenuItem {
     id: string;
@@ -27,6 +29,14 @@ function ConfigWindow() {
     ];
 
     const [selectedMenu, setSelectedMenu] = useState<string>('llm-provider-config');
+    const [showNotification, setShowNotification] = useState(false);
+
+    useEffect(() => {
+        console.log("listen config-window-success-notification");
+        listen('config-window-success-notification', (event) => {
+            setShowNotification(true);
+        })
+    }, []);
 
     return (
         <div className="config-window">
@@ -34,6 +44,14 @@ function ConfigWindow() {
             <div className="config-content">
                 {contentMap[selectedMenu]}
             </div>
+
+            {showNotification && (
+                <SuccessNotification
+                    message="操作成功！"
+                    duration={1500}
+                    onClose={() => setShowNotification(false)}
+                />
+            )}
         </div>
     );
 }

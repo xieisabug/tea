@@ -3,6 +3,7 @@ import {invoke} from "@tauri-apps/api/tauri";
 import CustomSelect from './CustomSelect';
 import RoundButton from './RoundButton';
 import '../styles/FeatureAssistantConfig.css';
+import { emit } from '@tauri-apps/api/event';
 
 interface ModelForSelect {
     name: string;
@@ -58,7 +59,10 @@ const FeatureAssistantConfig: React.FC = () => {
 
     const handleSave = (feature_code: string) => {
         console.log("save", feature_code, featureConfig.get(feature_code));
-        invoke("save_feature_config", { featureCode: feature_code, config: featureConfig.get(feature_code) });
+        invoke("save_feature_config", { featureCode: feature_code, config: featureConfig.get(feature_code) })
+            .then(() => {
+                emit("config-window-success-notification");
+            });
     };
 
     return (
