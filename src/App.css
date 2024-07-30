@@ -1,11 +1,18 @@
+@font-face {
+    font-family: 'Siyuanrouhei';
+    src: url('./assets/思源柔黑-P-Light.ttf') format('ttf');
+    font-weight: normal;
+    font-style: normal;
+}
+
 body {
     padding: 0;
     margin: 0;
     font-size: 14px;
+    font-family: 'Siyuanrouhei', Arial, sans-serif;
 }
 
 .App {
-    font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
