@@ -53,15 +53,16 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
     }
 
     let need_generate_title = request.conversation_id.is_empty();
-    let request_prompt = request.prompt.clone();
+    let request_prompt_result = template_engine.parse(&request.prompt, &template_context);
 
     let (conversation_id, new_message_id, init_message_list) = 
-        initialize_conversation(&request, &assistant_detail, assistant_prompt_result).await?;
+        initialize_conversation(&request, &assistant_detail, assistant_prompt_result, request_prompt_result.clone()).await?;
 
     if new_message_id.is_some() {
         let window_clone = window.clone();
         let config_feature_map = feature_config_state.config_feature_map.lock().await.clone(); 
         
+        let request_prompt_result_clone = request_prompt_result.clone();
         tokio::spawn(async move {
             let db = LLMDatabase::new().map_err(|e| e.to_string())?;
             let model_id = &assistant_detail.model[0].model_id;    
@@ -84,10 +85,8 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
             }).collect::<HashMap<String, String>>();
     
             let stream = config_map.get("stream").and_then(|v| v.parse().ok()).unwrap_or(false);
-    
-            let prompt = request.prompt.clone();
-    
-            println!("prompt: {}", prompt);
+        
+            println!("prompt: {}", request_prompt_result_clone);
 
             if stream {
                 if let Err(e) = provider.chat_stream(new_message_id.unwrap(), init_message_list, model_config_clone, tx).await {
@@ -122,7 +121,7 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
                             window_clone.emit(format!("message_{}", id).as_str(), "Tea::Event::MessageFinish")
                                 .map_err(|e| e.to_string()).unwrap();
                             if need_generate_title {
-                                generate_title(conversation_id, request_prompt.clone(), content.clone(), config_feature_map.clone(), window_clone.clone()).await.map_err(|e| e.to_string()).unwrap();
+                                generate_title(conversation_id, request_prompt_result.clone(), content.clone(), config_feature_map.clone(), window_clone.clone()).await.map_err(|e| e.to_string()).unwrap();
                             }
                         }
                     }
@@ -169,13 +168,14 @@ async fn initialize_conversation(
     request: &AiRequest,
     assistant_detail: &AssistantDetail,
     assistant_prompt_result: String,
+    request_prompt_result: String,
 ) -> Result<(i64, Option<i64>, Vec<(String, String)>), AppError> {
     let db = get_conversation_db()?;
     let (conversation_id, add_message_id, init_message_list) = if request.conversation_id.is_empty() {
         // 新对话逻辑
         let init_message_list = vec![
             (String::from("system"), assistant_prompt_result),
-            (String::from("user"), request.prompt.clone()),
+            (String::from("user"), request_prompt_result),
         ];
         let (conversation, _) = init_conversation(
             request.assistant_id,
@@ -201,12 +201,12 @@ async fn initialize_conversation(
         let _ = add_message(
             conversation_id,
             "user".to_string(),
-            request.prompt.clone(),
+            request_prompt_result.clone(),
             Some(assistant_detail.model[0].model_id.parse::<i64>()?),
             0,
         )?;
         let mut updated_message_list = message_list;
-        updated_message_list.push((String::from("user"), request.prompt.clone()));
+        updated_message_list.push((String::from("user"), request_prompt_result));
 
         let add_assistant_message = add_message(
             conversation_id,

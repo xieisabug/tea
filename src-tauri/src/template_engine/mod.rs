@@ -67,7 +67,7 @@ impl TemplateEngine {
     // 解析并替换模板字符串
     pub fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
         // !@\s*(\w+)(\([^)]*\))?@!
-        let re = Regex::new(r"!(\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
+        let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         let mut result = template.to_string();
 
         for cap in re.captures_iter(template) {
