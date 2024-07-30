@@ -40,6 +40,8 @@
     border: 1px solid #ccc;
     border-top: none;
     border-radius: 0 0 4px 4px;
+    max-height: 280px;
+    overflow: auto;
 }
 
 .select-items div {
