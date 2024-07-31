@@ -6,15 +6,15 @@ const AskWindowPrepare: React.FC = () => {
     <div className="bang-list" data-tauri-drag-region>
         <div className="bang-container" data-tauri-drag-region>
             <span className="bang-tag">!s</span>
-            <span>插入选择的文字</span>
+            <span data-tauri-drag-region>插入选择的文字</span>
         </div>
         <div className="bang-container" data-tauri-drag-region>
             <span className="bang-tag">!cd</span>
-            <span>插入当前日期文本</span>
+            <span data-tauri-drag-region>插入当前日期文本</span>
         </div>
         <div className="bang-container" data-tauri-drag-region>
             <span className="bang-tag">!ct</span>
-            <span>插入当前时间文字</span>
+            <span data-tauri-drag-region>插入当前时间文字</span>
         </div>
     </div>
 </div>
