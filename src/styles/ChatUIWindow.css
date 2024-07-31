@@ -246,6 +246,8 @@
     align-items: center;
     justify-content: center;
     height: 100%;
+    user-select: none;
+    -webkit-user-select: none;
 }
 .new-chat-hint {
     font-size: 12px;

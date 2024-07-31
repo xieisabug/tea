@@ -82,6 +82,8 @@
 
 .ask-window-prepare {
     font-size: 12px;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .bang-tag {
