@@ -2,24 +2,6 @@ use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell
 
 #[tauri::command]
 pub async fn run_artifacts(app_handle: tauri::AppHandle, lang: &str, input_str: &str) -> Result<String, AppError> {
-    let languages_and_commands = [
-        ("HTML", "直接在浏览器中打开 .html 文件"),
-        ("JavaScript (浏览器端)", "在 HTML 文件中引入 .js 文件，然后在浏览器中打开"),
-        ("Python", "python filename.py"),
-        ("Shell (Bash)", "bash filename.sh 或 ./filename.sh"),
-        ("PHP", "php filename.php"),
-        ("Ruby", "ruby filename.rb"),
-        ("Node.js", "node filename.js"),
-        ("Perl", "perl filename.pl"),
-        ("Lua", "lua filename.lua"),
-        ("R", "Rscript filename.R"),
-        ("Julia", "julia filename.jl"),
-        ("Go", "go run filename.go"),
-        ("Dart", "dart filename.dart"),
-        ("TypeScript (通过 ts-node)", "ts-node filename.ts"),
-        ("Swift (通过 Swift REPL)", "swift filename.swift"),
-    ];
-
     // Anthropic artifacts : code, markdown, html, svg, mermaid, react(引入了 lucid3-react, recharts, tailwind, shadcn/ui )
     // 加上 vue, nextjs 引入更多的前端库( echarts, antd, element-ui )
     

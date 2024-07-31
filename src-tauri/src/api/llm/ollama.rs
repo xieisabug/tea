@@ -46,7 +46,7 @@ impl ModelProvider for OllamaProvider {
         }
     }
 
-    fn chat(&self, message_id: i64, messages: Vec<(String, String)>, model_config: Vec<AssistantModelConfig>) 
+    fn chat(&self, _message_id: i64, messages: Vec<(String, String)>, model_config: Vec<AssistantModelConfig>) 
         -> BoxFuture<'static, Result<String, Box<dyn std::error::Error>>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
