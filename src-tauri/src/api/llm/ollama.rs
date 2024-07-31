@@ -56,7 +56,7 @@ impl ModelProvider for OllamaProvider {
                 .map(|c| (c.name, c.value))
                 .collect();
 
-            let url = format!("{}api/chat", config_map.get("endpoint").unwrap_or(&"http://localhost:11434/".to_string()));
+            let url = format!("{}/api/chat", config_map.get("endpoint").unwrap_or(&"http://localhost:11434/".to_string()));
 
             let json_messages = messages.iter().map(|(message_type, content)| {
                 json!({
@@ -109,7 +109,7 @@ impl ModelProvider for OllamaProvider {
                 .map(|c| (c.name, c.value))
                 .collect();
 
-            let url = format!("{}api/chat", config_map.get("endpoint").unwrap_or(&"http://localhost:11434/".to_string()));
+            let url = format!("{}/api/chat", config_map.get("endpoint").unwrap_or(&"http://localhost:11434/".to_string()));
 
             let json_messages = messages.iter().map(|(message_type, content)| {
                 json!({
@@ -173,7 +173,7 @@ impl ModelProvider for OllamaProvider {
                 .map(|c| (c.name, c.value))
                 .collect();
 
-            let url = format!("{}api/tags", config_map.get("endpoint").unwrap_or(&"http://localhost:11434/".to_string()));
+            let url = format!("{}/api/tags", config_map.get("endpoint").unwrap_or(&"http://localhost:11434/".to_string()));
 
             let response = client.get(&url)
                 .send()

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::{api::llm::get_provider, db::llm_db::LLMDatabase};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct LlmProvider {
@@ -45,21 +45,32 @@ pub async fn get_llm_providers(app_handle: tauri::AppHandle) -> Result<Vec<LlmPr
             api_type,
             description,
             is_official,
-            is_enabled
+            is_enabled,
         });
     }
     Ok(result)
 }
 
 #[tauri::command]
-pub async fn update_llm_provider(app_handle: tauri::AppHandle, id: i64, name: String, api_type: String, description: String, is_enabled: bool) -> Result<(), String> {
+pub async fn update_llm_provider(
+    app_handle: tauri::AppHandle,
+    id: i64,
+    name: String,
+    api_type: String,
+    description: String,
+    is_enabled: bool,
+) -> Result<(), String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    db.update_llm_provider(id, &*name, &*api_type, &*description, is_enabled).map_err(|e| e.to_string())?;
+    db.update_llm_provider(id, &*name, &*api_type, &*description, is_enabled)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_llm_provider_config(app_handle: tauri::AppHandle, id: i64) -> Result<Vec<LlmProviderConfig>, String> {
+pub async fn get_llm_provider_config(
+    app_handle: tauri::AppHandle,
+    id: i64,
+) -> Result<Vec<LlmProviderConfig>, String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let configs = db.get_llm_provider_config(id).map_err(|e| e.to_string())?;
     let mut result = Vec::new();
@@ -77,18 +88,39 @@ pub async fn get_llm_provider_config(app_handle: tauri::AppHandle, id: i64) -> R
 }
 
 #[tauri::command]
-pub async fn update_llm_provider_config(app_handle: tauri::AppHandle, llm_provider_id: i64, name: String, value: String) -> Result<(), String> {
+pub async fn update_llm_provider_config(
+    app_handle: tauri::AppHandle,
+    llm_provider_id: i64,
+    name: String,
+    value: String,
+) -> Result<(), String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    db.update_llm_provider_config(llm_provider_id, &*name, &*value).map_err(|e| e.to_string())?;
+    db.update_llm_provider_config(llm_provider_id, &*name, &*value)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub async fn get_llm_models(app_handle: tauri::AppHandle, llm_provider_id: String) -> Result<Vec<LlmModel>, String> {
+pub async fn get_llm_models(
+    app_handle: tauri::AppHandle,
+    llm_provider_id: String,
+) -> Result<Vec<LlmModel>, String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    let models = db.get_llm_models(llm_provider_id).map_err(|e| e.to_string())?;
+    let models = db
+        .get_llm_models(llm_provider_id)
+        .map_err(|e| e.to_string())?;
     let mut result = Vec::new();
-    for (id, name, llm_provider_id, code, description, vision_support, audio_support, video_support) in models {
+    for (
+        id,
+        name,
+        llm_provider_id,
+        code,
+        description,
+        vision_support,
+        audio_support,
+        video_support,
+    ) in models
+    {
         result.push(LlmModel {
             id,
             name,
@@ -104,20 +136,37 @@ pub async fn get_llm_models(app_handle: tauri::AppHandle, llm_provider_id: Strin
 }
 
 #[tauri::command]
-pub async fn fetch_model_list(app_handle: tauri::AppHandle, llm_provider_id: i64) -> Result<Vec<LlmModel>, String> {
+pub async fn fetch_model_list(
+    app_handle: tauri::AppHandle,
+    llm_provider_id: i64,
+) -> Result<Vec<LlmModel>, String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    let llm_provider = db.get_llm_provider(llm_provider_id).map_err(|e| e.to_string())?;
-    let llm_provider_config = db.get_llm_provider_config(llm_provider_id).map_err(|e| e.to_string())?;
+    let llm_provider = db
+        .get_llm_provider(llm_provider_id)
+        .map_err(|e| e.to_string())?;
+    let llm_provider_config = db
+        .get_llm_provider_config(llm_provider_id)
+        .map_err(|e| e.to_string())?;
 
-    let provider = get_provider(llm_provider,llm_provider_config);
-    
+    let provider = get_provider(llm_provider, llm_provider_config);
+
     let models_future = provider.models();
     match models_future.await {
         Ok(models) => {
-            db.delete_llm_model_by_provider(llm_provider_id).map_err(|e| e.to_string())?;
+            db.delete_llm_model_by_provider(llm_provider_id)
+                .map_err(|e| e.to_string())?;
             for model in &models {
                 println!("Model: {:?}", model);
-                db.add_llm_model(&model.name, llm_provider_id, &model.code, &model.description, model.vision_support, model.audio_support, model.video_support).map_err(|e| e.to_string())?;
+                db.add_llm_model(
+                    &model.name,
+                    llm_provider_id,
+                    &model.code,
+                    &model.description,
+                    model.vision_support,
+                    model.audio_support,
+                    model.video_support,
+                )
+                .map_err(|e| e.to_string())?;
             }
 
             Ok(models)
@@ -141,13 +190,14 @@ pub struct ModelForSelect {
 pub fn get_models_for_select(app_handle: tauri::AppHandle) -> Result<Vec<ModelForSelect>, String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let result = db.get_models_for_select().unwrap();
-    let models = result.iter().map(|(name, code, id, llm_provider_id)| {
-        ModelForSelect {
+    let models = result
+        .iter()
+        .map(|(name, code, id, llm_provider_id)| ModelForSelect {
             name: name.clone(),
             code: code.clone(),
             id: *id,
             llm_provider_id: *llm_provider_id,
-        }
-    }).collect();
+        })
+        .collect();
     Ok(models)
 }

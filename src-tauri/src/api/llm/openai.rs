@@ -48,7 +48,7 @@ impl ModelProvider for OpenAIProvider {
                     .map(|c| (c.name, c.value))
                     .collect();
     
-                let url = format!("{}chat/completions", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/".to_string()));
+                let url = format!("{}/chat/completions", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/".to_string()));
                 let api_key = config_map.get("api_key").unwrap().clone();
     
                 let json_messages = messages.iter().map(|(message_type, content)| {
@@ -105,7 +105,7 @@ impl ModelProvider for OpenAIProvider {
                     .map(|c| (c.name, c.value))
                     .collect();
     
-                let url = format!("{}chat/completions", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/v1".to_string()));
+                let url = format!("{}/chat/completions", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/v1".to_string()));
                 let api_key = config_map.get("api_key").unwrap().clone();
     
                 let json_messages = messages.iter().map(|(message_type, content)| {
@@ -187,7 +187,7 @@ impl ModelProvider for OpenAIProvider {
                 .collect();
             println!("config_map: {:?}", config_map);
 
-            let url = format!("{}models", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/v1/".to_string()));
+            let url = format!("{}/models", config_map.get("endpoint").unwrap_or(&"https://api.openai.com/v1/".to_string()));
             let api_key = config_map.get("api_key").unwrap().clone();
             println!("OpenAI models endpoint : {}", url);
 

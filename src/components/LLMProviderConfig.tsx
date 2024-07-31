@@ -4,6 +4,7 @@ import {invoke} from "@tauri-apps/api/tauri";
 import LLMProviderConfigForm from "./LLMProviderConfigForm.tsx";
 import RoundButton from './RoundButton.tsx';
 import Switch from './Switch.tsx';
+import { emit } from '@tauri-apps/api/event';
 
 interface LLMProvider {
     id: string;
@@ -32,7 +33,14 @@ const LLMProviderConfig: React.FC = () => {
     };
 
     useEffect(() => {
-        invoke<Array<LLMProvider>>('get_llm_providers').then(setLLMProviders);
+        invoke<Array<LLMProvider>>('get_llm_providers')
+            .then(setLLMProviders)
+            .catch((e) => {
+                emit('config-window-alert-dialog', {
+                    text: '获取大模型提供商失败: ' + e,
+                    type: 'error'
+                });
+            });
     }, []);
 
 

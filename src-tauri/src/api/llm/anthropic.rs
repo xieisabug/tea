@@ -121,7 +121,7 @@ impl ModelProvider for AnthropicProvider {
                     .map(|c| (c.name, c.value))
                     .collect();
 
-                let url = format!("{}v1/messages", config_map.get("endpoint").unwrap_or(&"https://api.anthropic.com/".to_string()));
+                let url = format!("{}/v1/messages", config_map.get("endpoint").unwrap_or(&"https://api.anthropic.com/".to_string()));
                 let api_key = config_map.get("api_key").unwrap().clone();
 
                 let json_messages = messages.iter().filter(|(message_type, _)| message_type != "system").map(|(message_type, content)| {
@@ -182,7 +182,7 @@ impl ModelProvider for AnthropicProvider {
                     .map(|c| (c.name, c.value))
                     .collect();
 
-                let url = format!("{}v1/messages", config_map.get("endpoint").unwrap_or(&"https://api.anthropic.com/".to_string()));
+                let url = format!("{}/v1/messages", config_map.get("endpoint").unwrap_or(&"https://api.anthropic.com/".to_string()));
                 let api_key = config_map.get("api_key").unwrap().clone();
 
                 let json_messages = messages.iter().filter(|(message_type, _)| message_type != "system").map(|(message_type, content)| {

@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import debounce from 'lodash/debounce';
 import TagInput from "./TagInput.tsx";
 import RoundButton from './RoundButton.tsx';
+import { emit } from '@tauri-apps/api/event';
 
 interface LLMProviderConfigFormProps {
     id: string;
@@ -61,9 +62,17 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
     };
 
     const fetchModelList = async () => {
+        console.log('fetch model list');
         invoke<Array<LLMModel>>('fetch_model_list', { llmProviderId: id })
             .then((modelList) => {
                 setTags(modelList.map((model) => model.name));
+                emit('config-window-success-notification');
+            })
+            .catch((e) => {
+                emit('config-window-alert-dialog', {
+                    text: '获取模型列表失败，请检查Endpoint和Api Key配置: ' + e,
+                    type: 'error'
+                });
             });
     };
 
