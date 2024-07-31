@@ -10,16 +10,16 @@ pub struct AssistantDetail {
 }
 
 #[tauri::command]
-pub fn get_assistants() -> Result<Vec<Assistant>, String> {
-    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+pub fn get_assistants(app_handle: tauri::AppHandle) -> Result<Vec<Assistant>, String> {
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     assistant_db.get_assistants()
         .map(|assistants| assistants.into())
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn get_assistant(assistant_id: i64) -> Result<AssistantDetail, String> {
-    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+pub fn get_assistant(app_handle: tauri::AppHandle, assistant_id: i64) -> Result<AssistantDetail, String> {
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
 
     // 获取 Assistant 基本信息
     let assistant = assistant_db.get_assistant(assistant_id).map_err(|e| e.to_string())?;
@@ -54,8 +54,8 @@ pub fn get_assistant(assistant_id: i64) -> Result<AssistantDetail, String> {
 }
 
 #[tauri::command]
-pub fn save_assistant(assistant_detail: AssistantDetail) -> Result<(), String> {
-    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+pub fn save_assistant(app_handle: tauri::AppHandle, assistant_detail: AssistantDetail) -> Result<(), String> {
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
 
     println!("save_assistant assistant_detail: {:?}", assistant_detail.clone());
 
@@ -115,9 +115,9 @@ pub fn save_assistant(assistant_detail: AssistantDetail) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn add_assistant() -> Result<AssistantDetail, String> {
+pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, String> {
     println!("start add assistant");
-    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
 
     // Add a default assistant
     let assistant_id = assistant_db.add_assistant(
@@ -214,13 +214,13 @@ pub fn add_assistant() -> Result<AssistantDetail, String> {
 }
 
 #[tauri::command]
-pub fn delete_assistant(assistant_id: i64) -> Result<(), String> {
-    let assistant_db = AssistantDatabase::new().map_err(|e| e.to_string())?;
+pub fn delete_assistant(app_handle: tauri::AppHandle, assistant_id: i64) -> Result<(), String> {
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let _ = assistant_db.delete_assistant_model_config_by_assistant_id(assistant_id).map_err(|e| e.to_string());
     let _ = assistant_db.delete_assistant_prompt_by_assistant_id(assistant_id).map_err(|e| e.to_string());
     let _ = assistant_db.delete_assistant_prompt_param_by_assistant_id(assistant_id).map_err(|e| e.to_string());
 
-    let conversation_db = ConversationDatabase::new().map_err(|e| e.to_string())?;
+    let conversation_db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let _ = conversation_db.update_conversation_assistant_id(assistant_id, Some(1)).map_err(|e| e.to_string())?;
 
     assistant_db.delete_assistant(assistant_id).map_err(|e| e.to_string())

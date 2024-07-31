@@ -92,15 +92,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
 
-    let system_db = SystemDatabase::new()?;
-    let llm_db = LLMDatabase::new()?;
-    let assistant_db = AssistantDatabase::new()?;
-    let conversation_db = ConversationDatabase::new()?;
-    system_db.create_table()?;
-    llm_db.create_table()?;
-    assistant_db.create_table()?;
-    conversation_db.create_table()?;
-
     let app = tauri::Builder::default()
         .system_tray(system_tray)
         .on_system_tray_event(|app, event| match event {
@@ -127,6 +118,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .setup(|app| {
             let app_handle = app.handle();
 
+            let system_db = SystemDatabase::new(&app_handle)?;
+            let llm_db = LLMDatabase::new(&app_handle)?;
+            let assistant_db = AssistantDatabase::new(&app_handle)?;
+            let conversation_db = ConversationDatabase::new(&app_handle)?;
+            system_db.create_table()?;
+            llm_db.create_table()?;
+            assistant_db.create_table()?;
+            conversation_db.create_table()?;
+
+            app.manage(initialize_state(&app_handle));
+
+
             if app.get_window("main").is_none() {
                 create_ask_window(&app_handle)
             }
@@ -140,7 +143,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .manage(AppState {
             selected_text: TokioMutex::new(String::new()),
         })
-        .manage(initialize_state())
         .invoke_handler(tauri::generate_handler![
             ask_ai, get_selected, open_config_window, open_chat_ui_window,
             save_config, get_config, get_all_feature_config, save_feature_config,
@@ -199,8 +201,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn initialize_state() -> FeatureConfigState {
-    let db = SystemDatabase::new().expect("Failed to connect to database");
+fn initialize_state(app_handle: &tauri::AppHandle) -> FeatureConfigState {
+    let db = SystemDatabase::new(app_handle).expect("Failed to connect to database");
     let configs = db.get_all_feature_config().expect("Failed to load feature configs");
     let mut configs_map = HashMap::new();
     for config in configs.clone().into_iter() {

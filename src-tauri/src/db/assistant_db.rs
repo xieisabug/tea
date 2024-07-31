@@ -1,6 +1,8 @@
 use rusqlite::{Connection, params, Result};
 use serde::{Deserialize, Serialize};
 
+use super::get_db_path;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Assistant {
     pub id: i64,
@@ -51,8 +53,9 @@ pub struct AssistantDatabase {
 }
 
 impl AssistantDatabase {
-    pub fn new() -> rusqlite::Result<Self> {
-        let conn = Connection::open("./assitant.db")?;
+    pub fn new(app_handle: &tauri::AppHandle) -> rusqlite::Result<Self> {
+        let db_path = get_db_path(app_handle, "assistant.db");
+        let conn = Connection::open(db_path.unwrap())?;
         Ok(AssistantDatabase { conn })
     }
 

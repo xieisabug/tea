@@ -12,8 +12,8 @@ pub async fn get_all_feature_config(state: State<'_, FeatureConfigState>) -> Res
 }
 
 #[tauri::command]
-pub async fn save_feature_config(state: State<'_, FeatureConfigState>, feature_code: String, config: HashMap<String, String>) -> Result<(), String> {
-    let db = SystemDatabase::new().map_err(|e| e.to_string())?;
+pub async fn save_feature_config(app_handle: tauri::AppHandle, state: State<'_, FeatureConfigState>, feature_code: String, config: HashMap<String, String>) -> Result<(), String> {
+    let db = SystemDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let _ = db.delete_feature_config_by_feature_code(feature_code.as_str());
     for (key, value) in config.iter() {
         db.add_feature_config(&FeatureConfig {

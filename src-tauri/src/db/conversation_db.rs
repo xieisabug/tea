@@ -1,8 +1,8 @@
-use std::collections::HashSet;
-
 use rusqlite::{Connection, Result, OptionalExtension};
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use super::get_db_path;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Conversation {
@@ -111,8 +111,9 @@ pub struct ConversationDatabase {
 }
 
 impl ConversationDatabase {
-    pub fn new() -> rusqlite::Result<Self> {
-        let conn = Connection::open("./conversation.db")?;
+    pub fn new(app_handle: &tauri::AppHandle) -> rusqlite::Result<Self> {
+        let db_path = get_db_path(app_handle, "conversation.db");
+        let conn = Connection::open(db_path.unwrap())?;
         Ok(ConversationDatabase { conn })
     }
 

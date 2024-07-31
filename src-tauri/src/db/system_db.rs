@@ -1,6 +1,7 @@
 use rusqlite::{params, Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
-use crate::db::llm_db::LLMDatabase;
+
+use super::get_db_path;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FeatureConfig {
@@ -17,8 +18,9 @@ pub struct SystemDatabase {
 }
 
 impl SystemDatabase {
-    pub fn new() -> Result<Self> {
-        let conn = Connection::open("./system.db")?;
+    pub fn new(app_handle: &tauri::AppHandle) -> Result<Self> {
+        let db_path = get_db_path(app_handle, "system.db");
+        let conn = Connection::open(db_path.unwrap())?;
         Ok(SystemDatabase { conn })
     }
 

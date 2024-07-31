@@ -35,7 +35,7 @@ pub struct AiResponse {
 }
 
 #[tauri::command]
-pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, FeatureConfigState>, window: tauri::Window, request: AiRequest) -> Result<AiResponse, AppError> {
+pub async fn ask_ai(app_handle: tauri::AppHandle, state: State<'_, AppState>, feature_config_state: State<'_, FeatureConfigState>, window: tauri::Window, request: AiRequest) -> Result<AiResponse, AppError> {
     let template_engine = TemplateEngine::new();
     let mut template_context = HashMap::new();
     let (tx, mut rx) = mpsc::channel(100);
@@ -43,7 +43,8 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
     let selected_text = state.inner().selected_text.lock().await.clone();
     template_context.insert("selected_text".to_string(), selected_text);
 
-    let assistant_detail = get_assistant(request.assistant_id).unwrap();
+    let app_handle_clone = app_handle.clone();
+    let assistant_detail = get_assistant(app_handle_clone, request.assistant_id).unwrap();
     let assistant_prompt_origin = &assistant_detail.prompts[0].prompt;
     let assistant_prompt_result = template_engine.parse(&assistant_prompt_origin, &template_context);
     println!("assistant_prompt_result: {}", assistant_prompt_result);
@@ -55,16 +56,18 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
     let need_generate_title = request.conversation_id.is_empty();
     let request_prompt_result = template_engine.parse(&request.prompt, &template_context);
 
+    let app_handle_clone = app_handle.clone();
     let (conversation_id, new_message_id, init_message_list) = 
-        initialize_conversation(&request, &assistant_detail, assistant_prompt_result, request_prompt_result.clone()).await?;
+        initialize_conversation(&app_handle_clone, &request, &assistant_detail, assistant_prompt_result, request_prompt_result.clone()).await?;
 
     if new_message_id.is_some() {
         let window_clone = window.clone();
         let config_feature_map = feature_config_state.config_feature_map.lock().await.clone(); 
         
         let request_prompt_result_clone = request_prompt_result.clone();
+        let app_handle_clone = app_handle.clone();
         tokio::spawn(async move {
-            let db = LLMDatabase::new().map_err(|e| e.to_string())?;
+            let db = LLMDatabase::new(&app_handle_clone).map_err(|e| e.to_string())?;
             let model_id = &assistant_detail.model[0].model_id;    
             let model_detail = db.get_llm_model_detail(model_id.parse::<i64>().unwrap()).unwrap();
             println!("model detail : {:#?}", model_detail);
@@ -106,6 +109,7 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
             Ok::<(), String>(())
         });
 
+        let app_handle_clone = app_handle.clone();
         tokio::spawn(async move {
             loop {
                 match timeout(Duration::from_secs(10), rx.recv()).await {
@@ -115,13 +119,13 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
                             .map_err(|e| e.to_string()).unwrap();
 
                         if done {
-                            let conversation_db = ConversationDatabase::new().map_err(|e: rusqlite::Error| e.to_string()).unwrap();
+                            let conversation_db = ConversationDatabase::new(&app_handle_clone).map_err(|e: rusqlite::Error| e.to_string()).unwrap();
                             let _ = Message::update(&conversation_db.conn, new_message_id.unwrap(), conversation_id, content.clone(), 0);
 
                             window_clone.emit(format!("message_{}", id).as_str(), "Tea::Event::MessageFinish")
                                 .map_err(|e| e.to_string()).unwrap();
                             if need_generate_title {
-                                generate_title(conversation_id, request_prompt_result.clone(), content.clone(), config_feature_map.clone(), window_clone.clone()).await.map_err(|e| e.to_string()).unwrap();
+                                generate_title(&app_handle_clone, conversation_id, request_prompt_result.clone(), content.clone(), config_feature_map.clone(), window_clone.clone()).await.map_err(|e| e.to_string()).unwrap();
                             }
                         }
                     }
@@ -144,8 +148,8 @@ pub async fn ask_ai(state: State<'_, AppState>, feature_config_state: State<'_, 
     })
 }
 
-fn init_conversation(assistant_id: i64, llm_model_id: i64, messages: &Vec<(String, String)>) -> Result<(Conversation, Vec<Message>), AppError> {
-    let db = ConversationDatabase::new().map_err(AppError::from)?;
+fn init_conversation(app_handle: &tauri::AppHandle, assistant_id: i64, llm_model_id: i64, messages: &Vec<(String, String)>) -> Result<(Conversation, Vec<Message>), AppError> {
+    let db = ConversationDatabase::new(app_handle).map_err(AppError::from)?;
     let conversation = Conversation::create(&db.conn, "新对话".to_string(), Some(assistant_id)).map_err(AppError::from)?;
     let conversation_clone = conversation.clone();
     let conversation_id = conversation_clone.id;
@@ -158,19 +162,20 @@ fn init_conversation(assistant_id: i64, llm_model_id: i64, messages: &Vec<(Strin
     Ok((conversation_clone, message_result_array))
 }
 
-fn add_message(conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<Message, AppError> {
-    let db = ConversationDatabase::new().map_err(AppError::from)?;
+fn add_message(app_handle: &tauri::AppHandle, conversation_id: i64, message_type: String, content: String, llm_model_id: Option<i64>, token_count: i32) -> Result<Message, AppError> {
+    let db = ConversationDatabase::new(app_handle).map_err(AppError::from)?;
     let message = Message::create(&db.conn, conversation_id, message_type, content, llm_model_id, token_count).map_err(AppError::from)?;
     Ok(message.clone())
 }
 
 async fn initialize_conversation(
+    app_handle: &tauri::AppHandle,
     request: &AiRequest,
     assistant_detail: &AssistantDetail,
     assistant_prompt_result: String,
     request_prompt_result: String,
 ) -> Result<(i64, Option<i64>, Vec<(String, String)>), AppError> {
-    let db = get_conversation_db()?;
+    let db = get_conversation_db(app_handle)?;
     let (conversation_id, add_message_id, init_message_list) = if request.conversation_id.is_empty() {
         // 新对话逻辑
         let init_message_list = vec![
@@ -178,11 +183,13 @@ async fn initialize_conversation(
             (String::from("user"), request_prompt_result),
         ];
         let (conversation, _) = init_conversation(
+            app_handle,
             request.assistant_id,
             assistant_detail.model[0].model_id.parse::<i64>()?,
             &init_message_list,
         )?;
         let add_message = add_message(
+            app_handle,
             conversation.id,
             "assistant".to_string(),
             String::new(),
@@ -199,6 +206,7 @@ async fn initialize_conversation(
             .collect::<Vec<_>>();
 
         let _ = add_message(
+            app_handle,
             conversation_id,
             "user".to_string(),
             request_prompt_result.clone(),
@@ -209,6 +217,7 @@ async fn initialize_conversation(
         updated_message_list.push((String::from("user"), request_prompt_result));
 
         let add_assistant_message = add_message(
+            app_handle,
             conversation_id,
             "assistant".to_string(),
             String::new(),
@@ -221,6 +230,7 @@ async fn initialize_conversation(
 }
 
 async fn generate_title(
+    app_handle: &tauri::AppHandle,
     conversation_id: i64,
     user_prompt: String,
     content: String,
@@ -251,7 +261,7 @@ async fn generate_title(
             }
         }
 
-        let db = get_llm_db()?;
+        let db = get_llm_db(app_handle)?;
         let model_detail = db.get_llm_model_detail(model_id.value.parse::<i64>().unwrap()).unwrap();
 
         let provider = get_provider(model_detail.provider, model_detail.configs);
@@ -271,7 +281,7 @@ async fn generate_title(
         let response_text = response.unwrap();
         println!("Chat content: {}", response_text.clone());
 
-        let conversation_db = get_conversation_db()?;
+        let conversation_db = get_conversation_db(app_handle)?;
         let _ = conversation_db.update_conversation_name(conversation_id, response_text.clone());
         window.emit("title_change", (conversation_id, response_text.clone())).map_err(|e| e.to_string()).unwrap();
     }
@@ -279,10 +289,10 @@ async fn generate_title(
     Ok(())
 }
 
-fn get_conversation_db() -> Result<ConversationDatabase, AppError> {
-    ConversationDatabase::new().map_err(AppError::from)
+fn get_conversation_db(app_handle: &tauri::AppHandle) -> Result<ConversationDatabase, AppError> {
+    ConversationDatabase::new(app_handle).map_err(AppError::from)
 }
 
-fn get_llm_db() -> Result<LLMDatabase, AppError> {
-    LLMDatabase::new().map_err(AppError::from)
+fn get_llm_db(app_handle: &tauri::AppHandle) -> Result<LLMDatabase, AppError> {
+    LLMDatabase::new(app_handle).map_err(AppError::from)
 }

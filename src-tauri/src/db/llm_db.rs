@@ -1,5 +1,7 @@
 use rusqlite::{Connection, params};
 
+use super::get_db_path;
+
 #[derive(Debug)]
 pub struct LLMProvider {
     pub id: i64,
@@ -44,8 +46,9 @@ pub struct LLMDatabase {
 }
 
 impl LLMDatabase {
-    pub fn new() -> rusqlite::Result<Self> {
-        let conn = Connection::open("./llm.db")?;
+    pub fn new(app_handle: &tauri::AppHandle) -> rusqlite::Result<Self> {
+        let db_path = get_db_path(app_handle, "llm.db");
+        let conn = Connection::open(db_path.unwrap())?;
         Ok(LLMDatabase { conn })
     }
 
