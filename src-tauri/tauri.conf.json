@@ -6,8 +6,8 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "ai-assistant",
-    "version": "0.0.0"
+    "productName": "Tea",
+    "version": "0.0.1"
   },
   "tauri": {
     "allowlist": {

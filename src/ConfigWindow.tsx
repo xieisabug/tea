@@ -33,7 +33,7 @@ function ConfigWindow() {
 
     useEffect(() => {
         console.log("listen config-window-success-notification");
-        listen('config-window-success-notification', (event) => {
+        listen('config-window-success-notification', () => {
             setShowNotification(true);
         })
     }, []);
