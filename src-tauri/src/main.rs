@@ -48,11 +48,13 @@ struct Config {
 
 #[cfg(target_os = "macos")]
 fn query_accessibility_permissions() -> bool {
-    let trusted = macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
+    let trusted = macos_accessibility_client::accessibility::application_is_trusted();
     if trusted {
         print!("Application is totally trusted!");
     } else {
         print!("Application isn't trusted :(");
+        // let trusted = macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
+        // return trusted;
     }
     trusted
 }

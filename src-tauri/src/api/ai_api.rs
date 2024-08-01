@@ -68,8 +68,9 @@ pub async fn ask_ai(app_handle: tauri::AppHandle, state: State<'_, AppState>, fe
         let app_handle_clone = app_handle.clone();
         tokio::spawn(async move {
             let db = LLMDatabase::new(&app_handle_clone).map_err(|e| e.to_string())?;
-            let model_id = &assistant_detail.model[0].model_id;    
-            let model_detail = db.get_llm_model_detail(model_id.parse::<i64>().unwrap()).unwrap();
+            let provider_id = &assistant_detail.model[0].provider_id;
+            let model_code = &assistant_detail.model[0].model_code;    
+            let model_detail = db.get_llm_model_detail(provider_id, model_code).unwrap();
             println!("model detail : {:#?}", model_detail);
 
             let provider = get_provider(model_detail.provider, model_detail.configs);
@@ -185,7 +186,7 @@ async fn initialize_conversation(
         let (conversation, _) = init_conversation(
             app_handle,
             request.assistant_id,
-            assistant_detail.model[0].model_id.parse::<i64>()?,
+            assistant_detail.model[0].id,
             &init_message_list,
         )?;
         let add_message = add_message(
@@ -193,7 +194,7 @@ async fn initialize_conversation(
             conversation.id,
             "assistant".to_string(),
             String::new(),
-            Some(assistant_detail.model[0].model_id.parse::<i64>()?),
+            Some(assistant_detail.model[0].id),
             0,
         )?;
         (conversation.id, Some(add_message.id), init_message_list)
@@ -210,7 +211,7 @@ async fn initialize_conversation(
             conversation_id,
             "user".to_string(),
             request_prompt_result.clone(),
-            Some(assistant_detail.model[0].model_id.parse::<i64>()?),
+            Some(assistant_detail.model[0].id),
             0,
         )?;
         let mut updated_message_list = message_list;
@@ -221,7 +222,7 @@ async fn initialize_conversation(
             conversation_id,
             "assistant".to_string(),
             String::new(),
-            Some(assistant_detail.model[0].model_id.parse::<i64>()?),
+            Some(assistant_detail.model[0].id),
             0,
         )?;
         (conversation_id, Some(add_assistant_message.id), updated_message_list)
@@ -240,7 +241,8 @@ async fn generate_title(
     let feature_config = config_feature_map.get("conversation_summary");
     if let Some(config) = feature_config {
         // model_id, prompt, summary_length
-        let model_id = config.get("model_id").unwrap();
+        let provider_id = config.get("provider_id").unwrap();
+        let model_code = config.get("model_code").unwrap();
         let prompt = config.get("prompt").unwrap().value.clone();
         let summary_length = config.get("summary_length").unwrap().value.clone().parse::<i32>().unwrap();
         let mut context = String::new();
@@ -262,7 +264,7 @@ async fn generate_title(
         }
 
         let db = get_llm_db(app_handle)?;
-        let model_detail = db.get_llm_model_detail(model_id.value.parse::<i64>().unwrap()).unwrap();
+        let model_detail = db.get_llm_model_detail(&provider_id.value.parse::<i64>()?, &model_code.value).unwrap();
 
         let provider = get_provider(model_detail.provider, model_detail.configs);
         let response = provider

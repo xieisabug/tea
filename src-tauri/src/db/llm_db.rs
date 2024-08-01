@@ -243,9 +243,9 @@ impl LLMDatabase {
         Ok(result)
     }
 
-    pub fn get_llm_model_detail(&self, model_id: i64) -> rusqlite::Result<ModelDetail> {
-        let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE id = ?")?;
-        let model = stmt.query_map([model_id], |row| {
+    pub fn get_llm_model_detail(&self, provider_id: &i64, model_code: &String) -> rusqlite::Result<ModelDetail> {
+        let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE llm_provider_id = ? AND code = ?")?;
+        let model = stmt.query_map([&provider_id.to_string(), model_code], |row| {
             Ok(LLMModel {
                 id: row.get(0)?,
                 name: row.get(1)?,

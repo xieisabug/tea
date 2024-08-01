@@ -87,9 +87,9 @@ pub fn save_assistant(app_handle: tauri::AppHandle, assistant_detail: AssistantD
     // Save or update the AssistantModels
     for model in assistant_detail.model {
         if model.id == 0 {
-            assistant_db.add_assistant_model(model.assistant_id, &model.model_id, &model.alias).map_err(|e| e.to_string())?;
+            assistant_db.add_assistant_model(model.assistant_id, model.provider_id, &model.model_code, &model.alias).map_err(|e| e.to_string())?;
         } else {
-            assistant_db.update_assistant_model(model.id, &model.model_id, &model.alias).map_err(|e| e.to_string())?;
+            assistant_db.update_assistant_model(model.id, model.provider_id, &model.model_code, &model.alias).map_err(|e| e.to_string())?;
         }
     }
 
@@ -140,7 +140,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
         created_time: Option::None,
     }];
 
-    let model_id = assistant_db.add_assistant_model(assistant_id, "0", "").map_err(|e| e.to_string())?;
+    let model_id = assistant_db.add_assistant_model(assistant_id, 0, "", "").map_err(|e| e.to_string())?;
     println!("model_id: {:?}", model_id);
 
     // Add default model configs
@@ -196,7 +196,8 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
     let model = vec![AssistantModel {
         id: model_id,
         assistant_id,
-        model_id: "0".to_string(),
+        provider_id: 0,
+        model_code: "".to_string(),
         alias: "".to_string(),
     }];
     let prompt_params = Vec::new();

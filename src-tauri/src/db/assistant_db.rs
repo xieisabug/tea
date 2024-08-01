@@ -17,7 +17,8 @@ pub struct Assistant {
 pub struct AssistantModel {
     pub id: i64,
     pub assistant_id: i64,
-    pub model_id: String,
+    pub provider_id: i64,
+    pub model_code: String,
     pub alias: String,
 }
 
@@ -75,7 +76,8 @@ impl AssistantDatabase {
             "CREATE TABLE IF NOT EXISTS assistant_model (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 assistant_id INTEGER NOT NULL,
-                model_id INTEGER NOT NULL,
+                provider_id INTEGER NOT NULL,
+                model_code TEXT NOT NULL,
                 alias TEXT
             );",
             [],
@@ -171,19 +173,19 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_model(&self, assistant_id: i64, model_id: &str, alias: &str) -> Result<i64> {
+    pub fn add_assistant_model(&self, assistant_id: i64, provider_id: i64, model_code: &str, alias: &str) -> Result<i64> {
         self.conn.execute(
-            "INSERT INTO assistant_model (assistant_id, model_id, alias) VALUES (?, ?, ?)",
-            params![assistant_id, model_id, alias],
+            "INSERT INTO assistant_model (assistant_id, provider_id, model_code, alias) VALUES (?, ?, ?, ?)",
+            params![assistant_id, provider_id, model_code, alias],
         )?;
         let id = self.conn.last_insert_rowid();
         Ok(id)
     }
 
-    pub fn update_assistant_model(&self, id: i64, model_id: &str, alias: &str) -> Result<()> {
+    pub fn update_assistant_model(&self, id: i64, provider_id: i64, model_code: &str, alias: &str) -> Result<()> {
         self.conn.execute(
-            "UPDATE assistant_model SET model_id = ?, alias = ? WHERE id = ?",
-            params![model_id, alias, id],
+            "UPDATE assistant_model SET model_code = ?, provider_id = ?, alias = ? WHERE id = ?",
+            params![model_code, provider_id, alias, id],
         )?;
         Ok(())
     }
@@ -278,14 +280,15 @@ impl AssistantDatabase {
     }
 
     pub fn get_assistant_model(&self, assistant_id: i64) -> Result<Vec<AssistantModel>> {
-        let mut stmt = self.conn.prepare("SELECT id, assistant_id, model_id, alias FROM assistant_model WHERE assistant_id = ?")?;
+        let mut stmt = self.conn.prepare("SELECT id, assistant_id, provider_id, model_code, alias FROM assistant_model WHERE assistant_id = ?")?;
         let assistant_model_iter = stmt.query_map(params![assistant_id], |row| {
             println!("row: {:?}", row);
             Ok(AssistantModel {
                 id: row.get(0)?,
                 assistant_id: row.get(1)?,
-                model_id: row.get::<_, i64>(2)?.to_string(),
-                alias: row.get(3)?,
+                provider_id: row.get::<_, i64>(2)?,
+                model_code: row.get(3)?,
+                alias: row.get(4)?,
             })
         })?;
 
