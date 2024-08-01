@@ -78,7 +78,7 @@ impl ModelProvider for OpenAIProvider {
                 println!("openai chat: {:?}", body);
     
                 let response = client.post(&url)
-                    .header(AUTHORIZATION, api_key)
+                    .header(AUTHORIZATION, &format!("Bearer {}", api_key))
                     .json(&body)
                     .send()
                     .await?
@@ -135,7 +135,7 @@ impl ModelProvider for OpenAIProvider {
                 println!("openai chat stream url: {} body: {:?}", url, body);
     
                 let response = client.post(&url)
-                    .header(AUTHORIZATION, api_key)
+                    .header(AUTHORIZATION, &format!("Bearer {}", api_key))
                     .json(&body)
                     .send()
                     .await?;
@@ -193,7 +193,7 @@ impl ModelProvider for OpenAIProvider {
 
             let mut headers = HeaderMap::new();
             headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
-            headers.insert(AUTHORIZATION, HeaderValue::from_str(&api_key).unwrap());
+            headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", api_key)).unwrap());
             
             let req = client.request("GET".parse().unwrap(), url)
                 .headers(headers)

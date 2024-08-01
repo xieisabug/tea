@@ -238,6 +238,7 @@ async fn generate_title(
     config_feature_map: HashMap<String, HashMap<String, FeatureConfig>>,
     window: tauri::Window,
 ) -> Result<(), AppError> {
+    // TODO 要检查下是否配置了对应的
     let feature_config = config_feature_map.get("conversation_summary");
     if let Some(config) = feature_config {
         // model_id, prompt, summary_length
