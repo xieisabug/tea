@@ -243,8 +243,8 @@ async fn generate_title(
     let feature_config = config_feature_map.get("conversation_summary");
     if let Some(config) = feature_config {
         // model_id, prompt, summary_length
-        let provider_id = config.get("provider_id").unwrap();
-        let model_code = config.get("model_code").unwrap();
+        let provider_id = config.get("provider_id").ok_or(AppError::NoConfigError("provider_id".to_string()))?.value.parse::<i64>()?;
+        let model_code = config.get("model_code").ok_or(AppError::NoConfigError("model_code".to_string()))?.value.clone();
         let prompt = config.get("prompt").unwrap().value.clone();
         let summary_length = config.get("summary_length").unwrap().value.clone().parse::<i32>().unwrap();
         let mut context = String::new();
@@ -266,7 +266,7 @@ async fn generate_title(
         }
 
         let db = get_llm_db(app_handle)?;
-        let model_detail = db.get_llm_model_detail(&provider_id.value.parse::<i64>()?, &model_code.value).unwrap();
+        let model_detail = db.get_llm_model_detail(&provider_id, &model_code).unwrap();
 
         let provider = get_provider(model_detail.provider, model_detail.configs);
         let response = provider
@@ -283,12 +283,20 @@ async fn generate_title(
                         value_type: "string".to_string(),
                     }
                 ]).await.map_err(|e| e.to_string());
-        let response_text = response.unwrap();
-        println!("Chat content: {}", response_text.clone());
-
-        let conversation_db = get_conversation_db(app_handle)?;
-        let _ = conversation_db.update_conversation_name(conversation_id, response_text.clone());
-        window.emit("title_change", (conversation_id, response_text.clone())).map_err(|e| e.to_string()).unwrap();
+        match response {
+            Err(e) => {
+                println!("Chat error: {}", e);
+                let _ = window.emit("conversation-window-error-notification", "生成对话标题失败，请检查配置");
+            }
+            Ok(response_text) => {
+                println!("Chat content: {}", response_text.clone());
+        
+                let conversation_db = get_conversation_db(app_handle)?;
+                let _ = conversation_db.update_conversation_name(conversation_id, response_text.clone());
+                window.emit("title_change", (conversation_id, response_text.clone())).map_err(|e| e.to_string()).unwrap();
+            }
+        }
+        
     }
 
     Ok(())
