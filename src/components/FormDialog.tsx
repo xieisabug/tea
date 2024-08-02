@@ -16,7 +16,7 @@ const FormDialog: React.FC<FormDialogProps> = ({ title, onSubmit, onClose, isOpe
     return (
         <div className="form-dialog-overlay">
             <div className="form-dialog">
-                <h2 className="form-dialog-title">{title}</h2>
+                <h2 className="form-dialog-title" title={title}>{title}</h2>
                 <div className="form-dialog-content">
                     {children}
                 </div>

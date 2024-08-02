@@ -24,6 +24,9 @@
 .form-dialog-title {
     margin: 0 0 10px;
     font-size: 1.2em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .form-dialog-content {

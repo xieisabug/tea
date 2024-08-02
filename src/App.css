@@ -106,15 +106,26 @@ h2 {
 }
 .config-window-title-text-container {
     flex: 1;
+    overflow: hidden;
 }
 .config-window-title-name {
     font-size: 24px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 40%;
+    display: inline-block;
 }
 
 .config-window-title-description {
     font-size: 10px;
     color: rgba(219, 217, 217, 1);
     margin-left: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 40%;
+    display: inline-block;
 }
 
 .config-window-form {

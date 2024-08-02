@@ -9,6 +9,7 @@ import CustomSelect from './CustomSelect';
 import ConfirmDialog from './ConfirmDialog';
 import FormDialog from './FormDialog';
 import { AssistantDetail, AssistantListItem } from '../data/Assistant';
+import { emit } from '@tauri-apps/api/event';
 
 interface ModelForSelect {
     name: string;
@@ -296,7 +297,13 @@ const AssistantConfig: React.FC = () => {
                     newAssistants[index] = { id: currentAssistant.assistant.id, name: formAssistantName };
                     setAssistants(newAssistants);
                 }
-            })
+                emit('config-window-success-notification');
+            }).catch((error) => {
+                emit('config-window-alert-dialog', {
+                    text: '修改助手名称与描述失败: ' + error,
+                    type: 'error'
+                });
+            });
         }
     }, [currentAssistant, formAssistantName, formAssistantDescription]);
 
@@ -319,8 +326,8 @@ const AssistantConfig: React.FC = () => {
                 <div className="config-window-container">
                     <div className='config-window-title'>
                         <div className='config-window-title-text-container'>
-                            <span className='config-window-title-name'>{currentAssistant.assistant.name}</span>
-                            <span className='config-window-title-description'>{currentAssistant.assistant.description}</span>    
+                            <span className='config-window-title-name' title={currentAssistant.assistant.name}>{currentAssistant.assistant.name}</span>
+                            <span className='config-window-title-description' title={currentAssistant.assistant.description??""}>{currentAssistant.assistant.description}</span>    
                         </div>
                         <div className='config-window-icon-button-group'>
                             <IconButton icon={Delete} onClick={openConfigDialog} />
