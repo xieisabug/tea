@@ -59,25 +59,146 @@ const AssistantConfig: React.FC = () => {
         }
     }
 
-    const handleConfigChange = (key: string, value: string | number | boolean) => {
+    const handleConfigChange = (key: string, value: string | boolean, value_type: string) => {
         if (currentAssistant) {
             let index = currentAssistant.model_configs.findIndex((config) => {
                 return config.name === key
-            })
-
-            setCurrentAssistant({
-                ...currentAssistant,
-                model_configs: [
-                    ...currentAssistant.model_configs.slice(0, index),
-                    {
-                        ...currentAssistant.model_configs[index],
-                        value: value.toString(),
-                    },
-                    ...currentAssistant.model_configs.slice(index + 1),
-                ],
-            })
+            });
+    
+            if (index !== -1) {
+                let isValid = true;
+                let newValue: string | number | boolean = value;
+    
+                switch (value_type) {
+                    case 'boolean':
+                        if (typeof value !== 'boolean') {
+                            isValid = false;
+                        }
+                        break;
+                    case 'string':
+                        if (typeof value !== 'string') {
+                            isValid = false;
+                        }
+                        break;
+                    case 'number':
+                        if (typeof value !== 'string') {
+                            isValid = false;
+                        } else {
+                            if (/^\d+$/.test(value)) {
+                                let parsedValue = parseInt(value, 10);
+                                // 继续处理
+                                if (isNaN(parsedValue) || !Number.isInteger(parsedValue) || parsedValue < 0) {
+                                    isValid = false;
+                                }
+                            } else if (value === "") {
+                                newValue = 0;
+                            } else {
+                                isValid = false;
+                            }
+                        }
+                        break;
+                    case 'float':
+                        if (typeof value !== 'string') {
+                            isValid = false;
+                        } else {
+                            // 允许更自由的输入，包括部分完成的小数
+                            if (/^-?\d*\.?\d*$/.test(value)) {
+                                newValue = value;
+                            } else {
+                                isValid = false;
+                            }
+                        }
+                        break;
+                    default:
+                        isValid = false;
+                        break;
+                }
+    
+                if (isValid) {
+                    setCurrentAssistant({
+                        ...currentAssistant,
+                        model_configs: [
+                            ...currentAssistant.model_configs.slice(0, index),
+                            {
+                                ...currentAssistant.model_configs[index],
+                                value: newValue.toString(),
+                            },
+                            ...currentAssistant.model_configs.slice(index + 1),
+                        ],
+                    });
+                }
+            }
         }
     };
+
+    const handleConfigBlur = (key: string, value: string, value_type: string) => {
+        if (currentAssistant) {
+            let index = currentAssistant.model_configs.findIndex((config) => {
+                return config.name === key
+            });
+    
+            if (index !== -1) {
+                let isValid = true;
+                let newValue: string | number | boolean = value;
+    
+                switch (value_type) {
+                    case 'number':
+                        if (typeof value !== 'string') {
+                            isValid = false;
+                        } else {
+                            if (/^\d+$/.test(value)) {
+                                let parsedValue = parseInt(value, 10);
+                                // 继续处理
+                                if (isNaN(parsedValue) || !Number.isInteger(parsedValue) || parsedValue < 0) {
+                                    isValid = false;
+                                } else {
+                                    newValue = parsedValue;
+                                }
+                            } else if (value === "") {
+                                newValue = 0;
+                            }
+                        }
+                        break;
+                    case 'float':
+                        if (typeof value !== 'string') {
+                            isValid = false;
+                        } else {
+                            // 允许更自由的输入，包括部分完成的小数
+                            if (/^-?\d*\.?\d*$/.test(value)) {
+                                if (value === '' || value === '-' || value === '.' || value === '-.') {
+                                    newValue = 0;
+                                } else {
+                                    let parsedValue = parseFloat(value);
+                                    if (!isNaN(parsedValue) && Number.isFinite(parsedValue)) {
+                                        newValue = parsedValue;
+                                    }
+                                }
+                            } else {
+                                isValid = false;
+                            }
+                        }
+                        break;
+                    default:
+                        isValid = false;
+                        break;
+                }
+    
+                if (isValid) {
+                    setCurrentAssistant({
+                        ...currentAssistant,
+                        model_configs: [
+                            ...currentAssistant.model_configs.slice(0, index),
+                            {
+                                ...currentAssistant.model_configs[index],
+                                value: newValue.toString(),
+                            },
+                            ...currentAssistant.model_configs.slice(index + 1),
+                        ],
+                    });
+                }
+            }
+        }
+    }
 
     const handlePromptChange = (value: string) => {
         if (currentAssistant) {
@@ -220,7 +341,6 @@ const AssistantConfig: React.FC = () => {
                                         options={models.map(i => ({value: i.code + "/" + i.llm_provider_id, label: i.name}))} 
                                         value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_code + "/" + currentAssistant.model[0].provider_id: "-1"} 
                                         onChange={(v) => {
-                                            console.log(v)
                                             const [modelCode, providerId] = v.split("/");
                                             if (currentAssistant?.model.length > 0) {
                                                 setCurrentAssistant({
@@ -241,10 +361,12 @@ const AssistantConfig: React.FC = () => {
                                         <label>{config.name}</label>
                                         <input
                                             className='form-input'
-                                            type={config.value === 'true' || config.value === 'false' ? 'checkbox' : 'text'}
+                                            type={config.value_type === 'boolean' ? 'checkbox' : 'text'}
                                             value={config.value}
                                             checked={config.value === 'true'}
-                                            onChange={(e) => handleConfigChange(config.name, e.target.type === 'checkbox' ? e.target.checked : e.target.value)}
+                                            onChange={(e) => handleConfigChange(config.name, e.target.type === 'checkbox' ? e.target.checked : e.target.value, config.value_type)}
+                                            onFocus={(e) => e.target.select()}
+                                            onBlur={(e) => handleConfigBlur(config.name, e.target.value, config.value_type)}
                                         />
                                     </div>
                                 ))}
