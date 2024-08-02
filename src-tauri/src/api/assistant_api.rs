@@ -96,7 +96,7 @@ pub fn save_assistant(app_handle: tauri::AppHandle, assistant_detail: AssistantD
     // Save or update the AssistantModelConfigs
     for config in assistant_detail.model_configs {
         if config.id == 0 {
-            assistant_db.add_assistant_model_config(config.assistant_id, config.assistant_model_id, &config.name, config.value.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
+            assistant_db.add_assistant_model_config(config.assistant_id, config.assistant_model_id, &config.name, config.value.as_deref().unwrap_or(""), &config.value_type).map_err(|e| e.to_string())?;
         } else {
             assistant_db.update_assistant_model_config(config.id, &config.name, config.value.as_deref().unwrap_or("")).map_err(|e| e.to_string())?;
         }
@@ -151,6 +151,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
             assistant_model_id: model_id, // Assuming 0 is a default model ID
             name: "max_tokens".to_string(),
             value: Some("2000".to_string()),
+            value_type: "number".to_string(),
         },
         AssistantModelConfig {
             id: 0,
@@ -158,6 +159,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
             assistant_model_id: model_id, // Assuming 0 is a default model ID
             name: "temperature".to_string(),
             value: Some("0.7".to_string()),
+            value_type: "float".to_string(),
         },
         AssistantModelConfig {
             id: 0,
@@ -165,6 +167,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
             assistant_model_id: model_id, // Assuming 0 is a default model ID
             name: "top_p".to_string(),
             value: Some("1.0".to_string()),
+            value_type: "float".to_string(),
         },
         AssistantModelConfig {
             id: 0,
@@ -172,6 +175,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
             assistant_model_id: model_id, // Assuming 0 is a default model ID
             name: "stream".to_string(),
             value: Some("true".to_string()),
+            value_type: "boolean".to_string(),
         },
     ];
     let mut model_configs = Vec::new();
@@ -181,6 +185,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
             config.assistant_model_id,
             &config.name,
             config.value.as_deref().unwrap_or(""),
+            &config.value_type,
         ).map_err(|e| e.to_string())?;
         model_configs.push(AssistantModelConfig {
             id: config_id,
@@ -188,6 +193,7 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
             assistant_model_id: config.assistant_model_id,
             name: config.name,
             value: config.value,
+            value_type: config.value_type,
         });
     }
     println!("model_configs: {:?}", model_configs);

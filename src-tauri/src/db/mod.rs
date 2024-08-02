@@ -125,6 +125,22 @@ fn special_logic_0_0_2(
             [],
         )
         .map_err(|e| format!("添加字段model_code失败: {}", e.to_string()))?;
+    assistant_db
+        .conn
+        .execute(
+            "ALTER TABLE assistant_model_config ADD COLUMN value_type TEXT NOT NULL DEFAULT 'float';",
+            [],
+        )
+        .map_err(|e| format!("添加字段value_type失败: {}", e.to_string()))?;
+
+    assistant_db
+        .conn
+        .execute("UPDATE assistant_model_config SET value_type = 'boolean' WHERE name = 'stream';", [])
+        .map_err(|e| format!("更新stream类型失败: {}", e.to_string()))?;
+    assistant_db
+        .conn
+        .execute("UPDATE assistant_model_config SET value_type = 'number' WHERE name = 'max_tokens';", [])
+        .map_err(|e| format!("更新max_tokens类型失败: {}", e.to_string()))?;
 
     // 创建 LLMDatabase 实例
     let llm_db = LLMDatabase::new(app_handle).map_err(|e| e.to_string())?;

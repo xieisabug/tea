@@ -36,6 +36,7 @@ pub struct AssistantModelConfig {
     pub assistant_model_id: i64,
     pub name: String,
     pub value: Option<String>,
+    pub value_type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -189,10 +190,10 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_model_config(&self, assistant_id: i64, assistant_model_id: i64, name: &str, value: &str) -> Result<i64> {
+    pub fn add_assistant_model_config(&self, assistant_id: i64, assistant_model_id: i64, name: &str, value: &str, value_type: &str) -> Result<i64> {
         self.conn.execute(
-            "INSERT INTO assistant_model_config (assistant_id, assistant_model_id, name, value) VALUES (?, ?, ?, ?)",
-            params![assistant_id, assistant_model_id, name, value],
+            "INSERT INTO assistant_model_config (assistant_id, assistant_model_id, name, value, value_type) VALUES (?, ?, ?, ?, ?)",
+            params![assistant_id, assistant_model_id, name, value, value_type],
         )?;
         let id = self.conn.last_insert_rowid();
         Ok(id)
@@ -317,7 +318,7 @@ impl AssistantDatabase {
     }
 
     pub fn get_assistant_model_configs(&self, assistant_id: i64) -> Result<Vec<AssistantModelConfig>> {
-        let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_model_id, name, value FROM assistant_model_config WHERE assistant_id = ?")?;
+        let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_model_id, name, value, value_type FROM assistant_model_config WHERE assistant_id = ?")?;
         let assistant_model_config_iter = stmt.query_map(params![assistant_id], |row| {
             Ok(AssistantModelConfig {
                 id: row.get(0)?,
@@ -325,6 +326,7 @@ impl AssistantDatabase {
                 assistant_model_id: row.get(2)?,
                 name: row.get(3)?,
                 value: row.get(4)?,
+                value_type: row.get(5)?,
             })
         })?;
 
@@ -361,10 +363,10 @@ impl AssistantDatabase {
             [],
         )?;
         self.add_assistant_prompt(1, "You are a helpful assistant.")?;
-        self.add_assistant_model_config(1, -1, "max_tokens", "1000")?;
-        self.add_assistant_model_config(1, -1, "temperature", "0.75")?;
-        self.add_assistant_model_config(1, -1, "top_p", "1.0")?;
-        self.add_assistant_model_config(1, -1, "stream", "false")?;
+        self.add_assistant_model_config(1, -1, "max_tokens", "1000", "number")?;
+        self.add_assistant_model_config(1, -1, "temperature", "0.75", "float")?;
+        self.add_assistant_model_config(1, -1, "top_p", "1.0", "float")?;
+        self.add_assistant_model_config(1, -1, "stream", "false", "boolean")?;
         Ok(())
     }
 }

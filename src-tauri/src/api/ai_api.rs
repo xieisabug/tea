@@ -81,7 +81,8 @@ pub async fn ask_ai(app_handle: tauri::AppHandle, state: State<'_, AppState>, fe
                 assistant_id: assistant_detail.assistant.id,
                 assistant_model_id: model_detail.model.id,
                 name: "model".to_string(),
-                value: Some(model_detail.model.code)
+                value: Some(model_detail.model.code),
+                value_type: "string".to_string(),
             });
             
             let config_map = assistant_detail.model_configs.iter().filter_map(|config| {
@@ -278,7 +279,8 @@ async fn generate_title(
                         assistant_id: 0,
                         assistant_model_id: 0,
                         name: "model".to_string(),
-                        value: Some(model_detail.model.code)
+                        value: Some(model_detail.model.code),
+                        value_type: "string".to_string(),
                     }
                 ]).await.map_err(|e| e.to_string());
         let response_text = response.unwrap();

@@ -9,7 +9,7 @@ interface ModelForSelect {
     name: string;
     code: string;
     id: number;
-    llmProviderId: number;
+    llm_provider_id: number;
 }
 
 type FeatureConfig = Map<string, Map<string, string>>;
@@ -80,9 +80,15 @@ const FeatureAssistantConfig: React.FC = () => {
                         <div className='feature-assistant-properties'>
                             <div className='form-group'>
                                 <label>model</label>
-                                <CustomSelect options={models.map(m => ({value: m.id + "", label: m.name}))} value={featureConfig.get('conversation_summary')?.get('model_id') + ""} onChange={(v) => {
-                                    handleConfigChange('conversation_summary', 'model_id', v);
-                                }} />
+                                <CustomSelect 
+                                    options={models.map(m => ({value: m.llm_provider_id + "/" + m.code, label: m.name}))} 
+                                    value={featureConfig.get('conversation_summary')?.get('provider_id') + "/" + featureConfig.get('conversation_summary')?.get('model_code')} 
+                                    onChange={(v) => {
+                                        let [provider_id, model_code] = v.split("/");
+                                        handleConfigChange('conversation_summary', 'provider_id', provider_id);
+                                        handleConfigChange('conversation_summary', 'model_code', model_code);
+                                    }} 
+                                />
                                 
                             </div>
                             
