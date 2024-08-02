@@ -1,6 +1,5 @@
 use rusqlite::{Connection, params, Result};
 use serde::{Deserialize, Serialize};
-
 use super::get_db_path;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -50,7 +49,7 @@ pub struct AssistantPromptParam {
 }
 
 pub struct AssistantDatabase {
-    conn: Connection,
+    pub conn: Connection,
 }
 
 impl AssistantDatabase {
@@ -122,7 +121,7 @@ impl AssistantDatabase {
         }
         Ok(())
     }
-
+    
     pub fn add_assistant(&self, name: &str, description: &str, assistant_type: Option<i64>, is_addition: bool) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant (name, description, assistant_type, is_addition) VALUES (?, ?, ?, ?)",

@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use db::conversation_db::ConversationDatabase;
+use db::database_upgrade;
 use db::system_db::FeatureConfig;
 use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
 use serde::{Deserialize, Serialize};
@@ -108,9 +109,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     app.exit(0);
                 }
                 "show" => {
-                    if let Some(window) = app.get_window("main") {
-                        window.show().unwrap();
-                        window.set_focus().unwrap();
+                    let ask_window = app.get_window("ask");
+                    let chat_ui_window = app.get_window("chat_ui");
+                
+                    match (ask_window, chat_ui_window) {
+                        (None, _) => {
+                            println!("Creating ask window");
+                            create_ask_window(&app);
+                        },
+                        (Some(window), _) => {
+                            println!("Focusing ask window");
+                            if window.is_minimized().unwrap_or(false) {
+                                window.unminimize().unwrap();
+                            }
+                            window.show().unwrap();
+                            window.set_focus().unwrap();
+                        },
                     }
                 }
                 _ => {}
@@ -128,6 +142,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             llm_db.create_table()?;
             assistant_db.create_table()?;
             conversation_db.create_table()?;
+
+            let _ = database_upgrade(&app_handle, system_db, llm_db, assistant_db, conversation_db);
 
             app.manage(initialize_state(&app_handle));
 

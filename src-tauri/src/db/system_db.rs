@@ -14,7 +14,7 @@ pub struct FeatureConfig {
 }
 
 pub struct SystemDatabase {
-    conn: Connection,
+    pub conn: Connection,
 }
 
 impl SystemDatabase {
@@ -47,20 +47,6 @@ impl SystemDatabase {
             )",
             [],
         )?;
-
-        let system_version = self.get_config("system_version")?;
-        if system_version.is_empty() {
-            self.conn.execute(
-                "INSERT INTO system_config (key, value) VALUES ('system_version', '0.1')",
-                [],
-            )?;
-            if let Err(err) = self.init_feature_config() {
-                println!("init_feature_config error: {:?}", err);
-            }
-        } else {
-            // TODO 以后的升级逻辑都放到这里
-            println!("system_version: {}", system_version);
-        }
         Ok(())
     }
 
@@ -84,6 +70,14 @@ impl SystemDatabase {
         } else {
             Ok(String::new())
         }
+    }
+
+    pub fn update_system_config(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE system_config SET value = ? WHERE key = ?",
+            params![value, key],
+        )?;
+        Ok(())
     }
 
     pub fn delete_system_config(&self, key: &str) -> Result<()> {

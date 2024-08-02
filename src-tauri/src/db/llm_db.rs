@@ -42,7 +42,7 @@ pub struct ModelDetail {
 }
 
 pub struct LLMDatabase {
-    conn: Connection,
+    pub conn: Connection,
 }
 
 impl LLMDatabase {
@@ -98,7 +98,6 @@ impl LLMDatabase {
         }
         Ok(())
     }
-
 
     pub fn add_llm_provider(&self, name: &str, api_type: &str, description: &str, is_official: bool, is_enabled: bool) -> rusqlite::Result<()> {
         self.conn.execute(
@@ -246,6 +245,37 @@ impl LLMDatabase {
     pub fn get_llm_model_detail(&self, provider_id: &i64, model_code: &String) -> rusqlite::Result<ModelDetail> {
         let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE llm_provider_id = ? AND code = ?")?;
         let model = stmt.query_map([&provider_id.to_string(), model_code], |row| {
+            Ok(LLMModel {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                llm_provider_id: row.get(2)?,
+                code: row.get(3)?,
+                description: row.get(4)?,
+                vision_support: row.get(5)?,
+                audio_support: row.get(6)?,
+                video_support: row.get(7)?,
+            })
+        })?.next().transpose()?;
+
+        let model = match model {
+            Some(model) => model,
+            None => return Err(rusqlite::Error::QueryReturnedNoRows),
+        };
+
+        let provider_id = model.llm_provider_id;
+        let provider = self.get_llm_provider(provider_id)?;
+        let configs = self.get_llm_provider_config(provider_id)?;
+
+        Ok(ModelDetail {
+            model,
+            provider,
+            configs,
+        })
+    }
+
+    pub fn get_llm_model_detail_by_id(&self, id: &i64) -> rusqlite::Result<ModelDetail> {
+        let mut stmt = self.conn.prepare("SELECT id, name, llm_provider_id, code, description, vision_support, audio_support, video_support FROM llm_model WHERE id = ?")?;
+        let model = stmt.query_map([id], |row| {
             Ok(LLMModel {
                 id: row.get(0)?,
                 name: row.get(1)?,

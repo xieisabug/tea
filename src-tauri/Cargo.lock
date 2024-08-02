@@ -89,6 +89,7 @@ dependencies = [
  "regex",
  "reqwest",
  "rusqlite",
+ "semver",
  "serde",
  "serde_json",
  "tauri",
