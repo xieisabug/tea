@@ -40,6 +40,9 @@
 .form-group input {
     flex: 1;
 }
+.form-group input[type="checkbox"] {
+    flex: 0 0 24px;
+}
 
 .provider-config-item-form-property-container {
     flex: 1;

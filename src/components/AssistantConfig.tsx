@@ -217,7 +217,16 @@ const AssistantConfig: React.FC = () => {
 
     const handleSave = () => {
         if (currentAssistant) {
-            onSave(currentAssistant);
+            onSave(currentAssistant)
+                .then(() => {
+                    emit('config-window-success-notification');
+                })
+                .catch((error) => {
+                    emit('config-window-alert-dialog', {
+                        text: '保存失败: ' + error,
+                        type: 'error'
+                    });
+                });
         }
     };
 

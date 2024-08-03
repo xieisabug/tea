@@ -331,6 +331,7 @@ impl LLMDatabase {
                 llm_model m
             JOIN
                 llm_provider p ON m.llm_provider_id = p.id
+            WHERE p.is_enabled = 1
         ") {
             Ok(stmt) => stmt,
             Err(e) => return Err(e.to_string()), // Convert rusqlite::Error to String

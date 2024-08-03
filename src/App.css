@@ -57,6 +57,39 @@ h2 {
     margin-top: 0;
 }
 
+input[type="checkbox"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    flex: 0 0 24px;
+    height: 24px;
+    background-color: #eee;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+}
+
+input[type="checkbox"]:hover {
+    background-color: #ccc;
+}
+
+input[type="checkbox"]:checked {
+    background-color: rgba(17, 133, 83, 1);
+}
+
+input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 3px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+}
+
 .form-group-container {
     display: flex;
     flex-direction: column;
