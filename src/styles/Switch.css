@@ -24,7 +24,7 @@
     width: 14px;
     left: 6px;
     bottom: 4px;
-    background-color: rgba(17, 133, 83, 1);
+    background-color: var(--main-color);
     transition: 0.4s;
     border-radius: 50%;
 }

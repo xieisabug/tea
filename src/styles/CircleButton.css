@@ -13,5 +13,5 @@
 }
 
 .circle-button.primary {
-    background: rgba(17, 133, 83, 1);
+    background: var(--main-color);
 }

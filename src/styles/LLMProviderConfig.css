@@ -11,7 +11,7 @@
 .provider-config-item-title {
     height: 64px;
     border-radius: 5px;
-    background: rgba(17, 133, 83, 1);
+    background: var(--main-color);
     display: flex;
     align-items: center;
     padding: 0 20px;

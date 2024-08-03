@@ -5,6 +5,10 @@
     font-style: normal;
 }
 
+:root {
+    --main-color: rgba(17, 133, 83, 1);
+}
+
 body {
     padding: 0;
     margin: 0;
@@ -75,7 +79,7 @@ input[type="checkbox"]:hover {
 }
 
 input[type="checkbox"]:checked {
-    background-color: rgba(17, 133, 83, 1);
+    background-color: var(--main-color);
 }
 
 input[type="checkbox"]:checked::after {
@@ -117,7 +121,7 @@ input[type="checkbox"]:checked::after {
 .form-textarea:focus {
     outline: none;
     box-shadow: none;
-    border: 1px solid rgba(17, 133, 83, 1);
+    border: 1px solid var(--main-color);
 }
 
 .config-window-container {
@@ -127,7 +131,7 @@ input[type="checkbox"]:checked::after {
 .config-window-title {
     height: 64px;
     border-radius: 5px;
-    background: rgba(17, 133, 83, 1);
+    background: var(--main-color);
     display: flex;
     align-items: center;
     padding: 0 20px;
@@ -170,7 +174,7 @@ input[type="checkbox"]:checked::after {
 .ask-ai-hint {
     display: inline-block;
     padding: 10px;
-    background-color: rgba(17, 133, 83, 1);
+    background-color: var(--main-color);
     animation: fadeInOut 2s infinite;
     color: white;
 }

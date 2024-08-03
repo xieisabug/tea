@@ -40,7 +40,7 @@
     box-shadow: none;
 }
 .chat-ui-toolbar button.main {
-    background-color: rgba(17, 133, 83, 1);
+    background-color: var(--main-color);
     margin-left: 18px;
     color: white;
 }
@@ -72,7 +72,7 @@
 .conversation-list li.selected {
     font-weight: bolder;
     color: white;
-    background-color: rgba(17, 133, 83, 1);
+    background-color: var(--main-color);
 }
 .conversation-list-item-name {
     overflow: hidden;
@@ -148,7 +148,7 @@
 }
 .user-message {
     align-self: flex-end;
-    background: rgba(17, 133, 83, 1);
+    background: var(--main-color);
     color: white;
 }
 .bot-message {
@@ -224,7 +224,7 @@
     outline: none;
     box-shadow: none;
     box-shadow: 0px 2px 4px rgba(17, 133, 83, 0.25);
-    border: 1px solid rgba(17, 133, 83, 1);
+    border: 1px solid var(--main-color);
     opacity: 1;
 }
 .input-area-textarea:hover {
@@ -266,7 +266,7 @@
 
 .llm-thinking-badge {
     padding: 5px 20px;
-    background-color: rgba(17, 133, 83, 1);
+    background-color: var(--main-color);
     color: white;
     border-radius: 5px;
     display: inline-block;
