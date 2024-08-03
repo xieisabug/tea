@@ -98,10 +98,10 @@ pub fn database_upgrade(
 
 fn special_logic_0_0_2(
     _system_db: &SystemDatabase,
-    _llm_db: &LLMDatabase,
+    llm_db: &LLMDatabase,
     assistant_db: &AssistantDatabase,
     _conversation_db: &ConversationDatabase,
-    app_handle: &tauri::AppHandle,
+    _app_handle: &tauri::AppHandle,
 ) -> Result<(), String> {
     println!("special_logic_0_0_2");
     // 开始事务
@@ -141,9 +141,6 @@ fn special_logic_0_0_2(
         .conn
         .execute("UPDATE assistant_model_config SET value_type = 'number' WHERE name = 'max_tokens';", [])
         .map_err(|e| format!("更新max_tokens类型失败: {}", e.to_string()))?;
-
-    // 创建 LLMDatabase 实例
-    let llm_db = LLMDatabase::new(app_handle).map_err(|e| e.to_string())?;
 
     // 查询所有 model_id
     let mut stmt = assistant_db
