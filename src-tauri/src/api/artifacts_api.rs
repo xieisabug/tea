@@ -1,3 +1,6 @@
+use serde_json::json;
+use tauri::Manager;
+
 use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell}, errors::AppError, window::open_preview_html_window};
 
 #[tauri::command]
@@ -17,6 +20,7 @@ pub async fn run_artifacts(app_handle: tauri::AppHandle, lang: &str, input_str: 
         }
         _ => {
             // Handle other languages here
+            app_handle.emit_to("chat_ui", "chat-window-alert-dialog", json!({"text": "暂不支持该语言的代码执行", "type": "warning"}))?;
         }
     }
     Ok("".to_string())

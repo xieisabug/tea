@@ -44,7 +44,7 @@
 
 .alert-dialog-actions {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
 }
 
 .alert-dialog-button {
