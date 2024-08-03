@@ -21,6 +21,7 @@ import Add from '../assets/add.svg';
 import Run from '../assets/run.svg';
 import Delete from '../assets/delete.svg';
 import Copy from '../assets/copy.svg';
+import Ok from '../assets/ok.svg';
 import Refresh from '../assets/refresh.svg';
 
 interface CustomComponents extends Components {
@@ -42,49 +43,96 @@ interface AiResponse {
     add_message_id: number;
 }
 
-const MessageItem = React.memo(({ message, onCodeRun }: any) => (
-    <div className={"message-item " + (message.message_type === "user" ? "user-message" : "bot-message")}>
-        <ReactMarkdown
-            children={message.content}
-            remarkPlugins={[remarkMath]}
-            rehypePlugins={[rehypeRaw, rehypeKatex]}
-            components={{
-                code({ node, className, children, ref, ...props }) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    return match ? (
-                        <div className="message-code-container">
-                            <div className="message-code-button-group">
-                                <IconButton icon={Copy} onClick={() => writeText(String(children).replace(/\n$/, ''))} />
-                                <IconButton icon={Run} onClick={() => onCodeRun(match[1], String(children).replace(/\n$/, ''))} />
-                            </div>
-                            <SyntaxHighlighter
-                                {...props}
-                                PreTag="div"
-                                children={String(children).replace(/\n$/, '')}
-                                language={match[1]}
-                                style={srcery}
-                            />
-                        </div>
-                    ) : (
-                        <code {...props} ref={ref} className={className} style={{ overflow: "auto" }}>
-                            {children}
-                        </code>
-                    );
-                },
-                antthinking({ children }) {
-                    return <div>
-                        <div className="llm-thinking-badge" title={children} data-thinking={children}>思考...</div>
-                    </div>
-                }
-            } as CustomComponents}
-        />
-        <div className="message-item-button-container">
-            <IconButton icon={Delete} onClick={() => { }} />
-            <IconButton icon={Refresh} onClick={() => { }} />
-            <IconButton icon={Copy} onClick={() => writeText(message.content)} />
+const CodeBlock = React.memo(({ language, children, onCodeRun }: { language: string, children: string, onCodeRun: (lang: string, code: string) => void }) => {
+    const [copyIconState, setCopyIconState] = useState<'copy' | 'ok'>('copy');
+
+    const handleCopy = useCallback(() => {
+        const code = String(children).replace(/\n$/, '');
+        writeText(code);
+        setCopyIconState('ok');
+    }, [children]);
+
+    useEffect(() => {
+        if (copyIconState === 'ok') {
+            const timer = setTimeout(() => {
+                setCopyIconState('copy');
+            }, 1500);
+
+            return () => clearTimeout(timer);
+        }
+    }, [copyIconState]);
+
+    return (
+        <div className="message-code-container">
+            <div className="message-code-button-group">
+                <IconButton
+                    icon={copyIconState === 'copy' ? Copy : Ok}
+                    onClick={handleCopy}
+                />
+                <IconButton icon={Run} onClick={() => onCodeRun(language, String(children).replace(/\n$/, ''))} />
+            </div>
+            <SyntaxHighlighter
+                PreTag="div"
+                children={String(children).replace(/\n$/, '')}
+                language={language}
+                style={srcery}
+            />
         </div>
-    </div>
-));
+    );
+});
+
+const MessageItem = React.memo(({ message, onCodeRun }: any) => {
+    const [copyIconState, setCopyIconState] = useState<'copy' | 'ok'>('copy');
+
+    const handleCopy = useCallback(() => {
+        writeText(message.content);
+        setCopyIconState('ok');
+    }, [message.content]);
+
+    useEffect(() => {
+        if (copyIconState === 'ok') {
+            const timer = setTimeout(() => {
+                setCopyIconState('copy');
+            }, 1500);
+
+            return () => clearTimeout(timer);
+        }
+    }, [copyIconState]);
+
+    return (
+        <div className={"message-item " + (message.message_type === "user" ? "user-message" : "bot-message")}>
+            <ReactMarkdown
+                children={message.content}
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeRaw, rehypeKatex]}
+                components={{
+                    code({ node, className, children, ref, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        return match ? (
+                            <CodeBlock language={match[1]} onCodeRun={onCodeRun}>
+                                {String(children).replace(/\n$/, '')}
+                            </CodeBlock>
+                        ) : (
+                            <code {...props} ref={ref} className={className} style={{ overflow: "auto" }}>
+                                {children}
+                            </code>
+                        );
+                    },
+                    antthinking({ children }) {
+                        return <div>
+                            <div className="llm-thinking-badge" title={children} data-thinking={children}>思考...</div>
+                        </div>
+                    }
+                } as CustomComponents}
+            />
+            <div className="message-item-button-container">
+                <IconButton icon={Delete} onClick={() => { }} />
+                <IconButton icon={Refresh} onClick={() => { }} />
+                <IconButton icon={copyIconState === 'copy' ? Copy : Ok} onClick={handleCopy} />
+            </div>
+        </div>
+    )
+});
 
 function ConversationUI({ conversationId, onChangeConversationId }: ConversationUIProps) {
     const scroll = throttle(() => {
@@ -234,7 +282,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     const [selectedAssistant, setSelectedAssistant] = useState(-1);
 
     const handleArtifact = useCallback((lang: string, inputStr: string) => {
-        invoke("run_artifacts", {lang, inputStr}).then((res) => {
+        invoke("run_artifacts", { lang, inputStr }).then((res) => {
             console.log(res);
         });
     }, []);
@@ -248,7 +296,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     )) : <NewChatComponent
                         selectedAssistant={selectedAssistant}
                         assistants={assistants}
-                        setSelectedAssistant={setSelectedAssistant} 
+                        setSelectedAssistant={setSelectedAssistant}
                     />
                 }
                 <div className="message-anchor"></div>
