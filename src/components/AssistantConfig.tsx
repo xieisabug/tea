@@ -5,6 +5,7 @@ import RoundButton from './RoundButton';
 import IconButton from './IconButton';
 import Edit from '../assets/edit.svg';
 import Delete from '../assets/delete.svg';
+import Copy from '../assets/copy.svg';
 import CustomSelect from './CustomSelect';
 import ConfirmDialog from './ConfirmDialog';
 import FormDialog from './FormDialog';
@@ -339,6 +340,7 @@ const AssistantConfig: React.FC = () => {
                             <span className='config-window-title-description' title={currentAssistant.assistant.description??""}>{currentAssistant.assistant.description}</span>    
                         </div>
                         <div className='config-window-icon-button-group'>
+                            <IconButton icon={Copy} onClick={openConfigDialog} />
                             <IconButton icon={Delete} onClick={openConfigDialog} />
                             <IconButton icon={Edit} onClick={openFormDialog} />
                         </div>
