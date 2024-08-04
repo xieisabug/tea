@@ -126,7 +126,7 @@ function AskWindow() {
     return (
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} className='ask-window-chat-form'>
                     <textarea
                         className='ask-window-input'
                         ref={inputRef}
@@ -136,7 +136,7 @@ function AskWindow() {
                         placeholder="Ask AI..."
                     ></textarea>
                     <button className='ask-window-submit-button' type="submit">
-                        {aiIsResponsing ? <Stop />: <UpArrow fill='black' />}
+                        {aiIsResponsing ? <Stop fill='white'/>: <UpArrow fill='white'/>}
                     </button>
                 </form>
                 <div className="response">
