@@ -123,6 +123,36 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         invoke<Array<any>>("get_conversation_with_messages", { conversationId: +conversationId }).then((res: any[]) => {
             setMessages(res[1]);
             setConversation(res[0]);
+
+            console.log(res)
+
+            if (unsubscribeRef.current) {
+                console.log('Unsubscribing from previous event listener');
+                unsubscribeRef.current.then(f => f());
+            }
+
+            const lastMessageId = res[1][res[1].length - 1].id;
+            unsubscribeRef.current = listen(`message_${lastMessageId}`, (event) => {
+                const payload = event.payload as string;
+                if (payload !== "Tea::Event::MessageFinish") {
+                    // 更新messages的最后一个对象
+                    setMessages(prevMessages => {
+                        const newMessages = [...prevMessages];
+                        const index = newMessages.findIndex(msg => msg.id === lastMessageId);
+                        if (index !== -1) {
+                            newMessages[index] = {
+                                ...newMessages[index],
+                                content: event.payload as string
+                            };
+                            scroll();
+                        }
+                        return newMessages;
+                    });
+                } else {
+                    setAiIsResponsing(false);
+                }
+
+            });
         });
 
         return () => {
