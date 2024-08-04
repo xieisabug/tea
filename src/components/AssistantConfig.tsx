@@ -3,9 +3,9 @@ import "../styles/AssistantConfig.css";
 import {invoke} from "@tauri-apps/api/tauri";
 import RoundButton from './RoundButton';
 import IconButton from './IconButton';
-import Edit from '../assets/edit.svg';
-import Delete from '../assets/delete.svg';
-import Copy from '../assets/copy.svg';
+import Edit from '../assets/edit.svg?react';
+import Delete from '../assets/delete.svg?react';
+import Copy from '../assets/copy.svg?react';
 import CustomSelect from './CustomSelect';
 import ConfirmDialog from './ConfirmDialog';
 import FormDialog from './FormDialog';
@@ -340,9 +340,9 @@ const AssistantConfig: React.FC = () => {
                             <span className='config-window-title-description' title={currentAssistant.assistant.description??""}>{currentAssistant.assistant.description}</span>    
                         </div>
                         <div className='config-window-icon-button-group'>
-                            <IconButton icon={Copy} onClick={openConfigDialog} />
-                            <IconButton icon={Delete} onClick={openConfigDialog} />
-                            <IconButton icon={Edit} onClick={openFormDialog} />
+                            <IconButton icon={<Copy fill='white' />} onClick={openConfigDialog} />
+                            <IconButton icon={<Delete fill='white' />} onClick={openConfigDialog} />
+                            <IconButton icon={<Edit fill='white' />} onClick={openFormDialog} />
                         </div>
                     </div>
                     <form className='config-window-form'>

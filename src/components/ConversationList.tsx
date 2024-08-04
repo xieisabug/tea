@@ -2,7 +2,7 @@ import { MouseEventHandler, useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import { confirm } from '@tauri-apps/api/dialog';
-import MenuIcon from "../assets/menu.svg";
+import MenuIcon from "../assets/menu.svg?react";
 import IconButton from "./IconButton";
 import FormDialog from "./FormDialog";
 
@@ -145,7 +145,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                         <div className="conversation-list-item-name">{conversation.name}</div>
                         <div className="conversation-list-item-assistant-name">快速助手</div>
 
-                        <IconButton className="conversation-menu-icon" icon={MenuIcon} onClick={(e) => onMenuClick(e, conversation.id)} />
+                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id ? "white": "black"} />} onClick={(e) => onMenuClick(e, conversation.id)} />
 
                         {
                             menuShow && menuShowConversationId === conversation.id ? 

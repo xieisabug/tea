@@ -1,8 +1,9 @@
+import { ReactNode } from 'react';
 import '../styles/CircleButton.css';
 
 interface CircleButtonProps {
     primary?: boolean;
-    icon: string;
+    icon: ReactNode;
     onClick: () => void;
     className?: string;
     type?: 'submit' | 'button';
@@ -10,7 +11,7 @@ interface CircleButtonProps {
 
 const CircleButton: React.FC<CircleButtonProps> = ({primary, icon, type, onClick, className}) => {
     return <button onClick={onClick} className={'circle-button ' + (primary? ' primary ': '') + (className? className: '')} type={type? type: 'button'}>
-        <img src={icon} alt={type? type: 'button'} width="16" height="16" />
+        {icon}
     </button>
 }
 

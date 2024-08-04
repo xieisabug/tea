@@ -7,22 +7,19 @@ import remarkMath from "remark-math";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
 import 'katex/dist/katex.min.css';
-import SyntaxHighlighter from 'react-syntax-highlighter'
-// srcery   railscasts   nnfx-dark    atelier-estuary-dark
-import { srcery } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { listen } from "@tauri-apps/api/event";
 import { throttle } from 'lodash';
 import NewChatComponent from "./NewChatComponent";
 import CircleButton from "./CircleButton";
 import IconButton from "./IconButton";
-import UpArrow from '../assets/up-arrow.svg';
-import Stop from '../assets/stop.svg';
-import Add from '../assets/add.svg';
-import Run from '../assets/run.svg';
-import Delete from '../assets/delete.svg';
-import Copy from '../assets/copy.svg';
-import Ok from '../assets/ok.svg';
-import Refresh from '../assets/refresh.svg';
+import UpArrow from '../assets/up-arrow.svg?react';
+import Stop from '../assets/stop.svg?react';
+import Add from '../assets/add.svg?react';
+import Delete from '../assets/delete.svg?react';
+import Copy from '../assets/copy.svg?react';
+import Ok from '../assets/ok.svg?react';
+import Refresh from '../assets/refresh.svg?react';
+import CodeBlock from "./CodeBlock";
 
 interface CustomComponents extends Components {
     antthinking: React.ElementType;
@@ -42,44 +39,6 @@ interface AiResponse {
     conversation_id: number;
     add_message_id: number;
 }
-
-const CodeBlock = React.memo(({ language, children, onCodeRun }: { language: string, children: string, onCodeRun: (lang: string, code: string) => void }) => {
-    const [copyIconState, setCopyIconState] = useState<'copy' | 'ok'>('copy');
-
-    const handleCopy = useCallback(() => {
-        const code = String(children).replace(/\n$/, '');
-        writeText(code);
-        setCopyIconState('ok');
-    }, [children]);
-
-    useEffect(() => {
-        if (copyIconState === 'ok') {
-            const timer = setTimeout(() => {
-                setCopyIconState('copy');
-            }, 1500);
-
-            return () => clearTimeout(timer);
-        }
-    }, [copyIconState]);
-
-    return (
-        <div className="message-code-container">
-            <div className="message-code-button-group">
-                <IconButton
-                    icon={copyIconState === 'copy' ? Copy : Ok}
-                    onClick={handleCopy}
-                />
-                <IconButton icon={Run} onClick={() => onCodeRun(language, String(children).replace(/\n$/, ''))} />
-            </div>
-            <SyntaxHighlighter
-                PreTag="div"
-                children={String(children).replace(/\n$/, '')}
-                language={language}
-                style={srcery}
-            />
-        </div>
-    );
-});
 
 const MessageItem = React.memo(({ message, onCodeRun }: any) => {
     const [copyIconState, setCopyIconState] = useState<'copy' | 'ok'>('copy');
@@ -126,9 +85,9 @@ const MessageItem = React.memo(({ message, onCodeRun }: any) => {
                 } as CustomComponents}
             />
             <div className="message-item-button-container">
-                <IconButton icon={Delete} onClick={() => { }} />
-                <IconButton icon={Refresh} onClick={() => { }} />
-                <IconButton icon={copyIconState === 'copy' ? Copy : Ok} onClick={handleCopy} />
+                <IconButton icon={<Delete fill="black"/>} onClick={() => { }} />
+                <IconButton icon={<Refresh fill="black"/>} onClick={() => { }} />
+                <IconButton icon={copyIconState === 'copy' ? <Copy fill="black"/> : <Ok fill="black"/>} onClick={handleCopy} />
             </div>
         </div>
     )
@@ -310,8 +269,8 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     onKeyDown={handleKeyDown}
                 />
 
-                <CircleButton onClick={() => { }} icon={Add} className="input-area-add-button" />
-                <CircleButton onClick={handleSend} icon={aiIsResponsing ? Stop : UpArrow} primary className="input-area-send-button" />
+                <CircleButton onClick={() => { }} icon={<Add fill="black" />} className="input-area-add-button" />
+                <CircleButton onClick={handleSend} icon={aiIsResponsing ? <Stop fill="white"/> : <UpArrow fill="white"/>} primary className="input-area-send-button" />
 
             </div>
         </div>

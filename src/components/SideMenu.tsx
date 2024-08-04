@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import '../styles/SideMenu.css';
 
 interface MenuItem {
     id: string;
     name: string;
-    icon: string;
+    icon: ReactNode;
+    iconSelected: ReactNode;
 }
 
 interface MenuProps {
@@ -23,7 +24,7 @@ const SideMenu: React.FC<MenuProps> = ({ menu, selectedMenu, setSelectedMenu }) 
                         className={`menu-item ${selectedMenu === item.id ? 'selected' : ''}`}
                         onClick={() => setSelectedMenu(item.id)}
                     >
-                        <img src={item.icon} />
+                        {selectedMenu === item.id ? item.iconSelected : item.icon}
                         <span style={{marginLeft: '14px'}}>{item.name}</span>
                     </div>
                 ))

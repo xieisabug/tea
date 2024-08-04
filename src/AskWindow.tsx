@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { appWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
@@ -10,17 +10,18 @@ import rehypeKatex from 'rehype-katex';
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-import UpArrow from './assets/up-arrow.svg';
-import Stop from './assets/stop.svg';
-import Copy from './assets/copy.svg';
-import Ok from './assets/ok.svg';
-import OpenFullUI from './assets/open-fullui.svg';
-import Setting from './assets/setting.svg';
+import UpArrow from './assets/up-arrow.svg?react';
+import Stop from './assets/stop.svg?react';
+import Copy from './assets/copy.svg?react';
+import Ok from './assets/ok.svg?react';
+import OpenFullUI from './assets/open-fullui.svg?react';
+import Setting from './assets/setting.svg?react';
 import AskWindowPrepare from './components/AskWindowPrepare';
 import AskAIHint from './components/AskAIHint';
 import IconButton from './components/IconButton';
 import { throttle } from 'lodash';
 import { writeText } from '@tauri-apps/api/clipboard';
+import CodeBlock from './components/CodeBlock';
 
 interface AiResponse {
     conversation_id: number;
@@ -116,6 +117,12 @@ function AskWindow() {
         await invoke('open_chat_ui_window')
     }
 
+    const handleArtifact = useCallback((lang: string, inputStr: string) => {
+        invoke("run_artifacts", { lang, inputStr }).then((res) => {
+            console.log(res);
+        });
+    }, []);
+
     return (
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
@@ -129,7 +136,7 @@ function AskWindow() {
                         placeholder="Ask AI..."
                     ></textarea>
                     <button className='ask-window-submit-button' type="submit">
-                        <img src={aiIsResponsing ? Stop:UpArrow} alt="submit" width="16" height="16" />
+                        {aiIsResponsing ? <Stop />: <UpArrow fill='black' />}
                     </button>
                 </form>
                 <div className="response">
@@ -142,13 +149,9 @@ function AskWindow() {
                             code({node, className, children, ref, ...props}) {
                                 const match = /language-(\w+)/.exec(className || '')
                                 return match ? (
-                                <SyntaxHighlighter
-                                    {...props}
-                                    PreTag="div"
-                                    children={String(children).replace(/\n$/, '')}
-                                    language={match[1]}
-                                    style={dark}
-                                />
+                                    <CodeBlock language={match[1]} onCodeRun={handleArtifact}>
+                                        {String(children).replace(/\n$/, '')}
+                                    </CodeBlock>
                                 ) : (
                                 <code {...props} ref={ref} className={className}>
                                     {children}
@@ -160,10 +163,10 @@ function AskWindow() {
                     }
                     
                 </div>
-                <div className='tools'>
+                <div className='tools' data-tauri-drag-region>
                     {
                         messageId !== -1 && !aiIsResponsing ?
-                            <IconButton icon={copySuccess ? Ok : Copy} onClick={() => {
+                            <IconButton icon={copySuccess ? <Ok fill='black'/> : <Copy fill='black'/>} onClick={() => {
                                 writeText(response);
                                 setCopySuccess(true);
                                 setTimeout(() => {
@@ -172,8 +175,8 @@ function AskWindow() {
                             }} /> : null
                     }
                     
-                    <IconButton icon={OpenFullUI} onClick={openChatUI} />
-                    <IconButton icon={Setting} onClick={openConfig} />
+                    <IconButton icon={<OpenFullUI fill='black'/>} onClick={openChatUI} />
+                    <IconButton icon={<Setting fill='black'/>} onClick={openConfig} />
                 </div>
             </div>
         </div>

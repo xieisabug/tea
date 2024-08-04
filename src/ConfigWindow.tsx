@@ -1,11 +1,11 @@
-import React, {useEffect, useState} from "react";
+import React, {ReactNode, useEffect, useState} from "react";
 import SideMenu from "./components/SideMenu.tsx";
 import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
 import AssistantConfig from "./components/AssistantConfig.tsx";
 import FeatureAssistantConfig from "./components/FeatureAssistantConfig.tsx";
-import Model from "./assets/model.svg";
-import Assistant from "./assets/assistant.svg";
-import Program from "./assets/program.svg";
+import Model from "./assets/model.svg?react";
+import Assistant from "./assets/assistant.svg?react";
+import Program from "./assets/program.svg?react";
 import { listen } from "@tauri-apps/api/event";
 import SuccessNotification from "./components/SuccessNotification.tsx";
 import AlertDialog, { AlertDialogParam } from "./components/AlertDialog.tsx";
@@ -13,7 +13,8 @@ import AlertDialog, { AlertDialogParam } from "./components/AlertDialog.tsx";
 interface MenuItem {
     id: string;
     name: string;
-    icon: string;
+    icon: ReactNode;
+    iconSelected: ReactNode;
 }
 
 const contentMap: Record<string, React.ReactElement> = {
@@ -24,9 +25,9 @@ const contentMap: Record<string, React.ReactElement> = {
 
 function ConfigWindow() {
     const menuList:Array<MenuItem> = [
-        {id: 'llm-provider-config', name: '大模型配置', icon: Model},
-        {id: 'assistant-config', name: '个人助手配置', icon: Assistant},
-        {id: 'feature-assistant-config', name: '程序助手配置', icon: Program},
+        {id: 'llm-provider-config', name: '大模型配置', icon: <Model fill="black"/>, iconSelected: <Model fill="white"/>},
+        {id: 'assistant-config', name: '个人助手配置', icon: <Assistant fill="black"/>, iconSelected: <Assistant fill="white"/>},
+        {id: 'feature-assistant-config', name: '程序助手配置', icon: <Program fill="black"/>, iconSelected: <Program fill="white"/>},
     ];
 
     const [selectedMenu, setSelectedMenu] = useState<string>('llm-provider-config');
