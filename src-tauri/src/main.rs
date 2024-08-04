@@ -10,6 +10,7 @@ mod window;
 mod template_engine;
 mod errors;
 mod artifacts;
+mod state;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,6 +18,7 @@ use std::sync::Arc;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::system_db::FeatureConfig;
+use state::message_token::MessageTokenManager;
 use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
@@ -168,6 +170,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .manage(AppState {
             selected_text: TokioMutex::new(String::new()),
         })
+        .manage(MessageTokenManager::new())
         .invoke_handler(tauri::generate_handler![
             ask_ai, get_selected, open_config_window, open_chat_ui_window,
             save_config, get_config, get_all_feature_config, save_feature_config,
