@@ -111,18 +111,24 @@ impl ModelProvider for OpenAIProvider {
             });
             println!("openai chat: {:?}", body);
 
-            let response = client
+            let request = client
                 .post(&url)
                 .header(AUTHORIZATION, &format!("Bearer {}", api_key))
-                .json(&body)
-                .send()
-                .await?
-                .json::<serde_json::Value>()
-                .await?;
+                .json(&body);
 
-            println!("openai chat response: {:?}", response.clone());
+            let response = tokio::select! {
+                response = request.send() => response?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
 
-            if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
+            let json_response = tokio::select! {
+                json = response.json::<serde_json::Value>() => json?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
+
+            println!("openai chat response: {:?}", json_response.clone());
+
+            if let Some(content) = json_response["choices"][0]["message"]["content"].as_str() {
                 Ok(content.to_string())
             } else {
                 Err("Failed to get content from response".into())
@@ -197,44 +203,61 @@ impl ModelProvider for OpenAIProvider {
             });
             println!("openai chat stream url: {} body: {:?}", url, body);
 
-            let response = client
+            let request = client
                 .post(&url)
                 .header(AUTHORIZATION, &format!("Bearer {}", api_key))
-                .json(&body)
-                .send()
-                .await?;
+                .json(&body);
+
+            let response = tokio::select! {
+                response = request.send() => response?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
 
             let mut stream = response.bytes_stream();
             let mut full_text = String::new();
             let mut buffer = Vec::new();
-            while let Some(chunk) = stream.next().await {
-                let chunk = chunk?;
-                let text = String::from_utf8_lossy(&chunk);
-                println!("openai chat stream text: {}", text);
-                buffer.extend_from_slice(&chunk);
 
-                // 处理粘包和拆包
-                while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
-                    let chunk_data = buffer.drain(..=pos + 1).collect::<Vec<_>>();
-                    let chunk_str = String::from_utf8_lossy(&chunk_data);
+            loop {
+                tokio::select! {
+                    chunk = stream.next() => {
+                        match chunk {
+                            Some(Ok(chunk)) => {
+                                let text = String::from_utf8_lossy(&chunk);
+                                println!("openai chat stream text: {}", text);
+                                buffer.extend_from_slice(&chunk);
 
-                    if chunk_str.starts_with("data: ") {
-                        let json_str = &chunk_str["data: ".len()..];
-                        if json_str.trim() == "[DONE]" {
-                            tx.send((message_id, full_text.clone(), true)).await?;
-                            return Ok(());
-                        }
+                                // 处理粘包和拆包
+                                while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
+                                    let chunk_data = buffer.drain(..=pos + 1).collect::<Vec<_>>();
+                                    let chunk_str = String::from_utf8_lossy(&chunk_data);
 
-                        if let Ok(chunk_response) =
-                            serde_json::from_str::<serde_json::Value>(json_str)
-                        {
-                            if let Some(delta) =
-                                chunk_response["choices"][0]["delta"]["content"].as_str()
-                            {
-                                full_text.push_str(delta);
-                                tx.send((message_id, full_text.clone(), false)).await?;
+                                    if chunk_str.starts_with("data: ") {
+                                        let json_str = &chunk_str["data: ".len()..];
+                                        if json_str.trim() == "[DONE]" {
+                                            tx.send((message_id, full_text.clone(), true)).await?;
+                                            return Ok(());
+                                        }
+
+                                        if let Ok(chunk_response) =
+                                            serde_json::from_str::<serde_json::Value>(json_str)
+                                        {
+                                            if let Some(delta) =
+                                                chunk_response["choices"][0]["delta"]["content"].as_str()
+                                            {
+                                                full_text.push_str(delta);
+                                                tx.send((message_id, full_text.clone(), false)).await?;
+                                            }
+                                        }
+                                    }
+                                }
                             }
+                            Some(Err(e)) => return Err(e.into()),
+                            None => break,
                         }
+                    }
+                    _ = cancel_token.cancelled() => {
+                        tx.send((message_id, full_text.clone(), true)).await?;
+                        return Ok(());
                     }
                 }
             }

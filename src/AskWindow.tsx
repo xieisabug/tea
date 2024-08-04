@@ -52,7 +52,7 @@ function AskWindow() {
         }
     };
 
-    const handleSubmit = throttle(() => {
+    const handleSubmit = () => {
         if (aiIsResponsing) {
             return;
         }
@@ -82,6 +82,18 @@ function AskWindow() {
         } catch (error) {
             console.error('Error:', error);
             setResponse('An error occurred while processing your request.');
+        }
+    };
+
+    const onSend = throttle(() => {
+        if (aiIsResponsing) {
+            console.log("Cancelling AI");
+            invoke('cancel_ai', {messageId}).then(() => {
+                setAiIsResponsing(false);
+            });
+        } else {
+            console.log("Sending query to AI");
+            handleSubmit();
         }
     }, 200);
 
@@ -127,7 +139,7 @@ function AskWindow() {
     return (
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
-                <form onSubmit={handleSubmit} className='ask-window-chat-form'>
+                <div className='ask-window-chat-form'>
                     <textarea
                         className='ask-window-input'
                         ref={inputRef}
@@ -136,10 +148,10 @@ function AskWindow() {
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setQuery(e.target.value)}
                         placeholder="Ask AI..."
                     ></textarea>
-                    <button className='ask-window-submit-button' type="submit">
+                    <button className='ask-window-submit-button' type="button" onClick={onSend}>
                         {aiIsResponsing ? <Stop fill='white'/>: <UpArrow fill='white'/>}
                     </button>
-                </form>
+                </div>
                 <div className="response">
                     {
                         messageId !== -1 ? ( response == "" ? <AskAIHint /> : <ReactMarkdown 

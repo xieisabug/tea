@@ -23,7 +23,7 @@ use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTr
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::system_api::{get_all_feature_config, save_feature_config};
-use crate::api::ai_api::ask_ai;
+use crate::api::ai_api::{ask_ai, cancel_ai};
 use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant};
 use crate::api::conversation_api::{list_conversations, get_conversation_with_messages, delete_conversation, update_conversation};
 use get_selected_text::get_selected_text;
@@ -172,7 +172,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .manage(MessageTokenManager::new())
         .invoke_handler(tauri::generate_handler![
-            ask_ai, get_selected, open_config_window, open_chat_ui_window,
+            ask_ai, cancel_ai, get_selected, open_config_window, open_chat_ui_window,
             save_config, get_config, get_all_feature_config, save_feature_config,
             get_llm_providers, update_llm_provider,
             get_llm_provider_config, update_llm_provider_config,

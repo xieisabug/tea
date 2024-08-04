@@ -10,7 +10,6 @@ use crate::template_engine::TemplateEngine;
 use crate::{AppState, FeatureConfigState};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 use tauri::State;
 use tokio::sync::mpsc;
@@ -154,12 +153,10 @@ pub async fn ask_ai(
 
                 println!("Chat content: {}", content.clone());
 
-                tx.send((message_id, content.clone(), true))
-                    .await
-                    .unwrap();
+                tx.send((message_id, content.clone(), true)).await.unwrap();
                 // Ensure tx is closed after sending the message
                 drop(tx);
-            }            
+            }
             Ok::<(), String>(())
         });
 
@@ -233,6 +230,15 @@ pub async fn ask_ai(
         conversation_id: conversation_id,
         add_message_id: new_message_id.unwrap(),
     })
+}
+
+#[tauri::command]
+pub async fn cancel_ai(
+    message_token_manager: State<'_, MessageTokenManager>,
+    message_id: i64,
+) -> Result<(), String> {
+    message_token_manager.cancel_request(message_id);
+    Ok(())
 }
 
 fn init_conversation(
