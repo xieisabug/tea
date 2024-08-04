@@ -14,6 +14,7 @@ interface ConversationListProps {
 interface Conversation {
     id: string;
     name: string;
+    assistant_name: string;
 }
 
 interface MenuProps {
@@ -143,7 +144,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                         onSelectConversation(conversation.id);
                     }}>
                         <div className="conversation-list-item-name">{conversation.name}</div>
-                        <div className="conversation-list-item-assistant-name">快速助手</div>
+                        <div className="conversation-list-item-assistant-name">{conversation.assistant_name}</div>
 
                         <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id ? "white": "black"} />} onClick={(e) => onMenuClick(e, conversation.id)} />
 

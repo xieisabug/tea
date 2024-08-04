@@ -42,6 +42,12 @@ struct FeatureConfigState {
     config_feature_map: Arc<TokioMutex<HashMap<String, HashMap<String, FeatureConfig>>>>,
 }
 
+#[derive(Clone)]
+struct NameCacheState {
+    assistant_names: Arc<TokioMutex<HashMap<i64, String>>>,
+    model_names: Arc<TokioMutex<HashMap<i64, String>>>,
+}
+
 #[derive(Serialize, Deserialize)]
 struct Config {
     selected_text: String,
@@ -146,6 +152,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let _ = database_upgrade(&app_handle, system_db, llm_db, assistant_db, conversation_db);
 
             app.manage(initialize_state(&app_handle));
+            app.manage(initialize_name_cache_state(&app_handle));
 
 
             if app.get_window("main").is_none() {
@@ -231,5 +238,26 @@ fn initialize_state(app_handle: &tauri::AppHandle) -> FeatureConfigState {
     FeatureConfigState {
         configs: Arc::new(TokioMutex::new(configs)),
         config_feature_map: Arc::new(TokioMutex::new(configs_map)),
+    }
+}
+
+fn initialize_name_cache_state(app_handle: &tauri::AppHandle) -> NameCacheState {
+    let assistant_db = AssistantDatabase::new(app_handle).expect("Failed to connect to database");
+    let assistants = assistant_db.get_assistants().expect("Failed to load assistants");
+    let mut assistant_names = HashMap::new();
+    for assistant in assistants.clone().into_iter() {
+        assistant_names.insert(assistant.id, assistant.name.clone());
+    }
+
+    let llm_db = LLMDatabase::new(app_handle).expect("Failed to connect to database");
+    let models = llm_db.get_models_for_select().expect("Failed to load models");
+    let mut model_names = HashMap::new();
+    for model in models.clone().into_iter() {
+        model_names.insert(model.2, model.0);
+    }
+
+    NameCacheState {
+        assistant_names: Arc::new(TokioMutex::new(assistant_names)),
+        model_names: Arc::new(TokioMutex::new(model_names)),
     }
 }

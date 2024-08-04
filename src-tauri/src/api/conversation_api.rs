@@ -1,15 +1,44 @@
-use crate::db::conversation_db::{ConversationDatabase, Conversation, Message};
+use chrono::{DateTime, Utc};
+use serde::{Serialize, Deserialize};
+
+use crate::{db::conversation_db::{Conversation, ConversationDatabase, Message}, errors::AppError, NameCacheState};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ConversationResult {
+    pub id: i64,
+    pub name: String,
+    pub assistant_id: i64,
+    pub assistant_name: String,
+    pub created_time: DateTime<Utc>,
+}
 
 #[tauri::command]
-pub fn list_conversations(
+pub async fn list_conversations(
     app_handle: tauri::AppHandle,
+    name_cache_state: tauri::State<'_, NameCacheState>,
     page: u32,
     page_size: u32,
-) -> Result<Vec<Conversation>, String> {
-    let db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
+) -> Result<Vec<ConversationResult>, AppError> {
+    let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
 
-    db.list_conversations(page, page_size)
-        .map_err(|e| e.to_string())
+    let conversations = db.list_conversations(page, page_size)
+        .map_err(|e| e.to_string());
+
+    let mut conversation_results = Vec::new();
+    let assistant_name_cache = name_cache_state.assistant_names.lock().await.clone();
+    if let Ok(conversations) = &conversations {
+        for conversation in conversations {
+            let assistant_name = assistant_name_cache.get(&conversation.assistant_id.unwrap());
+            conversation_results.push(ConversationResult {
+                id: conversation.id,
+                name: conversation.name.clone(),
+                assistant_id: conversation.assistant_id.unwrap_or(0),
+                assistant_name: assistant_name.unwrap_or(&"未知".to_string()).clone(),
+                created_time: conversation.created_time,
+            });
+        }
+    }
+    Ok(conversation_results)
 }
 
 #[tauri::command]
