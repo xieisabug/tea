@@ -3,12 +3,10 @@ import { invoke } from '@tauri-apps/api/tauri';
 import { appWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import './styles/AskWindow.css';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { Components } from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeRaw from 'rehype-raw';
 import rehypeKatex from 'rehype-katex';
-import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
-import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 import UpArrow from './assets/up-arrow.svg?react';
 import Stop from './assets/stop.svg?react';
@@ -26,6 +24,9 @@ import CodeBlock from './components/CodeBlock';
 interface AiResponse {
     conversation_id: number;
     add_message_id: number;
+}
+interface CustomComponents extends Components {
+    antthinking: React.ElementType;
 }
 
 function AskWindow() {
@@ -157,8 +158,13 @@ function AskWindow() {
                                     {children}
                                 </code>
                                 )
+                            },
+                            antthinking({ children }) {
+                                return <div>
+                                    <div className="llm-thinking-badge" title={children} data-thinking={children}>思考...</div>
+                                </div>
                             }
-                        }}
+                        } as CustomComponents}
                     />) : <AskWindowPrepare />
                     }
                     
