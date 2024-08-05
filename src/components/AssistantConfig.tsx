@@ -52,6 +52,13 @@ const AssistantConfig: React.FC = () => {
         });
         // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
+    const onCopy = (assistantId: number) => {
+        invoke<AssistantDetail>("copy_assistant", {assistantId}).then((assistantDetail: AssistantDetail) => {
+            setAssistants([...assistants, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
+            setCurrentAssistant(assistantDetail);
+        });
+        // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
+    }
 
     const handleChooseAssistant = (assistant: AssistantListItem) => {
         if (!currentAssistant || currentAssistant.assistant.id !== assistant.id) {
@@ -340,7 +347,7 @@ const AssistantConfig: React.FC = () => {
                             <span className='config-window-title-description' title={currentAssistant.assistant.description??""}>{currentAssistant.assistant.description}</span>    
                         </div>
                         <div className='config-window-icon-button-group'>
-                            <IconButton icon={<Copy fill='white' />} onClick={openConfigDialog} />
+                            <IconButton icon={<Copy fill='white' />} onClick={() => onCopy(currentAssistant.assistant.id)} />
                             <IconButton icon={<Delete fill='white' />} onClick={openConfigDialog} />
                             <IconButton icon={<Edit fill='white' />} onClick={openFormDialog} />
                         </div>

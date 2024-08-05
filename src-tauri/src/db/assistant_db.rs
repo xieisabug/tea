@@ -337,6 +337,26 @@ impl AssistantDatabase {
         Ok(assistant_model_configs)
     }
 
+    pub fn get_assistant_model_configs_with_model_id(&self, assistant_id: i64, assistant_model_id: i64) -> Result<Vec<AssistantModelConfig>> {
+        let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_model_id, name, value, value_type FROM assistant_model_config WHERE assistant_id = ? AND assistant_model_id = ?")?;
+        let assistant_model_config_iter = stmt.query_map(params![assistant_id, assistant_model_id], |row| {
+            Ok(AssistantModelConfig {
+                id: row.get(0)?,
+                assistant_id: row.get(1)?,
+                assistant_model_id: row.get(2)?,
+                name: row.get(3)?,
+                value: row.get(4)?,
+                value_type: row.get(5)?,
+            })
+        })?;
+
+        let mut assistant_model_configs = Vec::new();
+        for assistant_model_config in assistant_model_config_iter {
+            assistant_model_configs.push(assistant_model_config?);
+        }
+        Ok(assistant_model_configs)
+    }
+
     pub fn get_assistant_prompt_params(&self, assistant_id: i64) -> Result<Vec<AssistantPromptParam>> {
         let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_prompt_id, param_name, param_type, param_value FROM assistant_prompt_param WHERE assistant_id = ?")?;
         let assistant_prompt_param_iter = stmt.query_map(params![assistant_id], |row| {

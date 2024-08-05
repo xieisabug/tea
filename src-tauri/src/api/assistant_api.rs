@@ -221,6 +221,86 @@ pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, St
 }
 
 #[tauri::command]
+pub fn copy_assistant(app_handle: tauri::AppHandle, assistant_id: i64) -> Result<AssistantDetail, String> {
+    println!("Start copying assistant with ID: {}", assistant_id);
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
+
+    // Get the original assistant
+    let original_assistant = assistant_db.get_assistant(assistant_id).map_err(|e| e.to_string())?;
+
+    // Create a new assistant based on the original
+    let new_assistant_id = assistant_db.add_assistant(
+        &format!("副本 {}", original_assistant.name),
+        &original_assistant.description.unwrap(),
+        original_assistant.assistant_type,
+        original_assistant.is_addition,
+    ).map_err(|e| e.to_string())?;
+
+    // Copy prompts
+    let original_prompts = assistant_db.get_assistant_prompt(assistant_id).map_err(|e| e.to_string())?;
+    let mut new_prompts = Vec::new();
+    for prompt in original_prompts {
+        let new_prompt_id = assistant_db.add_assistant_prompt(new_assistant_id, &prompt.prompt).map_err(|e| e.to_string())?;
+        new_prompts.push(AssistantPrompt {
+            id: new_prompt_id,
+            assistant_id: new_assistant_id,
+            prompt: prompt.prompt,
+            created_time: None,
+        });
+    }
+
+    // Copy models and their configs
+    let original_models = assistant_db.get_assistant_model(assistant_id).map_err(|e| e.to_string())?;
+    let mut new_models = Vec::new();
+    let mut new_model_configs = Vec::new();
+    for model in original_models {
+        let new_model_id = assistant_db.add_assistant_model(new_assistant_id, model.provider_id, &model.model_code, &model.alias).map_err(|e| e.to_string())?;
+        new_models.push(AssistantModel {
+            id: new_model_id,
+            assistant_id: new_assistant_id,
+            provider_id: model.provider_id,
+            model_code: model.model_code,
+            alias: model.alias,
+        });
+
+        // Copy model configs
+        let original_configs = assistant_db.get_assistant_model_configs_with_model_id(assistant_id, model.id).map_err(|e| e.to_string())?;
+        for config in original_configs {
+            let new_config_id = assistant_db.add_assistant_model_config(
+                new_assistant_id,
+                new_model_id,
+                &config.name,
+                config.value.as_deref().unwrap_or(""),
+                &config.value_type,
+            ).map_err(|e| e.to_string())?;
+            new_model_configs.push(AssistantModelConfig {
+                id: new_config_id,
+                assistant_id: new_assistant_id,
+                assistant_model_id: new_model_id,
+                name: config.name,
+                value: config.value,
+                value_type: config.value_type,
+            });
+        }
+    }
+
+    // Get the newly created assistant
+    let new_assistant = assistant_db.get_assistant(new_assistant_id).map_err(|e| e.to_string())?;
+
+    // Build AssistantDetail object
+    let assistant_detail = AssistantDetail {
+        assistant: new_assistant,
+        prompts: new_prompts,
+        model: new_models,
+        model_configs: new_model_configs,
+        prompt_params: Vec::new(), // Assuming prompt_params are not copied
+    };
+
+    println!("Successfully copied assistant. New assistant ID: {}", new_assistant_id);
+    Ok(assistant_detail)
+}
+
+#[tauri::command]
 pub fn delete_assistant(app_handle: tauri::AppHandle, assistant_id: i64) -> Result<(), String> {
     let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let _ = assistant_db.delete_assistant_model_config_by_assistant_id(assistant_id).map_err(|e| e.to_string());
