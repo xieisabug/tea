@@ -59,11 +59,14 @@ impl ModelProvider for OpenAIProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"https://api.openai.com/v1".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/chat/completions",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"https://api.openai.com/".to_string())
+                endpoint
             );
             let api_key = config_map.get("api_key").unwrap().clone();
 
@@ -151,11 +154,14 @@ impl ModelProvider for OpenAIProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"https://api.openai.com/v1".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/chat/completions",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"https://api.openai.com/v1".to_string())
+                endpoint
             );
             let api_key = config_map.get("api_key").unwrap().clone();
 
@@ -277,11 +283,14 @@ impl ModelProvider for OpenAIProvider {
                 config.into_iter().map(|c| (c.name, c.value)).collect();
             println!("config_map: {:?}", config_map);
 
+            let default_endpoint = &"https://api.openai.com/v1".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/models",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"https://api.openai.com/v1/".to_string())
+                endpoint
             );
             let api_key = config_map.get("api_key").unwrap().clone();
             println!("OpenAI models endpoint : {}", url);

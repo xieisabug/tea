@@ -1,5 +1,6 @@
 use super::ModelProvider;
 use crate::{api::llm_api::LlmModel, db::llm_db::LLMProviderConfig};
+use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::json;
@@ -136,11 +137,14 @@ impl ModelProvider for AnthropicProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"https://api.anthropic.com".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/v1/messages",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"https://api.anthropic.com/".to_string())
+                endpoint
             );
             let api_key = config_map.get("api_key").unwrap().clone();
 
@@ -193,19 +197,25 @@ impl ModelProvider for AnthropicProvider {
             });
             println!("anthropic chat: {:?}", body);
 
-            let response = client
+            let request = client
                 .post(&url)
                 .header("X-API-Key", api_key)
                 .header("anthropic-version", "2023-06-01")
-                .json(&body)
-                .send()
-                .await?
-                .json::<serde_json::Value>()
-                .await?;
+                .json(&body);
 
-            println!("anthropic chat response: {:?}", response.clone());
+            let response = tokio::select! {
+                response = request.send() => response?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
 
-            if let Some(content) = response["content"][0]["text"].as_str() {
+            let json_response = tokio::select! {
+                json = response.json::<serde_json::Value>() => json?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
+
+            println!("anthropic chat response: {:?}", json_response.clone());
+
+            if let Some(content) = json_response["content"][0]["text"].as_str() {
                 Ok(content.to_string())
             } else {
                 Err("Failed to get content from response".into())
@@ -228,11 +238,14 @@ impl ModelProvider for AnthropicProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"https://api.anthropic.com".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/v1/messages",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"https://api.anthropic.com/".to_string())
+                endpoint
             );
             let api_key = config_map.get("api_key").unwrap().clone();
 
@@ -285,88 +298,106 @@ impl ModelProvider for AnthropicProvider {
             });
             println!("anthropic chat stream url: {} body: {:?}", url, body);
 
-            let mut response = client
+            let request = client
                 .post(&url)
                 .header("X-API-Key", api_key)
                 .header("anthropic-version", "2023-06-01")
-                .json(&body)
-                .send()
-                .await?;
+                .json(&body);
 
+            let response = tokio::select! {
+                response = request.send() => response?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
+
+            let mut stream = response.bytes_stream();
             let mut full_text = String::new();
             let mut buffer = String::new();
 
-            while let Some(chunk) = response.chunk().await? {
-                let s = std::str::from_utf8(&chunk)
-                    .map_err(|e| format!("Invalid UTF-8 sequence: {}", e))?;
-                buffer.push_str(s);
-                println!("anthropic chat stream text: {}", s);
+            loop {
+                tokio::select! {
+                    chunk = stream.next() => {
+                        match chunk {
+                            Some(Ok(chunk)) => {
+                                let s = std::str::from_utf8(&chunk)
+                                    .map_err(|e| format!("Invalid UTF-8 sequence: {}", e))?;
+                                buffer.push_str(s);
+                                println!("anthropic chat stream text: {}", s);
 
-                loop {
-                    if let Some(index) = buffer.find("\n\n") {
-                        let chunk = buffer[..index].to_string();
-                        buffer.drain(..=index + 1);
+                                loop {
+                                    if let Some(index) = buffer.find("\n\n") {
+                                        let chunk = buffer[..index].to_string();
+                                        buffer.drain(..=index + 1);
 
-                        let processed_chunk = chunk
-                            .trim_start_matches("event: message_start")
-                            .trim_start_matches("event: content_block_start")
-                            .trim_start_matches("event: ping")
-                            .trim_start_matches("event: content_block_delta")
-                            .trim_start_matches("event: content_block_stop")
-                            .trim_start_matches("event: message_delta")
-                            .trim_start_matches("event: message_stop")
-                            .to_string();
+                                        let processed_chunk = chunk
+                                            .trim_start_matches("event: message_start")
+                                            .trim_start_matches("event: content_block_start")
+                                            .trim_start_matches("event: ping")
+                                            .trim_start_matches("event: content_block_delta")
+                                            .trim_start_matches("event: content_block_stop")
+                                            .trim_start_matches("event: message_delta")
+                                            .trim_start_matches("event: message_stop")
+                                            .to_string();
 
-                        let cleaned_string = processed_chunk
-                            .trim_start()
-                            .strip_prefix("data: ")
-                            .unwrap_or(&processed_chunk);
-                        print!("clean string: {}", cleaned_string);
+                                        let cleaned_string = processed_chunk
+                                            .trim_start()
+                                            .strip_prefix("data: ")
+                                            .unwrap_or(&processed_chunk);
+                                        print!("clean string: {}", cleaned_string);
 
-                        match serde_json::from_str::<AnthropicChatCompletionChunk>(cleaned_string) {
-                            Ok(d) => {
-                                if let Some(delta) = d.delta {
-                                    println!("anthropic chat stream delta: {:?}", delta);
+                                        match serde_json::from_str::<AnthropicChatCompletionChunk>(cleaned_string) {
+                                            Ok(d) => {
+                                                if let Some(delta) = d.delta {
+                                                    println!("anthropic chat stream delta: {:?}", delta);
 
-                                    if let Some(content) = delta.text {
-                                        full_text.push_str(&content);
-                                        tx.send((message_id, full_text.clone(), false)).await?;
+                                                    if let Some(content) = delta.text {
+                                                        full_text.push_str(&content);
+                                                        tx.send((message_id, full_text.clone(), false)).await?;
+                                                    }
+                                                } else if d.event_type == "message_stop" {
+                                                    tx.send((message_id, full_text.clone(), true)).await?;
+                                                    break;
+                                                } else {
+                                                    eprintln!("Unknown AnthropicChatCompletionChunk: {:?}", d);
+                                                }
+                                            }
+                                            Err(_) => {
+                                                let processed_chunk = cleaned_string
+                                                    .trim_start_matches("event: error")
+                                                    .to_string();
+                                                let cleaned_string = &processed_chunk
+                                                    .trim_start()
+                                                    .strip_prefix("data: ")
+                                                    .unwrap_or(&processed_chunk);
+                                                match serde_json::from_str::<AnthropicErrorMessage>(&cleaned_string)
+                                                {
+                                                    Ok(error_message) => {
+                                                        eprintln!(
+                                                            "{}: {}",
+                                                            error_message.error.error_type,
+                                                            error_message.error.message
+                                                        );
+                                                    }
+                                                    Err(_) => {
+                                                        eprintln!(
+                                                                "Couldn't parse AnthropicChatCompletionChunk or AnthropicErrorMessage: {}",
+                                                                &cleaned_string
+                                                            );
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        break;
                                     }
-                                } else if d.event_type == "message_stop" {
-                                    tx.send((message_id, full_text.clone(), true)).await?;
-                                    break;
-                                } else {
-                                    eprintln!("Unknown AnthropicChatCompletionChunk: {:?}", d);
                                 }
                             }
-                            Err(_) => {
-                                let processed_chunk = cleaned_string
-                                    .trim_start_matches("event: error")
-                                    .to_string();
-                                let cleaned_string = &processed_chunk
-                                    .trim_start()
-                                    .strip_prefix("data: ")
-                                    .unwrap_or(&processed_chunk);
-                                match serde_json::from_str::<AnthropicErrorMessage>(&cleaned_string)
-                                {
-                                    Ok(error_message) => {
-                                        eprintln!(
-                                            "{}: {}",
-                                            error_message.error.error_type,
-                                            error_message.error.message
-                                        );
-                                    }
-                                    Err(_) => {
-                                        eprintln!(
-                                                "Couldn't parse AnthropicChatCompletionChunk or AnthropicErrorMessage: {}",
-                                                &cleaned_string
-                                            );
-                                    }
-                                }
-                            }
+                            Some(Err(e)) => return Err(e.into()),
+                            None => break,
                         }
-                    } else {
-                        break;
+                    }
+                    _ = cancel_token.cancelled() => {
+                        tx.send((message_id, full_text.clone(), true)).await?;
+                        return Ok(());
                     }
                 }
             }

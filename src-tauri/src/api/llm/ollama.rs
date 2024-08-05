@@ -3,7 +3,10 @@ use crate::{
     db::{assistant_db::AssistantModelConfig, llm_db::LLMProviderConfig},
 };
 use futures::{future::BoxFuture, StreamExt};
-use reqwest::Client;
+use reqwest::{
+    header::AUTHORIZATION,
+    Client,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
@@ -64,12 +67,16 @@ impl ModelProvider for OllamaProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"http://localhost:11434".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/api/chat",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"http://localhost:11434/".to_string())
+                endpoint
             );
+            let api_key = config_map.get("api_key").unwrap().clone();
 
             let json_messages = messages
                 .iter()
@@ -115,15 +122,22 @@ impl ModelProvider for OllamaProvider {
             });
             println!("ollama chat: {:?}", body);
 
-            let response = client
+            let request = client
                 .post(&url)
-                .json(&body)
-                .send()
-                .await?
-                .json::<serde_json::Value>()
-                .await?;
+                .header(AUTHORIZATION, &format!("Bearer {}", api_key))
+                .json(&body);
 
-            if let Some(content) = response["message"]["content"].as_str() {
+            let response = tokio::select! {
+                response = request.send() => response?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
+
+            let json_response = tokio::select! {
+                json = response.json::<serde_json::Value>() => json?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
+
+            if let Some(content) = json_response["message"]["content"].as_str() {
                 Ok(content.to_string())
             } else {
                 Err("Failed to get content from response".into())
@@ -146,12 +160,17 @@ impl ModelProvider for OllamaProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"http://localhost:11434".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/api/chat",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"http://localhost:11434/".to_string())
+                endpoint
             );
+            println!("url: {}", url);
+            let api_key = config_map.get("api_key").unwrap_or(&"".to_string()).clone();
 
             let json_messages = messages
                 .iter()
@@ -198,7 +217,17 @@ impl ModelProvider for OllamaProvider {
 
             println!("ollama chat stream: {:?}", body);
 
-            let response = client.post(&url).json(&body).send().await?;
+            let request = client
+                .post(&url)
+                .header(AUTHORIZATION, &format!("Bearer {}", api_key))
+                .json(&body);
+
+            println!("request: {:?}", request);
+
+            let response = tokio::select! {
+                response = request.send() => response?,
+                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+            };
 
             let mut stream = response.bytes_stream();
             let mut full_text = String::new();
@@ -227,7 +256,7 @@ impl ModelProvider for OllamaProvider {
                         }
                     },
                     _ = cancel_token.cancelled() => {
-                        println!("Stream cancelled");
+                        tx.send((message_id, full_text.clone(), true)).await?;
                         return Ok(());
                     }
                 }
@@ -247,11 +276,14 @@ impl ModelProvider for OllamaProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
+            let default_endpoint = &"http://localhost:11434".to_string();
+            let endpoint = config_map
+                .get("endpoint")
+                .unwrap_or(default_endpoint)
+                .trim_end_matches('/');
             let url = format!(
                 "{}/api/tags",
-                config_map
-                    .get("endpoint")
-                    .unwrap_or(&"http://localhost:11434/".to_string())
+                endpoint
             );
 
             let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
