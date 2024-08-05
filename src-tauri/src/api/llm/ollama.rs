@@ -76,7 +76,7 @@ impl ModelProvider for OllamaProvider {
                 "{}/api/chat",
                 endpoint
             );
-            let api_key = config_map.get("api_key").unwrap().clone();
+            let api_key = config_map.get("api_key").unwrap_or(&"".to_string()).clone();
 
             let json_messages = messages
                 .iter()

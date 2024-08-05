@@ -27,6 +27,8 @@ impl MessageTokenManager {
         let mut map = self.tokens.lock().unwrap();
         if let Some(token) = map.remove(&message_id) {
             token.cancel();
+        } else {
+            println!("未找到message_id {} 对应的 cancel token", message_id);
         }
     }
 

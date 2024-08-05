@@ -132,6 +132,8 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             }
 
             const lastMessageId = res[1][res[1].length - 1].id;
+
+            setMessageId(lastMessageId);
             unsubscribeRef.current = listen(`message_${lastMessageId}`, (event) => {
                 const payload = event.payload as string;
                 if (payload !== "Tea::Event::MessageFinish") {
@@ -169,89 +171,97 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
 
     const [inputText, setInputText] = useState("");
     const [aiIsResponsing, setAiIsResponsing] = useState<boolean>(false);
-    const handleSend = useCallback(() => {
-        if (inputText.trim() === "") {
-            setInputText("");
-            return;
-        }
+    const [messageId, setMessageId] = useState<number>(-1);
+    const handleSend = throttle(() => {
         if (aiIsResponsing) {
-            return;
-        }
-        setAiIsResponsing(true);
-
-        let conversationId = "";
-        let assistantId = "";
-        if (!conversation || !conversation.id) {
-            assistantId = selectedAssistant + "";
+            console.log("Cancelling AI");
+            console.log(messageId);
+            invoke('cancel_ai', {messageId}).then(() => {
+                setAiIsResponsing(false);
+            });
         } else {
-            conversationId = conversation.id + "";
-            assistantId = conversation.assistant_id + "";
-        }
-        try {
-            const userMessage = {
-                id: 0,
-                conversation_id: conversationId ? -1 : +conversationId,
-                llm_model_id: -1,
-                content: inputText,
-                token_count: 0,
-                message_type: "user",
-                created_time: new Date()
-            };
-
-            setMessages(prevMessages => [...prevMessages, userMessage]);
-            invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId } })
-                .then((res) => {
-                    console.log("ask ai response", res);
-                    if (unsubscribeRef.current) {
-                        console.log('Unsubscribing from previous event listener');
-                        unsubscribeRef.current.then(f => f());
-                    }
-
-                    if (conversationId != (res.conversation_id + "")) {
-                        onChangeConversationId(res.conversation_id + "");
-                    } else {
-                        const assistantMessage = {
-                            id: res.add_message_id,
-                            conversation_id: conversationId ? -1 : +conversationId,
-                            llm_model_id: -1,
-                            content: "",
-                            token_count: 0,
-                            message_type: "assistant",
-                            created_time: new Date()
-                        };
-
-                        setMessages(prevMessages => [...prevMessages, assistantMessage]);
-                    }
-
-                    console.log("Listening for response", `message_${res.add_message_id}`);
-
-                    unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
-                        const payload = event.payload as string;
-                        if (payload !== "Tea::Event::MessageFinish") {
-                            // 更新messages的最后一个对象
-                            setMessages(prevMessages => {
-                                const newMessages = [...prevMessages];
-                                const index = newMessages.findIndex(msg => msg.id === res.add_message_id);
-                                if (index !== -1) {
-                                    newMessages[index] = {
-                                        ...newMessages[index],
-                                        content: event.payload as string
-                                    };
-                                    scroll();
-                                }
-                                return newMessages;
-                            });
-                        } else {
-                            setAiIsResponsing(false);
+            if (inputText.trim() === "") {
+                setInputText("");
+                return;
+            }
+            setAiIsResponsing(true);
+    
+            let conversationId = "";
+            let assistantId = "";
+            if (!conversation || !conversation.id) {
+                assistantId = selectedAssistant + "";
+            } else {
+                conversationId = conversation.id + "";
+                assistantId = conversation.assistant_id + "";
+            }
+            try {
+                const userMessage = {
+                    id: 0,
+                    conversation_id: conversationId ? -1 : +conversationId,
+                    llm_model_id: -1,
+                    content: inputText,
+                    token_count: 0,
+                    message_type: "user",
+                    created_time: new Date()
+                };
+    
+                setMessages(prevMessages => [...prevMessages, userMessage]);
+                invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId } })
+                    .then((res) => {
+                        console.log("ask ai response", res);
+                        if (unsubscribeRef.current) {
+                            console.log('Unsubscribing from previous event listener');
+                            unsubscribeRef.current.then(f => f());
                         }
-
+    
+                        setMessageId(res.add_message_id);
+    
+                        if (conversationId != (res.conversation_id + "")) {
+                            onChangeConversationId(res.conversation_id + "");
+                        } else {
+                            const assistantMessage = {
+                                id: res.add_message_id,
+                                conversation_id: conversationId ? -1 : +conversationId,
+                                llm_model_id: -1,
+                                content: "",
+                                token_count: 0,
+                                message_type: "assistant",
+                                created_time: new Date()
+                            };
+    
+                            setMessages(prevMessages => [...prevMessages, assistantMessage]);
+                        }
+    
+                        console.log("Listening for response", `message_${res.add_message_id}`);
+    
+                        unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
+                            const payload = event.payload as string;
+                            if (payload !== "Tea::Event::MessageFinish") {
+                                // 更新messages的最后一个对象
+                                setMessages(prevMessages => {
+                                    const newMessages = [...prevMessages];
+                                    const index = newMessages.findIndex(msg => msg.id === res.add_message_id);
+                                    if (index !== -1) {
+                                        newMessages[index] = {
+                                            ...newMessages[index],
+                                            content: event.payload as string
+                                        };
+                                        scroll();
+                                    }
+                                    return newMessages;
+                                });
+                            } else {
+                                setAiIsResponsing(false);
+                            }
+    
+                        });
                     });
-                });
-        } catch (error) {
-            console.error('Error:', error);
-        }
-        setInputText("");
-    }, [inputText, conversation]);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+            setInputText("");
+        }     
+    }, 200);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter') {
