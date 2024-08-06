@@ -12,7 +12,18 @@ function PreviewHTMLWindow() {
         emit("preview-window-load");
     }, []);
     return (
-        <div dangerouslySetInnerHTML={{__html: html}}></div>
+        // <div dangerouslySetInnerHTML={{__html: html}}></div>
+        <iframe 
+            style={{
+                width: "100vw",
+                height: "100vh",
+                border: 0,
+                padding: 0,
+                margin: 0
+            }}
+            srcDoc={html} 
+            sandbox="allow-same-origin allow-scripts" 
+        />
     );
 }
 
