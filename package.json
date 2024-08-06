@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@babel/standalone": "^7.25.3",
     "@tauri-apps/api": "^1",
     "katex": "^0.16.11",
     "lodash": "^4.17.21",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1",
+    "@types/babel__standalone": "^7.1.7",
     "@types/lodash": "^4.17.6",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
