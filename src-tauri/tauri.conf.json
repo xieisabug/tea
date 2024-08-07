@@ -38,7 +38,12 @@
       }
     },
     "security": {
-      "csp": null
+      "dangerousRemoteDomainIpcAccess": [
+        {
+          "domain": "preview.teafakedomain.com",
+          "windows": ["preview_react"]
+        }
+      ]
     },
     "systemTray": {
       "iconPath": "icons/icon.png",

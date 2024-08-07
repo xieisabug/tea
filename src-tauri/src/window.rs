@@ -1,5 +1,8 @@
 use chrono::DateTime;
-use tauri::{AppHandle, Manager, WindowBuilder, WindowEvent, WindowUrl};
+use tauri::{AppHandle, Manager, Url, WindowBuilder, WindowEvent, WindowUrl};
+use serde::{Serialize, Deserialize};
+use sha2::{Sha256, Digest};
+use std::fs;
 
 pub fn create_ask_window(app: &AppHandle) {
     let window_builder = WindowBuilder::new(
@@ -162,8 +165,6 @@ pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Re
     Ok(())
 }
 
-use serde::{Serialize, Deserialize};
-
 #[derive(Serialize, Deserialize)]
 struct ReactComponentPayload {
     code: String,
@@ -171,10 +172,24 @@ struct ReactComponentPayload {
 }
 
 pub async fn open_preview_react_window(app_handle: AppHandle, html: String) -> Result<(), String> {
+    let mut hasher = Sha256::new();
+    hasher.update(html.clone());
+    let result = hasher.finalize();
+    let html_hash = format!("{:x}", result);
+
+    let directory = "/Users/xiejingyang/Workspace/js/react-component-preview/pages/components/";
+    let js_file_path = format!("{}{}.js", directory, html_hash);
+
+    if !fs::metadata(&js_file_path).is_ok() {
+        fs::write(&js_file_path, html.clone()).unwrap();
+    }
+
+    let url = Url::parse(&("http://preview.teafakedomain.com:3001/previews/".to_owned() + &html_hash)).map_err(|e| e.to_string())?;
+
     let window_builder = WindowBuilder::new(
         &app_handle,
         "preview_react",
-        WindowUrl::App("index.html".into())
+        WindowUrl::External(url)
     )
         .title("Tea")
         .inner_size(1000.0, 800.0)
