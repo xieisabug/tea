@@ -42,7 +42,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange })
 
   return (
     <div className="custom-select" ref={selectRef}>
-      <div className={`select-selected ${isOpen ? 'select-arrow-active' : ''}`} onClick={handleSelectClick}>
+      <div className={`select-selected ${isOpen ? 'select-arrow-active' : ''}`} onClick={handleSelectClick} title={selectedOption?.label}>
         {selectedOption?.label}
       </div>
       {isOpen && (
@@ -52,6 +52,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange })
               key={option.value}
               className={option.value === value ? 'same-as-selected' : ''}
               onClick={() => handleOptionClick(option.value)}
+              title={option.label}
             >
               {option.label}
             </div>
