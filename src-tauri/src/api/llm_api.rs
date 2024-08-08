@@ -52,6 +52,13 @@ pub async fn get_llm_providers(app_handle: tauri::AppHandle) -> Result<Vec<LlmPr
 }
 
 #[tauri::command]
+pub async fn add_llm_provider(app: tauri::AppHandle, name: String, api_type: String) -> Result<(), String> {
+    let db = LLMDatabase::new(&app).map_err(|e| e.to_string())?;
+    db.add_llm_provider(&*name, &*api_type, "", false, false).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn update_llm_provider(
     app_handle: tauri::AppHandle,
     id: i64,

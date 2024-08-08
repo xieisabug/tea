@@ -1,4 +1,4 @@
-use crate::db::{assistant_db::{Assistant, AssistantDatabase, AssistantModel, AssistantModelConfig, AssistantPrompt, AssistantPromptParam}, conversation_db::ConversationDatabase};
+use crate::{db::{assistant_db::{Assistant, AssistantDatabase, AssistantModel, AssistantModelConfig, AssistantPrompt, AssistantPromptParam}, conversation_db::ConversationDatabase}, NameCacheState};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
 pub struct AssistantDetail {
@@ -54,7 +54,11 @@ pub fn get_assistant(app_handle: tauri::AppHandle, assistant_id: i64) -> Result<
 }
 
 #[tauri::command]
-pub fn save_assistant(app_handle: tauri::AppHandle, assistant_detail: AssistantDetail) -> Result<(), String> {
+pub async fn save_assistant(
+    app_handle: tauri::AppHandle, 
+    name_cache_state: tauri::State<'_, NameCacheState>,
+    assistant_detail: AssistantDetail
+) -> Result<(), String> {
     let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
 
     println!("save_assistant assistant_detail: {:?}", assistant_detail.clone());
@@ -74,6 +78,10 @@ pub fn save_assistant(app_handle: tauri::AppHandle, assistant_detail: AssistantD
             assistant_detail.assistant.description.as_deref().unwrap_or("")
         ).map_err(|e| e.to_string())?;
     }
+
+    // Update the name_cache_state
+    let mut model_names = name_cache_state.assistant_names.lock().await;
+    model_names.insert(assistant_detail.assistant.id, assistant_detail.assistant.name);
 
     // Save or update the AssistantPrompts
     for prompt in assistant_detail.prompts {
