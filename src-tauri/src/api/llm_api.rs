@@ -74,6 +74,13 @@ pub async fn update_llm_provider(
 }
 
 #[tauri::command]
+pub async fn delete_llm_provider(app_handle: tauri::AppHandle, llm_provider_id: i64) -> Result<(), String> {
+    let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
+    let _ = db.delete_llm_provider(llm_provider_id);
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_llm_provider_config(
     app_handle: tauri::AppHandle,
     id: i64,
