@@ -72,7 +72,7 @@ const MessageItem = React.memo(({ message, onCodeRun }: any) => {
                                 {String(children).replace(/\n$/, '')}
                             </CodeBlock>
                         ) : (
-                            <code {...props} ref={ref} className={className} style={{ overflow: "auto" }}>
+                            <code {...props} ref={ref} className={className} style={{ overflow: "auto", display: "block" }}>
                                 {children}
                             </code>
                         );
