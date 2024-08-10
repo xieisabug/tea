@@ -15,31 +15,30 @@ use futures::StreamExt;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelsResponse {
-    data: Vec<Model>,
-    object: String,
+    models: Vec<Model>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Model {
-    id: String,
-    object: String,
-    created: Option<u64>,
-    owned_by: String,
-    root: Option<String>,
-    parent: Option<String>,
+    name: String,
+    endpoints: Vec<String>,
+    finetuned: bool,
+    context_length: u32,
+    tokenizer_url: Option<String>,
+    default_endpoints: Vec<String>,
 }
 
-pub struct OpenAIProvider {
+pub struct CohereProvider {
     llm_provider_config: Vec<LLMProviderConfig>,
     client: Client,
 }
 
-impl ModelProvider for OpenAIProvider {
+impl ModelProvider for CohereProvider {
     fn new(llm_provider_config: Vec<crate::db::llm_db::LLMProviderConfig>) -> Self
     where
         Self: Sized,
     {
-        OpenAIProvider {
+        CohereProvider {
             llm_provider_config,
             client: Client::new(),
         }
@@ -48,7 +47,7 @@ impl ModelProvider for OpenAIProvider {
     fn chat(
         &self,
         _message_id: i64,
-        messages: Vec<(String, String)>,
+        mut messages: Vec<(String, String)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         cancel_token: CancellationToken,
     ) -> futures::future::BoxFuture<'static, Result<String, Box<dyn std::error::Error>>> {
@@ -59,23 +58,29 @@ impl ModelProvider for OpenAIProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
-            let default_endpoint = &"https://api.openai.com/v1".to_string();
+            let default_endpoint = &"https://api.cohere.ai/v1".to_string();
             let endpoint = config_map
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/chat/completions",
-                endpoint
-            );
+            let url = format!("{}/chat", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
+            let message = messages.pop();
+            let message = message.ok_or("No message found")?;
+            if (message.0 != "user") {
+                return Err("First message must be from user".into());
+            }
 
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content)| {
+                    let role = match message_type.as_str() {
+                        "assistant" => "chatbot",
+                        _ => message_type,
+                    };
                     json!({
-                        "role": message_type,
-                        "content": content
+                        "role": role.to_uppercase(),
+                        "message": content
                     })
                 })
                 .collect::<Vec<serde_json::Value>>();
@@ -107,16 +112,17 @@ impl ModelProvider for OpenAIProvider {
             let body = json!({
                 "model": model,
                 "temperature": temperature,
-                "top_p": top_p,
+                "p": top_p,
                 "max_tokens": max_tokens,
-                "messages": json_messages,
+                "message": message.1,
+                "chat_history": json_messages,
                 "stream": false
             });
-            println!("openai chat: {:?}", body);
+            println!("cohere chat: {:?}", body);
 
             let request = client
                 .post(&url)
-                .header(AUTHORIZATION, &format!("Bearer {}", api_key))
+                .header(AUTHORIZATION, &format!("bearer {}", api_key))
                 .json(&body);
 
             let response = tokio::select! {
@@ -129,9 +135,9 @@ impl ModelProvider for OpenAIProvider {
                 _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
             };
 
-            println!("openai chat response: {:?}", json_response.clone());
+            println!("cohere chat response: {:?}", json_response.clone());
 
-            if let Some(content) = json_response["choices"][0]["message"]["content"].as_str() {
+            if let Some(content) = json_response["text"].as_str() {
                 Ok(content.to_string())
             } else {
                 Err("Failed to get content from response".into())
@@ -142,7 +148,7 @@ impl ModelProvider for OpenAIProvider {
     fn chat_stream(
         &self,
         message_id: i64,
-        messages: Vec<(String, String)>,
+        mut messages: Vec<(String, String)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         tx: tokio::sync::mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
@@ -154,23 +160,29 @@ impl ModelProvider for OpenAIProvider {
             let config_map: HashMap<String, String> =
                 config.into_iter().map(|c| (c.name, c.value)).collect();
 
-            let default_endpoint = &"https://api.openai.com/v1".to_string();
+            let default_endpoint = &"https://api.cohere.ai/v1".to_string();
             let endpoint = config_map
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/chat/completions",
-                endpoint
-            );
+            let url = format!("{}/chat", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
 
+            let message = messages.pop();
+            let message = message.ok_or("No message found")?;
+            if (message.0 != "user") {
+                return Err("First message must be from user".into());
+            }
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content)| {
+                    let role = match message_type.as_str() {
+                        "assistant" => "chatbot",
+                        _ => message_type,
+                    };
                     json!({
-                        "role": message_type,
-                        "content": content
+                        "role": role.to_uppercase(),
+                        "message": content
                     })
                 })
                 .collect::<Vec<serde_json::Value>>();
@@ -202,16 +214,17 @@ impl ModelProvider for OpenAIProvider {
             let body = json!({
                 "model": model,
                 "temperature": temperature,
-                "top_p": top_p,
+                "p": top_p,
                 "max_tokens": max_tokens,
-                "messages": json_messages,
+                "message": message.1,
+                "chat_history": json_messages,
                 "stream": true
             });
-            println!("openai chat stream url: {} body: {:?}", url, body);
+            println!("cohere chat stream url: {} body: {:?}", url, body);
 
             let request = client
                 .post(&url)
-                .header(AUTHORIZATION, &format!("Bearer {}", api_key))
+                .header(AUTHORIZATION, &format!("bearer {}", api_key))
                 .json(&body);
 
             let response = tokio::select! {
@@ -229,40 +242,38 @@ impl ModelProvider for OpenAIProvider {
                         match chunk {
                             Some(Ok(chunk)) => {
                                 let text = String::from_utf8_lossy(&chunk);
-                                println!("openai chat stream text: {}", text);
+                                println!("cohere chat stream text: {}", text);
                                 buffer.extend_from_slice(&chunk);
-
+                            
                                 // 处理粘包和拆包
-                                while let Some(pos) = buffer.windows(2).position(|w| w == b"\n\n") {
-                                    let chunk_data = buffer.drain(..=pos + 1).collect::<Vec<_>>();
+                                while let Some(json_end) = find_json_end(&buffer) {
+                                    let chunk_data = buffer.drain(..=json_end).collect::<Vec<_>>();
                                     let chunk_str = String::from_utf8_lossy(&chunk_data);
-
-                                    if chunk_str.starts_with("data: ") {
-                                        let json_str = &chunk_str["data: ".len()..];
-                                        if json_str.trim() == "[DONE]" {
-                                            tx.send((message_id, full_text.clone(), true)).await?;
-                                            return Ok(());
-                                        }
-
-                                        if let Ok(chunk_response) =
-                                            serde_json::from_str::<serde_json::Value>(json_str)
-                                        {
-                                            if let Some(delta) =
-                                                chunk_response["choices"][0]["delta"]["content"].as_str()
-                                            {
-                                                full_text.push_str(delta);
-                                                tx.send((message_id, full_text.clone(), false)).await?;
-                                            }
+                            
+                                    if let Ok(chunk_response) = serde_json::from_str::<serde_json::Value>(&chunk_str) {
+                                        match chunk_response["event_type"].as_str() {
+                                            Some("text-generation") => {
+                                                if let Some(delta) = chunk_response["text"].as_str() {
+                                                    full_text.push_str(delta);
+                                                    tx.send((message_id, full_text.clone(), false)).await?;
+                                                }
+                                            },
+                                            Some("stream-end") => {
+                                                if let Some(response) = chunk_response["response"].as_object() {
+                                                    if let Some(text) = response["text"].as_str() {
+                                                        full_text = text.to_string();
+                                                    }
+                                                }
+                                                tx.send((message_id, full_text.clone(), true)).await?;
+                                            },
+                                            _ => {}
                                         }
                                     }
                                 }
                             }
+                            
                             Some(Err(e)) => return Err(e.into()),
-                            None => {
-                                println!("openai chat stream end");
-                                tx.send((message_id, full_text.clone(), true)).await?;
-                                return Ok(());
-                            },
+                            None => break,
                         }
                     }
                     _ = cancel_token.cancelled() => {
@@ -287,23 +298,20 @@ impl ModelProvider for OpenAIProvider {
                 config.into_iter().map(|c| (c.name, c.value)).collect();
             println!("config_map: {:?}", config_map);
 
-            let default_endpoint = &"https://api.openai.com/v1".to_string();
+            let default_endpoint = &"https://api.cohere.ai/v1".to_string();
             let endpoint = config_map
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/models",
-                endpoint
-            );
+            let url = format!("{}/models", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
-            println!("OpenAI models endpoint : {}", url);
+            println!("Cohere models endpoint : {}", url);
 
             let mut headers = HeaderMap::new();
             headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
             headers.insert(
                 AUTHORIZATION,
-                HeaderValue::from_str(&format!("Bearer {}", api_key)).unwrap(),
+                HeaderValue::from_str(&format!("bearer {}", api_key)).unwrap(),
             );
 
             let req = client
@@ -316,21 +324,24 @@ impl ModelProvider for OpenAIProvider {
             let res2 = response.await;
             // println!("response: {:?}", res2.unwrap().text().await.unwrap());
 
-            let models_response: ModelsResponse =
-                res2.unwrap().json().await.map_err(|e| e.to_string())?;
+            // 读取响应体为字符串
+            let body = res2.expect("{}").text().await.map_err(|e| e.to_string())?;
+            println!("Response body: {}", body);
+
+            // 将字符串解析为 JSON
+            let models_response: ModelsResponse = serde_json::from_str(&body).map_err(|e| e.to_string())?;
             println!("models_response: {:?}", models_response);
 
-            for model in models_response.data {
+            for model in models_response.models {
                 let llm_model = LlmModel {
                     id: 0, // You need to set this according to your needs
-                    name: model.id.clone(),
+                    name: model.name.clone(),
                     llm_provider_id: 1, // You need to set this according to your needs
-                    code: model.id.clone(),
+                    code: model.name.clone(),
                     description: format!(
-                        "Model id: {}, Model object: {}, Model ownedBy: {}",
-                        model.id.clone(),
-                        model.object,
-                        model.owned_by
+                        "Model name: {}, Model context_length: {}",
+                        model.name.clone(),
+                        model.context_length,
                     ),
                     vision_support: false, // Set this according to your needs
                     audio_support: false,  // Set this according to your needs
@@ -342,4 +353,21 @@ impl ModelProvider for OpenAIProvider {
             Ok(result)
         })
     }
+}
+
+fn find_json_end(buffer: &[u8]) -> Option<usize> {
+    let mut depth = 0;
+    for (i, &byte) in buffer.iter().enumerate() {
+        match byte {
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }

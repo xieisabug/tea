@@ -70,7 +70,7 @@ impl LLMDatabase {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     llm_provider_id INTEGER NOT NULL,
-                    code TEXT NOT NULL UNIQUE,
+                    code TEXT NOT NULL,
                     description TEXT,
                     vision_support BOOLEAN NOT NULL DEFAULT 0,
                     audio_support BOOLEAN NOT NULL DEFAULT 0,

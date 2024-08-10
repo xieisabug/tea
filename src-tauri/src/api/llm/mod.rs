@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anthropic::AnthropicProvider;
+use cohere::CohereProvider;
 use futures::future::BoxFuture;
 use ollama::OllamaProvider;
 use openai::OpenAIProvider;
@@ -18,6 +19,7 @@ use super::llm_api::LlmModel;
 mod anthropic;
 mod ollama;
 mod openai;
+mod cohere;
 
 pub trait ModelProvider: Send + Sync {
     fn new(llm_provider_config: Vec<LLMProviderConfig>) -> Self
@@ -52,6 +54,7 @@ pub fn get_provider(
         "ollama" => Arc::new(OllamaProvider::new(llm_provider_config)), // 传入适当的配置
         "openai_api" => Arc::new(OpenAIProvider::new(llm_provider_config)), // 传入适当的配置
         "anthropic" => Arc::new(AnthropicProvider::new(llm_provider_config)), // 传入适当的配置
+        "cohere" => Arc::new(CohereProvider::new(llm_provider_config)), // 传入适当的配置
         // 其他提供商...
         _ => panic!(
             "Unknown provider: {} and type: {}",

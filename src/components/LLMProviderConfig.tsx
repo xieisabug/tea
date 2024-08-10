@@ -58,6 +58,7 @@ const LLMProviderConfig: React.FC = () => {
         { value: 'openai_api', label: 'OpenAI API' },
         { value: 'ollama', label: 'Ollama API' },
         { value: 'anthropic', label: 'Anthropic API' },
+        { value: 'cohere', label: 'Cohere API' },
     ]
 
     const openNewProviderDialog = useCallback(() => {
