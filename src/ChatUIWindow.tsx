@@ -26,9 +26,9 @@ function ChatUIWindow() {
     return (
         <div className="chat-ui-window">
             <div className="left-side">
+                <ChatUIInfomation />
                 <ChatUIToolbar onNewConversation={() => setSelectedConversation("")} />
                 <ConversationList conversationId={selectedConversation} onSelectConversation={setSelectedConversation} />
-                <ChatUIInfomation />
             </div>
 
             <div className="center-content">

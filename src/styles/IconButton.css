@@ -9,3 +9,12 @@
     justify-content: center;
     cursor: pointer;
 }
+
+.border-icon-button {
+    border: 1px solid var(--secondary-border-color);
+    background-color: var(--secondary-color);
+}
+.border-icon-button:hover {
+    border: 1px solid var(--main-color);
+    background-color: #CFE0DF;
+}

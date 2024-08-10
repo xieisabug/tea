@@ -146,7 +146,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                         <div className="conversation-list-item-name">{conversation.name}</div>
                         <div className="conversation-list-item-assistant-name">{conversation.assistant_name}</div>
 
-                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id ? "white": "black"} />} onClick={(e) => onMenuClick(e, conversation.id)} />
+                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id ? "#468585": "black"} />} onClick={(e) => onMenuClick(e, conversation.id)} />
 
                         {
                             menuShow && menuShowConversationId === conversation.id ? 

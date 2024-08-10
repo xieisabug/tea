@@ -7,6 +7,8 @@
 
 :root {
     --main-color: #468585;
+    --secondary-color: #EDF3F3;
+    --secondary-border-color: #D0D2D4;
 }
 
 body {

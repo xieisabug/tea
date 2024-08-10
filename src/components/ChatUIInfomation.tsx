@@ -10,8 +10,11 @@ function ChatUIInfomation() {
 
     return (
         <div className="chat-ui-information">
-            <IconButton icon={<Setting fill="black"/>} onClick={openConfig} />
-            <IconButton icon={<Experiment fill="black"/>} onClick={() => {}} />
+            <h1 className="chat-ui-information-title">Tea</h1>
+            <div className="chat-ui-information-button-group">
+                <IconButton icon={<Setting fill="#468585"/>} onClick={openConfig} border />
+                <IconButton icon={<Experiment fill="#468585"/>} onClick={() => {}} border />
+            </div>
         </div>
     );
 }

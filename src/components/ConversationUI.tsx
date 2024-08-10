@@ -310,7 +310,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 />
 
                 <CircleButton onClick={() => { }} icon={<Add fill="black" />} className="input-area-add-button" />
-                <CircleButton onClick={handleSend} icon={aiIsResponsing ? <Stop fill="white"/> : <UpArrow fill="white"/>} primary className="input-area-send-button" />
+                <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20}  fill="white"/> : <UpArrow width={20} height={20} fill="white"/>} primary className="input-area-send-button" />
 
             </div>
         </div>

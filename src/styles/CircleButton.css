@@ -1,11 +1,7 @@
 .circle-button {
     position: fixed;
-    height: 32px;
-    width: 32px;
-    border-radius: 16px;
-    background: #fff;
-    box-shadow: 0px 2px 4px  rgba(0, 0, 0, 0.25);
-    border: 0;
+    background: var(--secondary-color);
+    border: 1px solid var(--secondary-border-color);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -13,5 +9,16 @@
 }
 
 .circle-button.primary {
+    border: 0;
     background: var(--main-color);
+}
+.circle-button.medium {
+    height: 32px;
+    width: 32px;
+    border-radius: 16px;
+}
+.circle-button.large {
+    height: 56px;
+    width: 56px;
+    border-radius: 28px;
 }
