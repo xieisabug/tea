@@ -2,6 +2,7 @@ export interface Conversation {
     id: number;
     name: string;
     assistant_id: number | null;
+    assistant_name: string;
     created_time: Date;
 }
 

@@ -142,6 +142,35 @@
 .conversation-ui {
     height: 100%;
     position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.conversation-title-panel {
+    display: flex;
+    justify-content: space-between;
+    flex: 0 0 68px;
+    align-items: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+    border-bottom: 1px solid #E3E4E8;
+}
+.conversation-title-panel-text-group {
+
+}
+.conversation-title-panel-title {
+    font-size: 16px;
+}
+.conversation-title-panel-assistant-name {
+    font-size: 12px;
+    color: #7A7F85;
+}
+.conversation-title-panel-button-group {
+    display: flex;
+    align-items: center;
+}
+.conversation-title-panel-button-group button {
+    margin-left: 8px;
 }
 
 .messages {
@@ -219,7 +248,6 @@
 }
 
 .input-area {
-    padding: 10px 0;
     box-sizing: border-box;
     position: relative;
     bottom: 30px;
@@ -237,7 +265,7 @@
     box-sizing: border-box;
     border-radius: 28px;
     border: 2px solid var(--main-color);
-    bottom: 50px;
+    bottom: 30px;
     opacity: 0.4;
 }
 .input-area-textarea:focus {

@@ -16,6 +16,7 @@ import UpArrow from '../assets/up-arrow.svg?react';
 import Stop from '../assets/stop.svg?react';
 import Add from '../assets/add.svg?react';
 import Delete from '../assets/delete.svg?react';
+import Edit from '../assets/edit.svg?react';
 import Copy from '../assets/copy.svg?react';
 import Ok from '../assets/ok.svg?react';
 import Refresh from '../assets/refresh.svg?react';
@@ -288,6 +289,20 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
 
     return (
         <div className="conversation-ui">
+            {
+                conversationId ? 
+                <div className="conversation-title-panel">
+                    <div className="conversation-title-panel-text-group">
+                        <div className="conversation-title-panel-title">{conversation?.name}</div>
+                        <div className="conversation-title-panel-assistant-name">{conversation?.assistant_name}</div>
+                    </div>
+                    <div className="conversation-title-panel-button-group">
+                        <IconButton icon={<Edit fill="#468585" />} onClick={() => {}} border />
+                        <IconButton icon={<Delete fill="#468585" />} onClick={() => {}} border />
+                    </div>
+                </div> :  null
+            }
+            
             <div className="messages">
                 {conversationId ?
                     filteredMessages.map((message, index) => (

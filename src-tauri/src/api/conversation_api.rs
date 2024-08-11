@@ -42,13 +42,28 @@ pub async fn list_conversations(
 }
 
 #[tauri::command]
-pub fn get_conversation_with_messages(
+pub async fn get_conversation_with_messages(
     app_handle: tauri::AppHandle,
+    name_cache_state: tauri::State<'_, NameCacheState>,
     conversation_id: i64,
-) -> Result<(Conversation, Vec<Message>), String> {
+) -> Result<(ConversationResult, Vec<Message>), String> {
     let db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    db.get_conversation_with_messages(conversation_id)
-        .map_err(|e| e.to_string())
+    let conversation_with_message = db.get_conversation_with_messages(conversation_id)
+        .map_err(|e| e.to_string());
+    let assistant_name_cache = name_cache_state.assistant_names.lock().await.clone();
+    let assistant_name = assistant_name_cache.get(&conversation_with_message.clone().unwrap().0.assistant_id.unwrap());
+    let assistant_name = assistant_name.unwrap_or(&"未知".to_string()).clone();
+    let conversation_with_message_result = conversation_with_message.map(|(conversation, messages)| {
+        (ConversationResult {
+            id: conversation.id,
+            name: conversation.name,
+            assistant_id: conversation.assistant_id.unwrap_or(0),
+            assistant_name,
+            created_time: conversation.created_time,
+        }, messages)
+    });
+    
+    return conversation_with_message_result
 }
 
 #[tauri::command]

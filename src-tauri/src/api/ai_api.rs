@@ -215,11 +215,11 @@ pub async fn ask_ai(
                         println!("Channel closed");
                         break;
                     }
-                    Err(_) => {
+                    Err(err) => {
                         let mut map = tokens.lock().unwrap();
                         map.remove(&message_id);
-                        println!("Timeout waiting for data");
-                        // Decide whether to break or continue based on your requirements
+                        println!("Timeout waiting for data from channel: {:?}", err);
+                        break;
                     }
                 }
             }

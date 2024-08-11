@@ -28,7 +28,7 @@ function Menu({ items }: MenuProps) {
         >
             {
                 items.map((item) => {
-                    return <button className="conversation-menu-item" onClick={item.onClick}>{item.label}</button>
+                    return <button key={item.label} className="conversation-menu-item" onClick={item.onClick}>{item.label}</button>
                 })
             }
         </div>
