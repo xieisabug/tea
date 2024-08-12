@@ -285,8 +285,12 @@ impl ModelProvider for OllamaProvider {
                 "{}/api/tags",
                 endpoint
             );
+            let api_key = config_map.get("api_key").unwrap_or(&"".to_string()).clone();
 
-            let response = client.get(&url).send().await.map_err(|e| e.to_string())?;
+            let response = client
+                .get(&url)
+                .header(AUTHORIZATION, &format!("Bearer {}", api_key))
+                .send().await.map_err(|e| e.to_string())?;
 
             let models_response: ModelsResponse =
                 response.json().await.map_err(|e| e.to_string())?;
