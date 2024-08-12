@@ -363,10 +363,10 @@ const AssistantConfig: React.FC = () => {
                                 <div className='form-group'>
                                     <label>model</label>
                                     <CustomSelect 
-                                        options={models.map(i => ({value: i.code + "/" + i.llm_provider_id, label: i.name}))} 
-                                        value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_code + "/" + currentAssistant.model[0].provider_id: "-1"} 
+                                        options={models.map(i => ({value: i.code + "%%" + i.llm_provider_id, label: i.name}))} 
+                                        value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_code + "%%" + currentAssistant.model[0].provider_id: "-1"} 
                                         onChange={(v) => {
-                                            const [modelCode, providerId] = v.split("/");
+                                            const [modelCode, providerId] = v.split("%%");
                                             if (currentAssistant?.model.length > 0) {
                                                 setCurrentAssistant({
                                                     ...currentAssistant,

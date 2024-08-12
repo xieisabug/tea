@@ -156,18 +156,27 @@
     border-bottom: 1px solid #E3E4E8;
 }
 .conversation-title-panel-text-group {
-
+    flex: 1;
+    overflow: hidden;
 }
 .conversation-title-panel-title {
     font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .conversation-title-panel-assistant-name {
     font-size: 12px;
     color: #7A7F85;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .conversation-title-panel-button-group {
     display: flex;
     align-items: center;
+    flex: 0 0 160px;
+    justify-content: flex-end;
 }
 .conversation-title-panel-button-group button {
     margin-left: 8px;

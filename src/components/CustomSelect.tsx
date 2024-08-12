@@ -17,6 +17,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange })
   const selectRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log(options);
+    
     const handleClickOutside = (event: MouseEvent) => {
       if (selectRef.current && !selectRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -27,6 +29,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange })
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+
   }, []);
 
   const handleSelectClick = () => {
@@ -34,6 +37,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange })
   };
 
   const handleOptionClick = (value: string) => {
+    console.log(value)
     onChange(value);
     setIsOpen(false);
   };
