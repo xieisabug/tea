@@ -6,6 +6,7 @@ version = 3
 name = "Tea"
 version = "0.0.2"
 dependencies = [
+ "anyhow",
  "chrono",
  "config",
  "futures",

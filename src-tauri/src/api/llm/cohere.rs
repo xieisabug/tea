@@ -7,6 +7,7 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
+use anyhow::{Result, bail, anyhow};
 
 use crate::{api::llm_api::LlmModel, db::llm_db::LLMProviderConfig};
 
@@ -50,7 +51,7 @@ impl ModelProvider for CohereProvider {
         mut messages: Vec<(String, String)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         cancel_token: CancellationToken,
-    ) -> futures::future::BoxFuture<'static, Result<String, Box<dyn std::error::Error>>> {
+    ) -> futures::future::BoxFuture<'static, Result<String>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -65,10 +66,9 @@ impl ModelProvider for CohereProvider {
                 .trim_end_matches('/');
             let url = format!("{}/chat", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
-            let message = messages.pop();
-            let message = message.ok_or("No message found")?;
-            if (message.0 != "user") {
-                return Err("First message must be from user".into());
+            let message = messages.pop().ok_or_else(|| anyhow!("No message found"))?;
+            if message.0 != "user" {
+                return Err(anyhow!("First message must be from user"));
             }
 
             let json_messages = messages
@@ -127,12 +127,12 @@ impl ModelProvider for CohereProvider {
 
             let response = tokio::select! {
                 response = request.send() => response?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => bail!("Request cancelled"),
             };
 
             let json_response = tokio::select! {
                 json = response.json::<serde_json::Value>() => json?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => bail!("Request cancelled"),
             };
 
             println!("cohere chat response: {:?}", json_response.clone());
@@ -140,7 +140,7 @@ impl ModelProvider for CohereProvider {
             if let Some(content) = json_response["text"].as_str() {
                 Ok(content.to_string())
             } else {
-                Err("Failed to get content from response".into())
+                bail!("Failed to get content from response");
             }
         })
     }
@@ -152,7 +152,7 @@ impl ModelProvider for CohereProvider {
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         tx: tokio::sync::mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
-    ) -> futures::future::BoxFuture<'static, Result<(), Box<dyn std::error::Error>>> {
+    ) -> futures::future::BoxFuture<'static, Result<()>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -168,10 +168,9 @@ impl ModelProvider for CohereProvider {
             let url = format!("{}/chat", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
 
-            let message = messages.pop();
-            let message = message.ok_or("No message found")?;
-            if (message.0 != "user") {
-                return Err("First message must be from user".into());
+            let message = messages.pop().ok_or_else(|| anyhow!("No message found"))?;
+            if message.0 != "user" {
+                return Err(anyhow!("First message must be from user"));
             }
             let json_messages = messages
                 .iter()
@@ -229,7 +228,7 @@ impl ModelProvider for CohereProvider {
 
             let response = tokio::select! {
                 response = request.send() => response?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => bail!("Request cancelled"),
             };
 
             let mut stream = response.bytes_stream();
@@ -272,7 +271,7 @@ impl ModelProvider for CohereProvider {
                                 }
                             }
                             
-                            Some(Err(e)) => return Err(e.into()),
+                            Some(Err(e)) => bail!(e),
                             None => break,
                         }
                     }
@@ -287,7 +286,7 @@ impl ModelProvider for CohereProvider {
         })
     }
 
-    fn models(&self) -> futures::future::BoxFuture<'static, Result<Vec<LlmModel>, String>> {
+    fn models(&self) -> futures::future::BoxFuture<'static, Result<Vec<LlmModel>>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -321,15 +320,15 @@ impl ModelProvider for CohereProvider {
             println!("req: {:?}", req);
 
             let response = client.execute(req.unwrap());
-            let res2 = response.await;
+            let res2 = response.await?;
             // println!("response: {:?}", res2.unwrap().text().await.unwrap());
 
             // 读取响应体为字符串
-            let body = res2.expect("{}").text().await.map_err(|e| e.to_string())?;
+            let body = res2.text().await?;
             println!("Response body: {}", body);
 
             // 将字符串解析为 JSON
-            let models_response: ModelsResponse = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+            let models_response: ModelsResponse = serde_json::from_str(&body)?;
             println!("models_response: {:?}", models_response);
 
             for model in models_response.models {

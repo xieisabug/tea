@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use anyhow::Result;
 
 use anthropic::AnthropicProvider;
 use cohere::CohereProvider;
@@ -32,7 +33,7 @@ pub trait ModelProvider: Send + Sync {
         messages: Vec<(String, String)>,
         model_config: Vec<AssistantModelConfig>,
         cancel_token: CancellationToken,
-    ) -> BoxFuture<'static, Result<String, Box<dyn std::error::Error>>>;
+    ) -> BoxFuture<'static, Result<String>>;
 
     fn chat_stream(
         &self,
@@ -41,9 +42,9 @@ pub trait ModelProvider: Send + Sync {
         model_config: Vec<AssistantModelConfig>,
         tx: mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
-    ) -> BoxFuture<'static, Result<(), Box<dyn std::error::Error>>>;
+    ) -> BoxFuture<'static, Result<()>>;
 
-    fn models(&self) -> BoxFuture<'static, Result<Vec<LlmModel>, String>>;
+    fn models(&self) -> BoxFuture<'static, Result<Vec<LlmModel>>>;
 }
 
 pub fn get_provider(

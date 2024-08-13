@@ -187,7 +187,7 @@ pub async fn fetch_model_list(
         }
         Err(e) => {
             eprintln!("Models error: {}", e);
-            Err(e)
+            Err(e.to_string())
         }
     }
 }

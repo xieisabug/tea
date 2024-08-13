@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
+use anyhow::{Result, anyhow};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelsResponse {
@@ -129,7 +130,7 @@ impl ModelProvider for AnthropicProvider {
         messages: Vec<(String, String)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         cancel_token: CancellationToken,
-    ) -> futures::future::BoxFuture<'static, Result<String, Box<dyn std::error::Error>>> {
+    ) -> futures::future::BoxFuture<'static, Result<String>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -205,12 +206,12 @@ impl ModelProvider for AnthropicProvider {
 
             let response = tokio::select! {
                 response = request.send() => response?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => return Err(anyhow!("Request cancelled")),
             };
 
             let json_response = tokio::select! {
                 json = response.json::<serde_json::Value>() => json?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => return Err(anyhow!("Request cancelled")),
             };
 
             println!("anthropic chat response: {:?}", json_response.clone());
@@ -218,7 +219,7 @@ impl ModelProvider for AnthropicProvider {
             if let Some(content) = json_response["content"][0]["text"].as_str() {
                 Ok(content.to_string())
             } else {
-                Err("Failed to get content from response".into())
+                Err(anyhow!("Failed to get content from response"))
             }
         })
     }
@@ -230,7 +231,7 @@ impl ModelProvider for AnthropicProvider {
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         tx: tokio::sync::mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
-    ) -> futures::future::BoxFuture<'static, Result<(), Box<dyn std::error::Error>>> {
+    ) -> futures::future::BoxFuture<'static, Result<()>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -306,7 +307,7 @@ impl ModelProvider for AnthropicProvider {
 
             let response = tokio::select! {
                 response = request.send() => response?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => return Err(anyhow!("Request cancelled")),
             };
 
             let mut stream = response.bytes_stream();
@@ -319,7 +320,7 @@ impl ModelProvider for AnthropicProvider {
                         match chunk {
                             Some(Ok(chunk)) => {
                                 let s = std::str::from_utf8(&chunk)
-                                    .map_err(|e| format!("Invalid UTF-8 sequence: {}", e))?;
+                                    .map_err(|e| anyhow!("Invalid UTF-8 sequence: {}", e))?;
                                 buffer.push_str(s);
                                 println!("anthropic chat stream text: {}", s);
 
@@ -406,7 +407,7 @@ impl ModelProvider for AnthropicProvider {
         })
     }
 
-    fn models(&self) -> futures::future::BoxFuture<'static, Result<Vec<LlmModel>, String>> {
+    fn models(&self) -> futures::future::BoxFuture<'static, Result<Vec<LlmModel>>> {
         let mut result = Vec::new();
 
         let models = vec![

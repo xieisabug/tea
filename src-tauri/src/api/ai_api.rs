@@ -15,6 +15,8 @@ use tauri::State;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
+use anyhow::Error;
+use anyhow::Context;
 
 use super::assistant_api::AssistantDetail;
 
@@ -89,14 +91,17 @@ pub async fn ask_ai(
 
         let tokens = message_token_manager.get_tokens();
         tokio::spawn(async move {
-            let db = LLMDatabase::new(&app_handle_clone).map_err(|e| e.to_string())?;
+            let db = LLMDatabase::new(&app_handle_clone)
+                .map_err(Error::from)
+                .context("Failed to create LLMDatabase")?;
             let provider_id = &assistant_detail.model[0].provider_id;
             let model_code = &assistant_detail.model[0].model_code;
-            let model_detail = db.get_llm_model_detail(provider_id, model_code).unwrap();
+            let model_detail = db.get_llm_model_detail(provider_id, model_code)
+                .context("Failed to get LLM model detail")?;
             println!("model detail : {:#?}", model_detail);
-
+        
             let provider = get_provider(model_detail.provider, model_detail.configs);
-
+        
             let mut model_config_clone = assistant_detail.model_configs.clone();
             model_config_clone.push(AssistantModelConfig {
                 id: 0,
@@ -106,7 +111,7 @@ pub async fn ask_ai(
                 value: Some(model_detail.model.code),
                 value_type: "string".to_string(),
             });
-
+        
             let config_map = assistant_detail
                 .model_configs
                 .iter()
@@ -117,15 +122,16 @@ pub async fn ask_ai(
                         .map(|value| (config.name.clone(), value.clone()))
                 })
                 .collect::<HashMap<String, String>>();
-
+        
             let stream = config_map
                 .get("stream")
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(false);
-
+        
             println!("prompt: {}", request_prompt_result_clone);
-
+        
             if stream {
+                let tx_clone = tx.clone();
                 if let Err(e) = provider
                     .chat_stream(
                         message_id,
@@ -136,8 +142,10 @@ pub async fn ask_ai(
                     )
                     .await
                 {
-                    let mut map = tokens.lock().unwrap();
+                    let mut map = tokens.lock().await;
                     map.remove(&message_id);
+                    let err_msg = format!("Chat stream error: {}", e);
+                    tx_clone.send((message_id, err_msg, true)).await.unwrap();
                     eprintln!("Chat stream error: {}", e);
                 }
             } else {
@@ -149,22 +157,24 @@ pub async fn ask_ai(
                         cancel_token,
                     )
                     .await
-                    .map_err(|e| e.to_string())?;
-
+                    .map_err(Error::from)
+                    .context("Failed to chat")?;
+        
                 println!("Chat content: {}", content.clone());
-
+        
                 tx.send((message_id, content.clone(), true)).await.unwrap();
                 // Ensure tx is closed after sending the message
                 drop(tx);
             }
-            Ok::<(), String>(())
+            Ok::<(), Error>(())
         });
 
         let app_handle_clone = app_handle.clone();
         let tokens = message_token_manager.get_tokens();
+        let window_clone = window.clone();
         tokio::spawn(async move {
             loop {
-                match timeout(Duration::from_secs(10), rx.recv()).await {
+                match timeout(Duration::from_secs(60), rx.recv()).await {
                     Ok(Some((id, content, done))) => {
                         println!("Received data: id={}, content={}", id, content);
                         window_clone
@@ -205,18 +215,18 @@ pub async fn ask_ai(
                                 .map_err(|e| e.to_string())
                                 .unwrap();
                             }
-                            let mut map = tokens.lock().unwrap();
+                            let mut map = tokens.lock().await;
                             map.remove(&message_id);
                         }
                     }
                     Ok(None) => {
-                        let mut map = tokens.lock().unwrap();
+                        let mut map = tokens.lock().await;
                         map.remove(&message_id);
                         println!("Channel closed");
                         break;
                     }
                     Err(err) => {
-                        let mut map = tokens.lock().unwrap();
+                        let mut map = tokens.lock().await;
                         map.remove(&message_id);
                         println!("Timeout waiting for data from channel: {:?}", err);
                         break;

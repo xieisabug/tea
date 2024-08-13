@@ -1,3 +1,5 @@
+use std::error::Error as StdError;
+
 use thiserror::Error;
 use serde::Serialize;
 
@@ -52,5 +54,11 @@ impl From<std::num::ParseIntError> for AppError {
 impl From<tauri::Error> for AppError {
     fn from(err: tauri::Error) -> Self {
         AppError::WindowEmitError(err.to_string())
+    }
+}
+
+impl From<Box<dyn StdError>> for AppError {
+    fn from(err: Box<dyn StdError>) -> Self {
+        AppError::UnknownError(err.to_string())
     }
 }

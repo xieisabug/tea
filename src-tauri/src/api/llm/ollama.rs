@@ -12,6 +12,7 @@ use serde_json::json;
 use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
 use tokio::{select, sync::mpsc};
+use anyhow::{Result, anyhow};
 
 use super::ModelProvider;
 
@@ -59,7 +60,7 @@ impl ModelProvider for OllamaProvider {
         messages: Vec<(String, String)>,
         model_config: Vec<AssistantModelConfig>,
         cancel_token: CancellationToken,
-    ) -> BoxFuture<'static, Result<String, Box<dyn std::error::Error>>> {
+    ) -> BoxFuture<'static, Result<String>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -129,18 +130,18 @@ impl ModelProvider for OllamaProvider {
 
             let response = tokio::select! {
                 response = request.send() => response?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => return Err(anyhow!("Request cancelled")),
             };
 
             let json_response = tokio::select! {
                 json = response.json::<serde_json::Value>() => json?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => return Err(anyhow!("Request cancelled")),
             };
 
             if let Some(content) = json_response["message"]["content"].as_str() {
                 Ok(content.to_string())
             } else {
-                Err("Failed to get content from response".into())
+                Err(anyhow!("Failed to get content from response"))
             }
         })
     }
@@ -152,7 +153,7 @@ impl ModelProvider for OllamaProvider {
         model_config: Vec<AssistantModelConfig>,
         tx: mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
-    ) -> BoxFuture<'static, Result<(), Box<dyn std::error::Error>>> {
+    ) -> BoxFuture<'static, Result<()>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -226,7 +227,7 @@ impl ModelProvider for OllamaProvider {
 
             let response = tokio::select! {
                 response = request.send() => response?,
-                _ = cancel_token.cancelled() => return Err("Request cancelled".into()),
+                _ = cancel_token.cancelled() => return Err(anyhow!("Request cancelled")),
             };
 
             let mut stream = response.bytes_stream();
@@ -243,15 +244,14 @@ impl ModelProvider for OllamaProvider {
                                 if let Ok(response) = serde_json::from_str::<serde_json::Value>(text.to_string().as_str()) {
                                     if let Some(delta) = response["message"]["content"].as_str() {
                                         full_text.push_str(delta);
-                                        tx.send((message_id, full_text.clone(), response["done"].as_bool().unwrap())).await
-                                            .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+                                        tx.send((message_id, full_text.clone(), response["done"].as_bool().unwrap())).await?;
                                     }
                                     if response["done"].as_bool().unwrap_or(false) {
                                         break;
                                     }
                                 }
                             },
-                            Some(Err(e)) => return Err(Box::new(e) as Box<dyn std::error::Error>),
+                            Some(Err(e)) => return Err(anyhow!(e)),
                             None => break,
                         }
                     },
@@ -266,7 +266,7 @@ impl ModelProvider for OllamaProvider {
         })
     }
 
-    fn models(&self) -> BoxFuture<'static, Result<Vec<LlmModel>, String>> {
+    fn models(&self) -> BoxFuture<'static, Result<Vec<LlmModel>>> {
         let config = self.llm_provider_config.clone();
         let client = self.client.clone();
 
@@ -290,10 +290,10 @@ impl ModelProvider for OllamaProvider {
             let response = client
                 .get(&url)
                 .header(AUTHORIZATION, &format!("Bearer {}", api_key))
-                .send().await.map_err(|e| e.to_string())?;
+                .send().await?;
 
             let models_response: ModelsResponse =
-                response.json().await.map_err(|e| e.to_string())?;
+                response.json().await?;
 
             for model in models_response.models {
                 let llm_model = LlmModel {

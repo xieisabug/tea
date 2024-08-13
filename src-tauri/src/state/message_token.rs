@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
 pub struct MessageTokenManager {
@@ -13,18 +14,18 @@ impl MessageTokenManager {
         }
     }
 
-    pub fn exist(&self, message_id: i64) -> bool {
-        let map = self.tokens.lock().unwrap();
+    pub async fn exist(&self, message_id: i64) -> bool {
+        let map = self.tokens.lock().await;
         map.contains_key(&message_id)
     }
 
-    pub fn store_token(&self, message_id: i64, token: CancellationToken) {
-        let mut map = self.tokens.lock().unwrap();
+    pub async fn store_token(&self, message_id: i64, token: CancellationToken) {
+        let mut map = self.tokens.lock().await;
         map.insert(message_id, token);
     }
 
-    pub fn cancel_request(&self, message_id: i64) {
-        let mut map = self.tokens.lock().unwrap();
+    pub async fn cancel_request(&self, message_id: i64) {
+        let mut map = self.tokens.lock().await;
         if let Some(token) = map.remove(&message_id) {
             token.cancel();
         } else {
@@ -32,8 +33,8 @@ impl MessageTokenManager {
         }
     }
 
-    pub fn remove_token(&self, message_id: i64) {
-        let mut map = self.tokens.lock().unwrap();
+    pub async fn remove_token(&self, message_id: i64) {
+        let mut map = self.tokens.lock().await;
         map.remove(&message_id);
     }
 
