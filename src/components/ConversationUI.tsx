@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Conversation, Message } from "../data/Conversation";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
 import 'katex/dist/katex.min.css';
@@ -63,8 +64,9 @@ const MessageItem = React.memo(({ message, onCodeRun }: any) => {
         <div className={"message-item " + (message.message_type === "user" ? "user-message" : "bot-message")}>
             <ReactMarkdown
                 children={message.content}
-                remarkPlugins={[remarkMath]}
+                remarkPlugins={[remarkMath, remarkBreaks]}
                 rehypePlugins={[rehypeRaw, rehypeKatex]}
+                
                 components={{
                     code({ node, className, children, ref, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
