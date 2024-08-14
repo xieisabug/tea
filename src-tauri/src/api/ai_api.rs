@@ -247,7 +247,20 @@ pub async fn cancel_ai(
     message_token_manager: State<'_, MessageTokenManager>,
     message_id: i64,
 ) -> Result<(), String> {
-    message_token_manager.cancel_request(message_id);
+    message_token_manager.cancel_request(message_id).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn add_attachment(
+    app_handle: tauri::AppHandle,
+    file_url: String,
+) -> Result<(), AppError> {
+    // 解析文件路径
+    // 解析文件类型
+    // 使用不同类型的文件读取方式来进行读取
+    // 保存到数据库
+    // 返回到前端attachment_id，等待之后的message创建和更新
     Ok(())
 }
 

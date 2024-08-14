@@ -35,6 +35,18 @@
       },
       "dialog": {
         "all": true
+      },
+      "fs": {
+        "all": true,
+        "readFile": true,
+        "writeFile": false,
+        "readDir": true,
+        "copyFile": false,
+        "createDir": true,
+        "removeDir": false,
+        "removeFile": false,
+        "renameFile": true,
+        "exists": true
       }
     },
     "security": {

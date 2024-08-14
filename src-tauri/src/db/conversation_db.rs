@@ -24,6 +24,23 @@ pub struct Message {
     pub token_count: i32,
 }
 
+// Define the Message struct
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MessageDetail {
+    pub id: i64,
+    pub conversation_id: i64,
+    pub message_type: String,
+    pub content: String,
+    pub llm_model_id: Option<i64>,  // Assuming it can be NULL
+    pub created_time: DateTime<Utc>,
+    pub token_count: i32,
+    pub attachment_type: Option<i64>,
+    pub attachment_url: Option<String>,
+    pub attachment_content: Option<String>,
+    pub attachment_use_vector: Option<bool>,
+    pub attachment_token_count: Option<i32>,
+}
+
 impl Conversation {
     pub fn create(conn: &Connection, name: String, assistant_id: Option<i64>) -> Result<Self> {
         conn.execute("INSERT INTO conversation (name, assistant_id) VALUES (?1, ?2)", (&name, &assistant_id))?;
@@ -55,7 +72,10 @@ impl Conversation {
 
 impl Message {
     pub fn list_by_conversation_id(conn: &Connection, conversation_id: i64) -> Result<Vec<Self>> {
-        let mut stmt = conn.prepare("SELECT * FROM message WHERE conversation_id = ?1")?;
+        let mut stmt = conn.prepare("SELECT message.*, ma.attachment_type, ma.attachment_url, ma.attachment_content, ma.use_vector as attachment_use_vector, ma.token_count as attachment_token_count
+                                                    FROM message
+                                                        LEFT JOIN message_attachment ma on message.id = ma.message_id
+                                                    WHERE conversation_id =  ?1")?;
         let rows = stmt.query_map(&[&conversation_id], |row| {
             Ok(Message {
                 id: row.get(0)?,
@@ -135,6 +155,18 @@ impl ConversationDatabase {
                 content TEXT NOT NULL,
                 llm_model_id INTEGER,
                 created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                token_count INTEGER
+            )",
+            [],
+        )?;
+        self.conn.execute(
+            "CREATE TABLE IF NOT EXISTS message_attachment (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id INTEGER,
+                attachment_type INTEGER NOT NULL,
+                attachment_url TEXT,
+                attachment_content TEXT,
+                use_vector BOOLEAN NOT NULL DEFAULT 0,
                 token_count INTEGER
             )",
             [],

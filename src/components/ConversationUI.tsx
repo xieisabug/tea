@@ -1,4 +1,6 @@
 import { invoke } from "@tauri-apps/api/tauri";
+import { open } from '@tauri-apps/api/dialog';
+import { readBinaryFile } from '@tauri-apps/api/fs';
 import { writeText } from '@tauri-apps/api/clipboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Conversation, Message } from "../data/Conversation";
@@ -40,6 +42,12 @@ interface ConversationUIProps {
 interface AiResponse {
     conversation_id: number;
     add_message_id: number;
+}
+
+interface FileInfo {
+    name: string;
+    path: string;
+    thumbnail?: string;
 }
 
 const MessageItem = React.memo(({ message, onCodeRun }: any) => {
@@ -289,6 +297,37 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         });
     }, []);
 
+    const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
+    const handleChooseFile = useCallback(async () => {
+        try {
+            const selected = await open({
+              multiple: false,
+              filters: [{ name: 'Image', extensions: ['png', 'jpg'] }]
+            });
+      
+            if (selected) {
+              const path = selected as string;
+              const name = path.split('\\').pop() || path.split('/').pop() || '';
+      
+              // 读取文件内容
+              const contents = await readBinaryFile(path);
+      
+              // 如果是图片,创建缩略图
+              let thumbnail;
+              if (name.match(/\.(jpg|jpeg|png|gif)$/)) {
+                const blob = new Blob([contents]);
+                thumbnail = URL.createObjectURL(blob);
+              }
+      
+              setFileInfo({ name, path, thumbnail });
+      
+              // 调用Rust函数处理文件
+            }
+          } catch (error) {
+            console.error('Error selecting file:', error);
+          }
+    }, []);
+
     return (
         <div className="conversation-ui">
             {
@@ -319,6 +358,13 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 <div ref={messagesEndRef} />
             </div>
             <div className="input-area">
+                {fileInfo && (
+                    <div>
+                    {fileInfo.thumbnail && (
+                        <img src={fileInfo.thumbnail} alt="缩略图" style={{maxWidth: '50px'}} />
+                    )}
+                    </div>
+                )}
                 <textarea
                     className="input-area-textarea"
                     value={inputText}
@@ -326,7 +372,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     onKeyDown={handleKeyDown}
                 />
 
-                <CircleButton onClick={() => { }} icon={<Add fill="black" />} className="input-area-add-button" />
+                <CircleButton onClick={handleChooseFile} icon={<Add fill="black" />} className="input-area-add-button" />
                 <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20}  fill="white"/> : <UpArrow width={20} height={20} fill="white"/>} primary className="input-area-send-button" />
 
             </div>
