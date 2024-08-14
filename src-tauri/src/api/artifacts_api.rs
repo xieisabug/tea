@@ -1,7 +1,7 @@
 use serde_json::json;
 use tauri::Manager;
 
-use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell}, errors::AppError, window::{open_preview_html_window, open_preview_react_window}};
+use crate::{artifacts::{applescript::run_applescript, powershell::run_powershell}, errors::AppError, window::{open_preview_html_window, open_preview_react_window, open_preview_vue_window}};
 
 #[tauri::command]
 pub async fn run_artifacts(app_handle: tauri::AppHandle, lang: &str, input_str: &str) -> Result<String, AppError> {
@@ -20,6 +20,9 @@ pub async fn run_artifacts(app_handle: tauri::AppHandle, lang: &str, input_str: 
         }
         "react" | "jsx" => {
             let _ = open_preview_react_window(app_handle, input_str.to_string()).await;
+        }
+        "vue" => {
+            let _ = open_preview_vue_window(app_handle, input_str.to_string()).await;
         }
         _ => {
             // Handle other languages here
