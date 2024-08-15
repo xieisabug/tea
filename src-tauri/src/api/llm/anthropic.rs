@@ -1,9 +1,10 @@
 use super::ModelProvider;
-use crate::{api::llm_api::LlmModel, db::{conversation_db::MessageAttachment, llm_db::LLMProviderConfig}};
+use crate::{api::llm_api::LlmModel, db::{conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig}};
 use futures::StreamExt;
+use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize, Serializer};
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
 use anyhow::{Result, anyhow};
@@ -153,10 +154,46 @@ impl ModelProvider for AnthropicProvider {
                 .iter()
                 .filter(|(message_type, _, _)| message_type != "system")
                 .map(|(message_type, content, attachment_list)| {
-                    json!({
-                        "role": message_type,
-                        "content": content
-                    })
+                    if attachment_list.len() > 0 {
+                        let content_array = vec![
+                            json!({
+                                "type": "text",
+                                "text": content
+                            })
+                        ];
+                        
+                        let mut images = attachment_list
+                            .iter()
+                            .filter(|a| a.attachment_type == AttachmentType::Image)
+                            .map(|a| {
+                                let attachment_content = a.attachment_content.clone().unwrap();
+                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let caps = re.captures(&attachment_content).unwrap();
+                                let media_type = caps.name("media_type").unwrap().as_str();
+                                let data = caps.name("data").unwrap().as_str();
+                        
+                                json!({
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": media_type,
+                                        "data": data,
+                                    },
+                                })
+                            })
+                            .collect::<Vec<Value>>();
+                        images.extend(content_array);
+
+                        json!({
+                            "role": message_type,
+                            "content": images,
+                        })
+                    } else {
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    }
                 })
                 .collect::<Vec<serde_json::Value>>();
             let system_message = messages
@@ -254,12 +291,48 @@ impl ModelProvider for AnthropicProvider {
                 .iter()
                 .filter(|(message_type, _, _)| message_type != "system")
                 .map(|(message_type, content, attachment_list)| {
-                    json!({
-                        "role": message_type,
-                        "content": content
-                    })
+                    if attachment_list.len() > 0 {
+                        let content_array = vec![
+                            json!({
+                                "type": "text",
+                                "text": content
+                            })
+                        ];
+                        
+                        let mut images = attachment_list
+                            .iter()
+                            .filter(|a| a.attachment_type == AttachmentType::Image)
+                            .map(|a| {
+                                let attachment_content = a.attachment_content.clone().unwrap();
+                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let caps = re.captures(&attachment_content).unwrap();
+                                let media_type = caps.name("media_type").unwrap().as_str();
+                                let data = caps.name("data").unwrap().as_str();
+                        
+                                json!({
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": media_type,
+                                        "data": data,
+                                    },
+                                })
+                            })
+                            .collect::<Vec<Value>>();
+                        images.extend(content_array);
+
+                        json!({
+                            "role": message_type,
+                            "content": images,
+                        })
+                    } else {
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    }
                 })
-                .collect::<Vec<serde_json::Value>>();
+                .collect::<Vec<Value>>();
             let system_message = messages
                 .iter()
                 .find(|(message_type, _, _)| message_type == "system");

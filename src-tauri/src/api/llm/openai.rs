@@ -5,11 +5,11 @@ use reqwest::{
     Client,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio_util::sync::CancellationToken;
 use anyhow::{Result, bail};
 
-use crate::{api::llm_api::LlmModel, db::{conversation_db::MessageAttachment, llm_db::LLMProviderConfig}};
+use crate::{api::llm_api::LlmModel, db::{conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig}};
 
 use super::ModelProvider;
 use futures::StreamExt;
@@ -74,12 +74,37 @@ impl ModelProvider for OpenAIProvider {
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content, attachment_list)| {
-                    json!({
-                        "role": message_type,
-                        "content": content
-                    })
+                    if attachment_list.len() > 0 {
+                        let mut content_array = vec![
+                            json!({
+                                "type": "text",
+                                "text": content
+                            })
+                        ];
+                        let images = attachment_list
+                            .iter()
+                            .filter(|a| a.attachment_type == AttachmentType::Image)
+                            .map(|a| json!({
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": a.attachment_content.clone().unwrap()
+                                }
+                            }))
+                            .collect::<Vec<Value>>();
+                        content_array.extend(images);
+
+                        json!({
+                            "role": message_type,
+                            "content": content_array,
+                        })
+                    } else {
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    }
                 })
-                .collect::<Vec<serde_json::Value>>();
+                .collect::<Vec<Value>>();
 
             let model_config_map = model_config
                 .iter()
@@ -169,10 +194,35 @@ impl ModelProvider for OpenAIProvider {
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content, attachment_list)| {
-                    json!({
-                        "role": message_type,
-                        "content": content
-                    })
+                    if attachment_list.len() > 0 {
+                        let mut content_array = vec![
+                            json!({
+                                "type": "text",
+                                "text": content
+                            })
+                        ];
+                        let images = attachment_list
+                            .iter()
+                            .filter(|a| a.attachment_type == AttachmentType::Image)
+                            .map(|a| json!({
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": a.attachment_content.clone().unwrap()
+                                }
+                            }))
+                            .collect::<Vec<Value>>();
+                        content_array.extend(images);
+
+                        json!({
+                            "role": message_type,
+                            "content": content_array,
+                        })
+                    } else {
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    }
                 })
                 .collect::<Vec<serde_json::Value>>();
 
