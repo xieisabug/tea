@@ -1,7 +1,7 @@
 use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
 use crate::db::assistant_db::AssistantModelConfig;
-use crate::db::conversation_db::{Conversation, ConversationDatabase, Message};
+use crate::db::conversation_db::{Conversation, ConversationDatabase, Message, MessageAttachment};
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::FeatureConfig;
 use crate::errors::AppError;
@@ -30,6 +30,7 @@ pub struct AiRequest {
     top_p: Option<f32>,
     max_tokens: Option<u32>,
     stream: Option<bool>,
+    attachment_list: Option<Vec<i64>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -47,6 +48,7 @@ pub async fn ask_ai(
     window: tauri::Window,
     request: AiRequest,
 ) -> Result<AiResponse, AppError> {
+    println!("ask_ai: {:?}", request);
     let template_engine = TemplateEngine::new();
     let mut template_context = HashMap::new();
     let (tx, mut rx) = mpsc::channel(100);
@@ -79,7 +81,6 @@ pub async fn ask_ai(
     .await?;
 
     if new_message_id.is_some() {
-        let window_clone = window.clone();
         let config_feature_map = feature_config_state.config_feature_map.lock().await.clone();
 
         let request_prompt_result_clone = request_prompt_result.clone();
@@ -87,7 +88,7 @@ pub async fn ask_ai(
 
         let cancel_token = CancellationToken::new();
         let message_id = new_message_id.unwrap();
-        message_token_manager.store_token(new_message_id.unwrap(), cancel_token.clone());
+        message_token_manager.store_token(new_message_id.unwrap(), cancel_token.clone()).await;
 
         let tokens = message_token_manager.get_tokens();
         tokio::spawn(async move {
@@ -251,24 +252,11 @@ pub async fn cancel_ai(
     Ok(())
 }
 
-#[tauri::command]
-pub async fn add_attachment(
-    app_handle: tauri::AppHandle,
-    file_url: String,
-) -> Result<(), AppError> {
-    // 解析文件路径
-    // 解析文件类型
-    // 使用不同类型的文件读取方式来进行读取
-    // 保存到数据库
-    // 返回到前端attachment_id，等待之后的message创建和更新
-    Ok(())
-}
-
 fn init_conversation(
     app_handle: &tauri::AppHandle,
     assistant_id: i64,
     llm_model_id: i64,
-    messages: &Vec<(String, String)>,
+    messages: &Vec<(String, String, Vec<MessageAttachment>)>,
 ) -> Result<(Conversation, Vec<Message>), AppError> {
     let db = ConversationDatabase::new(app_handle).map_err(AppError::from)?;
     let conversation = Conversation::create(&db.conn, "新对话".to_string(), Some(assistant_id))
@@ -276,7 +264,7 @@ fn init_conversation(
     let conversation_clone = conversation.clone();
     let conversation_id = conversation_clone.id;
     let mut message_result_array = vec![];
-    for (message_type, content) in messages {
+    for (message_type, content, attachment_list) in messages {
         let message = Message::create(
             &db.conn,
             conversation_id,
@@ -286,6 +274,14 @@ fn init_conversation(
             0,
         )
         .map_err(AppError::from)?;
+        for attachment in attachment_list {
+            MessageAttachment::update(
+                &db.conn,
+                attachment.id,
+                message.id,
+            )
+            .map_err(AppError::from)?;
+        }
         message_result_array.push(message.clone());
     }
 
@@ -319,14 +315,15 @@ async fn initialize_conversation(
     assistant_detail: &AssistantDetail,
     assistant_prompt_result: String,
     request_prompt_result: String,
-) -> Result<(i64, Option<i64>, Vec<(String, String)>), AppError> {
+) -> Result<(i64, Option<i64>, Vec<(String, String, Vec<MessageAttachment>)>), AppError> {
     let db = get_conversation_db(app_handle)?;
     let (conversation_id, add_message_id, init_message_list) = if request.conversation_id.is_empty()
     {
+        let message_attachment_list = MessageAttachment::list_by_id(&db.conn, &request.attachment_list.clone().unwrap_or(vec![]))?;
         // 新对话逻辑
         let init_message_list = vec![
-            (String::from("system"), assistant_prompt_result),
-            (String::from("user"), request_prompt_result),
+            (String::from("system"), assistant_prompt_result, vec![]),
+            (String::from("user"), request_prompt_result, message_attachment_list),
         ];
         let (conversation, _) = init_conversation(
             app_handle,
@@ -344,11 +341,12 @@ async fn initialize_conversation(
         )?;
         (conversation.id, Some(add_message.id), init_message_list)
     } else {
+        let message_attachment_list = MessageAttachment::list_by_id(&db.conn, &request.attachment_list.clone().unwrap_or(vec![]))?;
         // 已存在对话逻辑
         let conversation_id = request.conversation_id.parse::<i64>()?;
         let message_list = Message::list_by_conversation_id(&db.conn, conversation_id)?
             .into_iter()
-            .map(|m| (m.message_type, m.content))
+            .map(|m| (m.message_type, m.content, vec![]))
             .collect::<Vec<_>>();
 
         let _ = add_message(
@@ -360,7 +358,7 @@ async fn initialize_conversation(
             0,
         )?;
         let mut updated_message_list = message_list;
-        updated_message_list.push((String::from("user"), request_prompt_result));
+        updated_message_list.push((String::from("user"), request_prompt_result, message_attachment_list));
 
         let add_assistant_message = add_message(
             app_handle,
@@ -450,8 +448,8 @@ async fn generate_title(
             .chat(
                 -1,
                 vec![
-                    ("system".to_string(), prompt),
-                    ("user".to_string(), context),
+                    ("system".to_string(), prompt, vec![]),
+                    ("user".to_string(), context, vec![]),
                 ],
                 vec![AssistantModelConfig {
                     id: 0,

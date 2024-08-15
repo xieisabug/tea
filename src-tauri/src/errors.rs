@@ -31,6 +31,9 @@ pub enum AppError {
 
     #[error("未进行配置: {0}")]
     NoConfigError(String),
+
+    #[error("Anyhow错误: {0}")]
+    Anyhow(String),
 }
 
 impl From<rusqlite::Error> for AppError {
@@ -60,5 +63,11 @@ impl From<tauri::Error> for AppError {
 impl From<Box<dyn StdError>> for AppError {
     fn from(err: Box<dyn StdError>) -> Self {
         AppError::UnknownError(err.to_string())
+    }
+}
+
+impl From<anyhow::Error> for AppError {
+    fn from(err: anyhow::Error) -> Self {
+        AppError::Anyhow(err.to_string())
     }
 }

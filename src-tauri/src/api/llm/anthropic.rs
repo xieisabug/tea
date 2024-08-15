@@ -1,5 +1,5 @@
 use super::ModelProvider;
-use crate::{api::llm_api::LlmModel, db::llm_db::LLMProviderConfig};
+use crate::{api::llm_api::LlmModel, db::{conversation_db::MessageAttachment, llm_db::LLMProviderConfig}};
 use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize, Serializer};
@@ -127,7 +127,7 @@ impl ModelProvider for AnthropicProvider {
     fn chat(
         &self,
         _message_id: i64,
-        messages: Vec<(String, String)>,
+        messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         cancel_token: CancellationToken,
     ) -> futures::future::BoxFuture<'static, Result<String>> {
@@ -151,8 +151,8 @@ impl ModelProvider for AnthropicProvider {
 
             let json_messages = messages
                 .iter()
-                .filter(|(message_type, _)| message_type != "system")
-                .map(|(message_type, content)| {
+                .filter(|(message_type, _, _)| message_type != "system")
+                .map(|(message_type, content, attachment_list)| {
                     json!({
                         "role": message_type,
                         "content": content
@@ -161,7 +161,7 @@ impl ModelProvider for AnthropicProvider {
                 .collect::<Vec<serde_json::Value>>();
             let system_message = messages
                 .iter()
-                .find(|(message_type, _)| message_type == "system");
+                .find(|(message_type, _, _)| message_type == "system");
 
             let model_config_map = model_config
                 .iter()
@@ -191,7 +191,7 @@ impl ModelProvider for AnthropicProvider {
                 "model": model,
                 "temperature": temperature,
                 "top_p": top_p,
-                "system": system_message.map(|(_, content)| content),
+                "system": system_message.map(|(_, content, _)| content),
                 "max_tokens": max_tokens,
                 "messages": json_messages,
                 "stream": false
@@ -227,7 +227,7 @@ impl ModelProvider for AnthropicProvider {
     fn chat_stream(
         &self,
         message_id: i64,
-        messages: Vec<(String, String)>,
+        messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         tx: tokio::sync::mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
@@ -252,8 +252,8 @@ impl ModelProvider for AnthropicProvider {
 
             let json_messages = messages
                 .iter()
-                .filter(|(message_type, _)| message_type != "system")
-                .map(|(message_type, content)| {
+                .filter(|(message_type, _, _)| message_type != "system")
+                .map(|(message_type, content, attachment_list)| {
                     json!({
                         "role": message_type,
                         "content": content
@@ -262,7 +262,7 @@ impl ModelProvider for AnthropicProvider {
                 .collect::<Vec<serde_json::Value>>();
             let system_message = messages
                 .iter()
-                .find(|(message_type, _)| message_type == "system");
+                .find(|(message_type, _, _)| message_type == "system");
 
             let model_config_map = model_config
                 .iter()
@@ -292,7 +292,7 @@ impl ModelProvider for AnthropicProvider {
                 "model": model,
                 "temperature": temperature,
                 "top_p": top_p,
-                "system": system_message.map(|(_, content)| content),
+                "system": system_message.map(|(_, content, _)| content),
                 "max_tokens": max_tokens,
                 "messages": json_messages,
                 "stream": true

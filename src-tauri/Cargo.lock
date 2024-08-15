@@ -7,6 +7,7 @@ name = "Tea"
 version = "0.0.2"
 dependencies = [
  "anyhow",
+ "base64 0.13.1",
  "chrono",
  "config",
  "futures",

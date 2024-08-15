@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as TokioMutex;
 use crate::api::system_api::{get_all_feature_config, save_feature_config};
 use crate::api::ai_api::{ask_ai, cancel_ai};
+use crate::api::attachment_api::add_attachment;
 use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant, copy_assistant};
 use crate::api::conversation_api::{list_conversations, get_conversation_with_messages, delete_conversation, update_conversation};
 use get_selected_text::get_selected_text;
@@ -177,6 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_llm_providers, update_llm_provider, add_llm_provider, delete_llm_provider,
             get_llm_provider_config, update_llm_provider_config,
             get_llm_models, fetch_model_list, get_models_for_select,
+            add_attachment,
             get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant, copy_assistant,
             list_conversations, get_conversation_with_messages, delete_conversation, update_conversation,
             run_artifacts

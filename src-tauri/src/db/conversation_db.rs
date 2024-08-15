@@ -4,6 +4,38 @@ use serde::{Deserialize, Serialize};
 
 use super::get_db_path;
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
+pub enum AttachmentType {
+    Image = 1,
+    Text = 2,
+    PDF = 3,
+    Word = 4,
+    PowerPoint = 5,
+    Excel = 6,
+}
+
+impl TryFrom<i64> for AttachmentType {
+    type Error = rusqlite::Error;
+
+    fn try_from(value: i64) -> std::result::Result<Self, Self::Error> {
+        match value {
+            1 => Ok(AttachmentType::Image),
+            2 => Ok(AttachmentType::Text),
+            3 => Ok(AttachmentType::PDF),
+            4 => Ok(AttachmentType::Word),
+            5 => Ok(AttachmentType::PowerPoint),
+            6 => Ok(AttachmentType::Excel),
+            _ => Err(rusqlite::Error::FromSqlConversionFailure(
+                2,
+                rusqlite::types::Type::Integer,
+                Box::new(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("Invalid attachment type: {}", value),
+                )),
+            )),
+        }
+    }
+}
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Conversation {
     pub id: i64,
@@ -34,11 +66,23 @@ pub struct MessageDetail {
     pub llm_model_id: Option<i64>,  // Assuming it can be NULL
     pub created_time: DateTime<Utc>,
     pub token_count: i32,
-    pub attachment_type: Option<i64>,
+    pub attachment_type: Option<AttachmentType>,
     pub attachment_url: Option<String>,
     pub attachment_content: Option<String>,
     pub attachment_use_vector: Option<bool>,
     pub attachment_token_count: Option<i32>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MessageAttachment {
+    pub id: i64,
+    pub message_id: i64,
+    pub attachment_type: AttachmentType,
+    pub attachment_url: Option<String>,
+    pub attachment_content: Option<String>,
+    pub use_vector: bool,
+    pub token_count: Option<i32>,
 }
 
 impl Conversation {
@@ -215,5 +259,71 @@ impl ConversationDatabase {
     pub fn update_conversation_assistant_id(&self, origin_assistant_id: i64, assistant_id: Option<i64>) -> Result<()> {
         self.conn.execute("UPDATE conversation SET assistant_id = ?1 WHERE assistant_id = ?2", (&assistant_id, &origin_assistant_id))?;
         Ok(())
+    }
+}
+
+impl MessageAttachment {
+    pub fn create(conn: &Connection, message_id: i64, attachment_type: AttachmentType, attachment_url: Option<String>, attachment_content: Option<String>, use_vector: bool, token_count: Option<i32>) -> Result<Self> {
+        conn.execute(
+            "INSERT INTO message_attachment (message_id, attachment_type, attachment_url, attachment_content, use_vector, token_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            (&message_id, &(attachment_type as i64), &attachment_url, &attachment_content, &use_vector, &token_count),
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(MessageAttachment { id, message_id, attachment_type, attachment_url, attachment_content, use_vector, token_count })
+    }
+
+    pub fn read(conn: &Connection, id: i64) -> Result<Option<Self>> {
+        conn.query_row(
+            "SELECT * FROM message_attachment WHERE id = ?",
+            &[&id],
+            |row| {
+                let attachment_type_int: i64 = row.get(2)?;
+                let attachment_type = AttachmentType::try_from(attachment_type_int)?;
+                Ok(MessageAttachment {
+                    id: row.get(0)?,
+                    message_id: row.get(1)?,
+                    attachment_type,
+                    attachment_url: row.get(3)?,
+                    attachment_content: row.get(4)?,
+                    use_vector: row.get(5)?,
+                    token_count: row.get(6)?,
+                })
+            },
+        ).optional()
+    }
+
+    pub fn update(conn: &Connection, id: i64, message_id: i64) -> Result<()> {
+        conn.execute(
+            "UPDATE message_attachment SET message_id = ?1 WHERE id = ?2",
+            (message_id, id),
+        )?;
+        Ok(())
+    }
+
+    pub fn delete(conn: &Connection, id: i64) -> Result<()> {
+        conn.execute("DELETE FROM message_attachment WHERE id = ?", &[&id])?;
+        Ok(())
+    }
+
+    pub fn list_by_id(conn: &Connection, id_list: &Vec<i64>) -> Result<Vec<Self>> {
+        let id_list_str: Vec<String> = id_list.iter().map(|id| id.to_string()).collect();
+        let id_list_str = id_list_str.join(",");
+        let query = format!("SELECT * FROM message_attachment WHERE id IN ({})", id_list_str);
+        let mut stmt = conn.prepare(&query)?;
+        let rows = stmt.query_map([], |row| {
+            let attachment_type_int: i64 = row.get(2)?;
+            let attachment_type = AttachmentType::try_from(attachment_type_int)?;
+            Ok(MessageAttachment {
+                id: row.get(0)?,
+                message_id: row.get(1)?,
+                attachment_type,
+                attachment_url: row.get(3)?,
+                attachment_content: row.get(4)?,
+                use_vector: row.get(5)?,
+                token_count: row.get(6)?,
+            })
+        })?;
+        let attachments = rows.collect::<Result<Vec<_>>>()?;
+        Ok(attachments)
     }
 }

@@ -9,7 +9,7 @@ use serde_json::json;
 use tokio_util::sync::CancellationToken;
 use anyhow::{Result, bail, anyhow};
 
-use crate::{api::llm_api::LlmModel, db::llm_db::LLMProviderConfig};
+use crate::{api::llm_api::LlmModel, db::{conversation_db::MessageAttachment, llm_db::LLMProviderConfig}};
 
 use super::ModelProvider;
 use futures::StreamExt;
@@ -48,7 +48,7 @@ impl ModelProvider for CohereProvider {
     fn chat(
         &self,
         _message_id: i64,
-        mut messages: Vec<(String, String)>,
+        mut messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         cancel_token: CancellationToken,
     ) -> futures::future::BoxFuture<'static, Result<String>> {
@@ -73,7 +73,7 @@ impl ModelProvider for CohereProvider {
 
             let json_messages = messages
                 .iter()
-                .map(|(message_type, content)| {
+                .map(|(message_type, content, _)| {
                     let role = match message_type.as_str() {
                         "assistant" => "chatbot",
                         _ => message_type,
@@ -148,7 +148,7 @@ impl ModelProvider for CohereProvider {
     fn chat_stream(
         &self,
         message_id: i64,
-        mut messages: Vec<(String, String)>,
+        mut messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<crate::db::assistant_db::AssistantModelConfig>,
         tx: tokio::sync::mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
@@ -174,7 +174,7 @@ impl ModelProvider for CohereProvider {
             }
             let json_messages = messages
                 .iter()
-                .map(|(message_type, content)| {
+                .map(|(message_type, content, _)| {
                     let role = match message_type.as_str() {
                         "assistant" => "chatbot",
                         _ => message_type,

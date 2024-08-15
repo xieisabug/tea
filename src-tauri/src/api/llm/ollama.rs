@@ -1,6 +1,6 @@
 use crate::{
     api::llm_api::LlmModel,
-    db::{assistant_db::AssistantModelConfig, llm_db::LLMProviderConfig},
+    db::{assistant_db::AssistantModelConfig, conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig},
 };
 use futures::{future::BoxFuture, StreamExt};
 use reqwest::{
@@ -57,7 +57,7 @@ impl ModelProvider for OllamaProvider {
     fn chat(
         &self,
         _message_id: i64,
-        messages: Vec<(String, String)>,
+        messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<AssistantModelConfig>,
         cancel_token: CancellationToken,
     ) -> BoxFuture<'static, Result<String>> {
@@ -81,11 +81,19 @@ impl ModelProvider for OllamaProvider {
 
             let json_messages = messages
                 .iter()
-                .map(|(message_type, content)| {
-                    json!({
-                        "role": message_type,
-                        "content": content
-                    })
+                .map(|(message_type, content, attachment_list)| {
+                    if (attachment_list.len() > 0) {                        
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    } else {
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    }
+                    
                 })
                 .collect::<Vec<serde_json::Value>>();
 
@@ -149,7 +157,7 @@ impl ModelProvider for OllamaProvider {
     fn chat_stream(
         &self,
         message_id: i64,
-        messages: Vec<(String, String)>,
+        messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<AssistantModelConfig>,
         tx: mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
@@ -175,11 +183,20 @@ impl ModelProvider for OllamaProvider {
 
             let json_messages = messages
                 .iter()
-                .map(|(message_type, content)| {
-                    json!({
-                        "role": message_type,
-                        "content": content
-                    })
+                .map(|(message_type, content, attachment_list)| {
+                    if (attachment_list.len() > 0) {
+                        json!({
+                            "role": message_type,
+                            "content": content,
+                            "images": attachment_list.iter().filter(|a| a.attachment_type == AttachmentType::Image).map(|a| a.attachment_content.clone().unwrap()).collect::<Vec<String>>(),
+                        })
+                    } else {
+                        json!({
+                            "role": message_type,
+                            "content": content
+                        })
+                    }
+                    
                 })
                 .collect::<Vec<serde_json::Value>>();
 

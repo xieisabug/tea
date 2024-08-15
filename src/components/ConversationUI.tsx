@@ -3,7 +3,7 @@ import { open } from '@tauri-apps/api/dialog';
 import { readBinaryFile } from '@tauri-apps/api/fs';
 import { writeText } from '@tauri-apps/api/clipboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Conversation, Message } from "../data/Conversation";
+import { AddAttachmentResponse, Conversation, Message } from "../data/Conversation";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkMath from "remark-math";
 import remarkBreaks from "remark-breaks";
@@ -45,6 +45,7 @@ interface AiResponse {
 }
 
 interface FileInfo {
+    id: number;
     name: string;
     path: string;
     thumbnail?: string;
@@ -217,7 +218,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 };
     
                 setMessages(prevMessages => [...prevMessages, userMessage]);
-                invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId } })
+                invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId, attachment_list: fileInfoList?.map(i => i.id) } })
                     .then((res) => {
                         console.log("ask ai response", res);
                         if (unsubscribeRef.current) {
@@ -297,7 +298,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         });
     }, []);
 
-    const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
+    const [fileInfoList, setFileInfoList] = useState<Array<FileInfo> | null>(null);
     const handleChooseFile = useCallback(async () => {
         try {
             const selected = await open({
@@ -319,9 +320,14 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 thumbnail = URL.createObjectURL(blob);
               }
       
-              setFileInfo({ name, path, thumbnail });
+              let newFile = { id: -1, name, path, thumbnail };
+              setFileInfoList([...(fileInfoList || []), newFile]);
       
               // 调用Rust函数处理文件
+              invoke<AddAttachmentResponse>("add_attachment", { fileUrl: path})
+                .then((res) => {
+                    newFile.id = res.attachment_id;
+                })
             }
           } catch (error) {
             console.error('Error selecting file:', error);
@@ -358,13 +364,13 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 <div ref={messagesEndRef} />
             </div>
             <div className="input-area">
-                {fileInfo && (
+                {fileInfoList && fileInfoList.length && fileInfoList.map((fileInfo) => (
                     <div>
                     {fileInfo.thumbnail && (
                         <img src={fileInfo.thumbnail} alt="缩略图" style={{maxWidth: '50px'}} />
                     )}
                     </div>
-                )}
+                ))}
                 <textarea
                     className="input-area-textarea"
                     value={inputText}

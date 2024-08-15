@@ -15,3 +15,7 @@ export interface Message {
     created_time: Date;
     token_count: number;
 }
+
+export interface AddAttachmentResponse {
+    attachment_id: number;
+}

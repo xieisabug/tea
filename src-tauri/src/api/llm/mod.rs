@@ -11,8 +11,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::db::{
-    assistant_db::AssistantModelConfig,
-    llm_db::{LLMProvider, LLMProviderConfig},
+    assistant_db::AssistantModelConfig, conversation_db::MessageAttachment, llm_db::{LLMProvider, LLMProviderConfig}
 };
 
 use super::llm_api::LlmModel;
@@ -30,7 +29,7 @@ pub trait ModelProvider: Send + Sync {
     fn chat(
         &self,
         message_id: i64,
-        messages: Vec<(String, String)>,
+        messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<AssistantModelConfig>,
         cancel_token: CancellationToken,
     ) -> BoxFuture<'static, Result<String>>;
@@ -38,7 +37,7 @@ pub trait ModelProvider: Send + Sync {
     fn chat_stream(
         &self,
         message_id: i64,
-        messages: Vec<(String, String)>,
+        messages: Vec<(String, String, Vec<MessageAttachment>)>,
         model_config: Vec<AssistantModelConfig>,
         tx: mpsc::Sender<(i64, String, bool)>,
         cancel_token: CancellationToken,
