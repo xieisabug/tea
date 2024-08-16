@@ -261,6 +261,19 @@
     position: relative;
     bottom: 30px;
 }
+.input-area-img-container {
+    position: absolute;
+    bottom: 90px;
+    right: 170px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-content: flex-end;
+}
+.input-area-img {
+    max-width: 100px;
+    margin-left: 10px;
+}
 
 .input-area-textarea {
     height: 55px;

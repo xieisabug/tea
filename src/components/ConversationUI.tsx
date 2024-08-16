@@ -24,6 +24,7 @@ import Copy from '../assets/copy.svg?react';
 import Ok from '../assets/ok.svg?react';
 import Refresh from '../assets/refresh.svg?react';
 import CodeBlock from "./CodeBlock";
+import FileDropArea from "./FileDropArea";
 
 interface CustomComponents extends Components {
     antthinking: React.ElementType;
@@ -125,6 +126,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     }, 300);
 
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
+    const unsubscribeDropFileRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const [messages, setMessages] = useState<Array<Message>>([]);
@@ -181,10 +183,18 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             });
         });
 
+        unsubscribeDropFileRef.current = listen('tauri://file-drop', event => {
+            console.log(event)
+        });
+
         return () => {
             if (unsubscribeRef.current) {
                 console.log("unsubscribe")
                 unsubscribeRef.current.then(f => f());
+            }
+            if (unsubscribeDropFileRef.current) {
+                console.log("unsubscribe drop file")
+                unsubscribeDropFileRef.current.then(f => f());
             }
         };
     }, [conversationId]);
@@ -284,6 +294,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 console.error('Error:', error);
             }
             setInputText("");
+            setFileInfoList(null);
         }     
     }, 200);
 
@@ -344,7 +355,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
           } catch (error) {
             console.error('Error selecting file:', error);
           }
-    }, []);
+    }, [fileInfoList]);
 
     return (
         <div className="conversation-ui">
@@ -375,14 +386,15 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 <div className="message-anchor"></div>
                 <div ref={messagesEndRef} />
             </div>
+            {/* <FileDropArea onFilesSelect={(files) => {console.log(files)}} /> */}
             <div className="input-area">
+                <div className="input-area-img-container">
                 {fileInfoList && fileInfoList.length && fileInfoList.map((fileInfo) => (
-                    <div>
-                    {fileInfo.thumbnail && (
-                        <img src={fileInfo.thumbnail} alt="缩略图" style={{maxWidth: '50px'}} />
-                    )}
-                    </div>
+                    fileInfo.thumbnail && (
+                        <img key={fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img"/>
+                    )
                 ))}
+                </div>
                 <textarea
                     className="input-area-textarea"
                     value={inputText}

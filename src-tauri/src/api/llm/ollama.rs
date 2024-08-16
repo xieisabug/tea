@@ -3,6 +3,7 @@ use crate::{
     db::{assistant_db::AssistantModelConfig, conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig},
 };
 use futures::{future::BoxFuture, StreamExt};
+use regex::Regex;
 use reqwest::{
     header::AUTHORIZATION,
     Client,
@@ -82,10 +83,23 @@ impl ModelProvider for OllamaProvider {
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content, attachment_list)| {
-                    if (attachment_list.len() > 0) {                        
+                    if attachment_list.len() > 0 {
+                        let images = attachment_list
+                            .iter()
+                            .filter(|a| a.attachment_type == AttachmentType::Image)
+                            .map(|a| {
+                                let attachment_content = a.attachment_content.clone().unwrap();
+                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let caps = re.captures(&attachment_content).unwrap();
+                                let data = caps.name("data").unwrap().as_str();
+                        
+                                data.to_string()
+                            })
+                            .collect::<Vec<String>>();
                         json!({
                             "role": message_type,
-                            "content": content
+                            "content": content,
+                            "images": images,
                         })
                     } else {
                         json!({
@@ -184,11 +198,23 @@ impl ModelProvider for OllamaProvider {
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content, attachment_list)| {
-                    if (attachment_list.len() > 0) {
+                    if attachment_list.len() > 0 {
+                        let images = attachment_list
+                            .iter()
+                            .filter(|a| a.attachment_type == AttachmentType::Image)
+                            .map(|a| {
+                                let attachment_content = a.attachment_content.clone().unwrap();
+                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let caps = re.captures(&attachment_content).unwrap();
+                                let data = caps.name("data").unwrap().as_str();
+                        
+                                data.to_string()
+                            })
+                            .collect::<Vec<String>>();
                         json!({
                             "role": message_type,
                             "content": content,
-                            "images": attachment_list.iter().filter(|a| a.attachment_type == AttachmentType::Image).map(|a| a.attachment_content.clone().unwrap()).collect::<Vec<String>>(),
+                            "images": images,
                         })
                     } else {
                         json!({

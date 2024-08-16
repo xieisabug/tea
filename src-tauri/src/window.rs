@@ -73,6 +73,7 @@ pub fn create_chat_ui_window(app: &AppHandle) {
         .fullscreen(false)
         .resizable(true)
         .decorations(true)
+        .disable_file_drop_handler()
         .center();
 
     #[cfg(not(target_os = "macos"))]
