@@ -76,7 +76,7 @@ const MessageItem = React.memo(({ message, onCodeRun }: any) => {
                 children={message.content}
                 remarkPlugins={[remarkMath, remarkBreaks]}
                 rehypePlugins={[rehypeRaw, rehypeKatex]}
-                
+
                 components={{
                     code({ node, className, children, ref, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
@@ -98,21 +98,21 @@ const MessageItem = React.memo(({ message, onCodeRun }: any) => {
                 } as CustomComponents}
             />
             {
-                message.attachment_list.filter((a:any) => a.attachment_type === "Image").length ?
-                <div className="message-image" style={{width: "100%", display: "flex", flexDirection: "column"}}>
-                    {
-                        message.attachment_list.filter((a:any) => a.attachment_type === "Image").map((attachment: any) => (
-                            <img key={attachment.attachment_url} style={{flex: 1}} src={attachment.attachment_content} />
-                        ))
-                    }
-                </div>
-                : null
+                message.attachment_list.filter((a: any) => a.attachment_type === "Image").length ?
+                    <div className="message-image" style={{ width: "100%", display: "flex", flexDirection: "column" }}>
+                        {
+                            message.attachment_list.filter((a: any) => a.attachment_type === "Image").map((attachment: any) => (
+                                <img key={attachment.attachment_url} style={{ flex: 1 }} src={attachment.attachment_content} />
+                            ))
+                        }
+                    </div>
+                    : null
             }
-            
+
             <div className="message-item-button-container">
-                <IconButton icon={<Delete fill="black"/>} onClick={() => { }} />
-                <IconButton icon={<Refresh fill="black"/>} onClick={() => { }} />
-                <IconButton icon={copyIconState === 'copy' ? <Copy fill="black"/> : <Ok fill="black"/>} onClick={handleCopy} />
+                <IconButton icon={<Delete fill="black" />} onClick={() => { }} />
+                <IconButton icon={<Refresh fill="black" />} onClick={() => { }} />
+                <IconButton icon={copyIconState === 'copy' ? <Copy fill="black" /> : <Ok fill="black" />} onClick={handleCopy} />
             </div>
         </div>
     )
@@ -210,7 +210,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         if (aiIsResponsing) {
             console.log("Cancelling AI");
             console.log(messageId);
-            invoke('cancel_ai', {messageId}).then(() => {
+            invoke('cancel_ai', { messageId }).then(() => {
                 setAiIsResponsing(false);
             });
         } else {
@@ -219,7 +219,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 return;
             }
             setAiIsResponsing(true);
-    
+
             let conversationId = "";
             let assistantId = "";
             if (!conversation || !conversation.id) {
@@ -236,9 +236,10 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                     content: inputText,
                     token_count: 0,
                     message_type: "user",
-                    created_time: new Date()
+                    created_time: new Date(),
+                    attachment_list: []
                 };
-    
+
                 setMessages(prevMessages => [...prevMessages, userMessage]);
                 invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId, attachment_list: fileInfoList?.map(i => i.id) } })
                     .then((res) => {
@@ -247,9 +248,9 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                             console.log('Unsubscribing from previous event listener');
                             unsubscribeRef.current.then(f => f());
                         }
-    
+
                         setMessageId(res.add_message_id);
-    
+
                         if (conversationId != (res.conversation_id + "")) {
                             onChangeConversationId(res.conversation_id + "");
                         } else {
@@ -260,14 +261,15 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                                 content: "",
                                 token_count: 0,
                                 message_type: "assistant",
-                                created_time: new Date()
+                                created_time: new Date(),
+                                attachment_list: []
                             };
-    
+
                             setMessages(prevMessages => [...prevMessages, assistantMessage]);
                         }
-    
+
                         console.log("Listening for response", `message_${res.add_message_id}`);
-    
+
                         unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
                             const payload = event.payload as string;
                             if (payload !== "Tea::Event::MessageFinish") {
@@ -287,7 +289,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                             } else {
                                 setAiIsResponsing(false);
                             }
-    
+
                         });
                     });
             } catch (error) {
@@ -295,7 +297,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             }
             setInputText("");
             setFileInfoList(null);
-        }     
+        }
     }, 200);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -325,54 +327,129 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     const handleChooseFile = useCallback(async () => {
         try {
             const selected = await open({
-              multiple: false,
-              filters: [{ name: 'Image', extensions: ['png', 'jpg'] }]
+                multiple: false,
+                filters: [{ name: 'Image', extensions: ['png', 'jpg'] }]
             });
-      
+
             if (selected) {
-              const path = selected as string;
-              const name = path.split('\\').pop() || path.split('/').pop() || '';
-      
-              // 读取文件内容
-              const contents = await readBinaryFile(path);
-      
-              // 如果是图片,创建缩略图
-              let thumbnail;
-              if (name.match(/\.(jpg|jpeg|png|gif)$/)) {
-                const blob = new Blob([contents]);
-                thumbnail = URL.createObjectURL(blob);
-              }
-      
-              let newFile = { id: -1, name, path, thumbnail };
-              setFileInfoList([...(fileInfoList || []), newFile]);
-      
-              // 调用Rust函数处理文件
-              invoke<AddAttachmentResponse>("add_attachment", { fileUrl: path})
-                .then((res) => {
-                    newFile.id = res.attachment_id;
-                })
+                const path = selected as string;
+                const name = path.split('\\').pop() || path.split('/').pop() || '';
+
+                // 读取文件内容
+                const contents = await readBinaryFile(path);
+
+                // 如果是图片,创建缩略图
+                let thumbnail;
+                if (name.match(/\.(jpg|jpeg|png|gif)$/)) {
+                    const blob = new Blob([contents]);
+                    thumbnail = URL.createObjectURL(blob);
+                }
+
+                let newFile = { id: -1, name, path, thumbnail };
+                setFileInfoList([...(fileInfoList || []), newFile]);
+
+                // 调用Rust函数处理文件
+                invoke<AddAttachmentResponse>("add_attachment", { fileUrl: path })
+                    .then((res) => {
+                        newFile.id = res.attachment_id;
+                    })
             }
-          } catch (error) {
+        } catch (error) {
             console.error('Error selecting file:', error);
-          }
+        }
     }, [fileInfoList]);
 
-    return (
-        <div className="conversation-ui">
-            {
-                conversationId ? 
-                <div className="conversation-title-panel">
-                    <div className="conversation-title-panel-text-group">
-                        <div className="conversation-title-panel-title">{conversation?.name}</div>
-                        <div className="conversation-title-panel-assistant-name">{conversation?.assistant_name}</div>
-                    </div>
-                    <div className="conversation-title-panel-button-group">
-                        <IconButton icon={<Edit fill="#468585" />} onClick={() => {}} border />
-                        <IconButton icon={<Delete fill="#468585" />} onClick={() => {}} border />
-                    </div>
-                </div> :  null
+    const dropRef = useRef(null);
+    const [dragFileOver, setDragFileOver] = useState<boolean>(false);
+    const [dropAreaOver, setDropAreaOver] = useState<boolean>(false);
+
+    const handleDragEvents = (e: React.DragEvent<HTMLDivElement>, isEnter: boolean) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            setDragFileOver(isEnter);
+        }
+    };
+
+    const handleDrag = (e: React.DragEvent<HTMLDivElement>) => handleDragEvents(e, dragFileOver);
+    const handleDragIn = (e: React.DragEvent<HTMLDivElement>) => handleDragEvents(e, true);
+    const handleDragOut = (e: React.DragEvent<HTMLDivElement>) => handleDragEvents(e, false);
+
+    const onFilesSelect = (files: File[]) => {
+        setDragFileOver(false);
+        files.forEach(file => {
+
+            if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif") {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const fileContent = event.target?.result;
+                    console.log(`File content: ${fileContent}`);
+                    if (typeof fileContent === 'string') {
+                        // 调用Rust函数处理文件
+                        let newFile = { id: -1, name: file.name, path: "", thumbnail: fileContent };
+                        setFileInfoList([...(fileInfoList || []), newFile]);
+                        invoke<AddAttachmentResponse>("add_attachment_base64", { fileContent, fileName: file.name })
+                            .then((res) => {
+                                newFile.id = res.attachment_id;
+                            })
+                    }
+                };
+                reader.onerror = (error) => {
+                    console.error(`Error reading file: ${file.name}`, error);
+                };
+                reader.readAsDataURL(file); // 读取文件内容为二进制数据
+    
+                console.log(`File path: ${file.name}`); // 文件路径（仅文件名）
             }
             
+        });
+    };
+
+    useEffect(() => {
+        const handleFileDrop = (e: DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragFileOver(false);
+            if (e?.dataTransfer?.files && e?.dataTransfer.files.length > 0) {
+                onFilesSelect(Array.from(e.dataTransfer.files));
+            }
+        };
+
+        const dropElement = dropRef.current as HTMLElement | null;
+        if (dropElement) {
+            dropElement.addEventListener('drop', handleFileDrop);
+        }
+
+        return () => {
+            if (dropElement) {
+                dropElement.removeEventListener('drop', handleFileDrop);
+            }
+        };
+    }, [onFilesSelect]);
+
+
+    return (
+        <div
+            ref={dropRef}
+            className="conversation-ui"
+            onDragEnter={handleDragIn}
+            onDragLeave={handleDragOut}
+            onDragOver={handleDrag}
+        >
+            {
+                conversationId ?
+                    <div className="conversation-title-panel">
+                        <div className="conversation-title-panel-text-group">
+                            <div className="conversation-title-panel-title">{conversation?.name}</div>
+                            <div className="conversation-title-panel-assistant-name">{conversation?.assistant_name}</div>
+                        </div>
+                        <div className="conversation-title-panel-button-group">
+                            <IconButton icon={<Edit fill="#468585" />} onClick={() => { }} border />
+                            <IconButton icon={<Delete fill="#468585" />} onClick={() => { }} border />
+                        </div>
+                    </div> : null
+            }
+
             <div className="messages">
                 {conversationId ?
                     filteredMessages.map((message, index) => (
@@ -386,14 +463,14 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 <div className="message-anchor"></div>
                 <div ref={messagesEndRef} />
             </div>
-            {/* <FileDropArea onFilesSelect={(files) => {console.log(files)}} /> */}
+            {dragFileOver || dropAreaOver ? <FileDropArea onDragChange={(state) => setDropAreaOver(state)} onFilesSelect={onFilesSelect} /> : null}
             <div className="input-area">
                 <div className="input-area-img-container">
-                {fileInfoList && fileInfoList.length && fileInfoList.map((fileInfo) => (
-                    fileInfo.thumbnail && (
-                        <img key={fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img"/>
-                    )
-                ))}
+                    {fileInfoList && fileInfoList.length && fileInfoList.map((fileInfo) => (
+                        fileInfo.thumbnail && (
+                            <img key={fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />
+                        )
+                    ))}
                 </div>
                 <textarea
                     className="input-area-textarea"
@@ -403,7 +480,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 />
 
                 <CircleButton onClick={handleChooseFile} icon={<Add fill="black" />} className="input-area-add-button" />
-                <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20}  fill="white"/> : <UpArrow width={20} height={20} fill="white"/>} primary className="input-area-send-button" />
+                <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20} fill="white" /> : <UpArrow width={20} height={20} fill="white" />} primary className="input-area-send-button" />
 
             </div>
         </div>

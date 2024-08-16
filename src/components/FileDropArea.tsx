@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
+import "../styles/FileDropArea.css"
 
 interface FileDropAreaProps {
     onFilesSelect: (files: File[]) => void;
+    onDragChange: (state: boolean) => void;
 }
 
-const FileDropArea: React.FC<FileDropAreaProps> = ({ onFilesSelect }) => {
+const FileDropArea: React.FC<FileDropAreaProps> = ({ onFilesSelect, onDragChange }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
     const dropRef = useRef<HTMLDivElement>(null);
@@ -19,6 +21,7 @@ const FileDropArea: React.FC<FileDropAreaProps> = ({ onFilesSelect }) => {
         e.stopPropagation();
         if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
             setIsDragging(true);
+            onDragChange(true);
         }
     };
 
@@ -26,12 +29,14 @@ const FileDropArea: React.FC<FileDropAreaProps> = ({ onFilesSelect }) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
+        onDragChange(false);
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragging(false);
+        onDragChange(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             console.log(e.dataTransfer.files);
             const droppedFiles = Array.from(e.dataTransfer.files);
@@ -48,16 +53,8 @@ const FileDropArea: React.FC<FileDropAreaProps> = ({ onFilesSelect }) => {
             onDragLeave={handleDragOut}
             onDragOver={handleDrag}
             onDrop={handleDrop}
+            className='file-drop-area'
             style={{
-                width: '300px',
-                minHeight: '200px',
-                border: '2px dashed #ccc',
-                borderRadius: '4px',
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
                 backgroundColor: isDragging ? '#e6f7ff' : 'white',
             }}
         >
