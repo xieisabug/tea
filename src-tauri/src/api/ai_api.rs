@@ -346,7 +346,7 @@ async fn initialize_conversation(
         let conversation_id = request.conversation_id.parse::<i64>()?;
         let message_list = Message::list_by_conversation_id(&db.conn, conversation_id)?
             .into_iter()
-            .map(|m| (m.message_type, m.content, vec![]))
+            .map(|m| (m.0.message_type, m.0.content, vec![]))
             .collect::<Vec<_>>();
 
         let _ = add_message(

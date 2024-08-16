@@ -66,11 +66,7 @@ pub struct MessageDetail {
     pub llm_model_id: Option<i64>,  // Assuming it can be NULL
     pub created_time: DateTime<Utc>,
     pub token_count: i32,
-    pub attachment_type: Option<AttachmentType>,
-    pub attachment_url: Option<String>,
-    pub attachment_content: Option<String>,
-    pub attachment_use_vector: Option<bool>,
-    pub attachment_token_count: Option<i32>,
+    pub attachment_list: Vec<MessageAttachment>,
 }
 
 
@@ -115,13 +111,15 @@ impl Conversation {
 }
 
 impl Message {
-    pub fn list_by_conversation_id(conn: &Connection, conversation_id: i64) -> Result<Vec<Self>> {
+    pub fn list_by_conversation_id(conn: &Connection, conversation_id: i64) -> Result<Vec<(Message, Option<MessageAttachment>)>> {
         let mut stmt = conn.prepare("SELECT message.*, ma.attachment_type, ma.attachment_url, ma.attachment_content, ma.use_vector as attachment_use_vector, ma.token_count as attachment_token_count
                                                     FROM message
                                                         LEFT JOIN message_attachment ma on message.id = ma.message_id
                                                     WHERE conversation_id =  ?1")?;
         let rows = stmt.query_map(&[&conversation_id], |row| {
-            Ok(Message {
+            let attachment_type_int: Option<i64> = row.get(7).ok();
+            let attachment_type = attachment_type_int.map(AttachmentType::try_from).transpose()?;
+            let message = Message {
                 id: row.get(0)?,
                 conversation_id: row.get(1)?,
                 message_type: row.get(2)?,
@@ -129,7 +127,21 @@ impl Message {
                 llm_model_id: row.get(4)?,
                 created_time: row.get(5)?,
                 token_count: row.get(6)?,
-            })
+            };
+            let attachment = if attachment_type.is_some() {
+                Some(MessageAttachment {
+                    id: 0,
+                    message_id: row.get(0)?,
+                    attachment_type: attachment_type.unwrap(),
+                    attachment_url: row.get(8)?,
+                    attachment_content: row.get(9)?,
+                    use_vector: row.get(10)?,
+                    token_count: row.get(11)?,
+                })
+            } else {
+                None
+            };
+            Ok((message, attachment))
         })?;
         let mut messages = Vec::new();
         for message in rows {
@@ -239,7 +251,7 @@ impl ConversationDatabase {
         conversations
     }
 
-    pub fn get_conversation_with_messages(&self, conversation_id: i64) -> Result<(Conversation, Vec<Message>)> {
+    pub fn get_conversation_with_messages(&self, conversation_id: i64) -> Result<(Conversation, Vec<(Message, Option<MessageAttachment>)>)> {
         let conversation = Conversation::read(&self.conn, conversation_id)?
             .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
         let messages = Message::list_by_conversation_id(&self.conn, conversation_id)?;

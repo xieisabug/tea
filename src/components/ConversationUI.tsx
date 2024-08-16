@@ -96,6 +96,18 @@ const MessageItem = React.memo(({ message, onCodeRun }: any) => {
                     }
                 } as CustomComponents}
             />
+            {
+                message.attachment_list.filter((a:any) => a.attachment_type === "Image").length ?
+                <div className="message-image" style={{width: "100%", display: "flex", flexDirection: "column"}}>
+                    {
+                        message.attachment_list.filter((a:any) => a.attachment_type === "Image").map((attachment: any) => (
+                            <img key={attachment.attachment_url} style={{flex: 1}} src={attachment.attachment_content} />
+                        ))
+                    }
+                </div>
+                : null
+            }
+            
             <div className="message-item-button-container">
                 <IconButton icon={<Delete fill="black"/>} onClick={() => { }} />
                 <IconButton icon={<Refresh fill="black"/>} onClick={() => { }} />
