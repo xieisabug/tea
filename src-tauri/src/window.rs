@@ -87,6 +87,7 @@ pub fn create_chat_ui_window(app: &AppHandle) {
                     window_clone.hide().unwrap();
                 }
             });
+            let _ = window.maximize();
         },
         Err(e) => eprintln!("Failed to build window: {}", e),
     }
