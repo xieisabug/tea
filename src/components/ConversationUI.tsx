@@ -1,34 +1,17 @@
 import { invoke } from "@tauri-apps/api/tauri";
 import { open } from '@tauri-apps/api/dialog';
 import { readBinaryFile } from '@tauri-apps/api/fs';
-import { writeText } from '@tauri-apps/api/clipboard';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AddAttachmentResponse, Conversation, Message } from "../data/Conversation";
-import ReactMarkdown, { Components } from "react-markdown";
-import remarkMath from "remark-math";
-import remarkBreaks from "remark-breaks";
-import rehypeRaw from "rehype-raw";
-import rehypeKatex from "rehype-katex";
+import { AddAttachmentResponse, Conversation, FileInfo, Message } from "../data/Conversation";
 import 'katex/dist/katex.min.css';
 import { listen } from "@tauri-apps/api/event";
 import { throttle } from 'lodash';
 import NewChatComponent from "./NewChatComponent";
-import CircleButton from "./CircleButton";
-import IconButton from "./IconButton";
-import UpArrow from '../assets/up-arrow.svg?react';
-import Stop from '../assets/stop.svg?react';
-import Add from '../assets/add.svg?react';
-import Delete from '../assets/delete.svg?react';
-import Edit from '../assets/edit.svg?react';
-import Copy from '../assets/copy.svg?react';
-import Ok from '../assets/ok.svg?react';
-import Refresh from '../assets/refresh.svg?react';
-import CodeBlock from "./CodeBlock";
 import FileDropArea from "./FileDropArea";
-
-interface CustomComponents extends Components {
-    antthinking: React.ElementType;
-}
+import MessageItem from "./MessageItem";
+import ConversationTitle from "./conversation/ConversationTitle";
+import useFileDropHandler from "../hook/file-drag-drop-hook";
+import InputArea from "./conversation/InputArea";
 
 interface AssistantListItem {
     id: number;
@@ -44,79 +27,6 @@ interface AiResponse {
     conversation_id: number;
     add_message_id: number;
 }
-
-interface FileInfo {
-    id: number;
-    name: string;
-    path: string;
-    thumbnail?: string;
-}
-
-const MessageItem = React.memo(({ message, onCodeRun }: any) => {
-    const [copyIconState, setCopyIconState] = useState<'copy' | 'ok'>('copy');
-
-    const handleCopy = useCallback(() => {
-        writeText(message.content);
-        setCopyIconState('ok');
-    }, [message.content]);
-
-    useEffect(() => {
-        if (copyIconState === 'ok') {
-            const timer = setTimeout(() => {
-                setCopyIconState('copy');
-            }, 1500);
-
-            return () => clearTimeout(timer);
-        }
-    }, [copyIconState]);
-
-    return (
-        <div className={"message-item " + (message.message_type === "user" ? "user-message" : "bot-message")}>
-            <ReactMarkdown
-                children={message.content}
-                remarkPlugins={[remarkMath, remarkBreaks]}
-                rehypePlugins={[rehypeRaw, rehypeKatex]}
-
-                components={{
-                    code({ node, className, children, ref, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        return match ? (
-                            <CodeBlock language={match[1]} onCodeRun={onCodeRun}>
-                                {String(children).replace(/\n$/, '')}
-                            </CodeBlock>
-                        ) : (
-                            <code {...props} ref={ref} className={className} style={{ overflow: "auto", display: "block" }}>
-                                {children}
-                            </code>
-                        );
-                    },
-                    antthinking({ children }) {
-                        return <div>
-                            <div className="llm-thinking-badge" title={children} data-thinking={children}>思考...</div>
-                        </div>
-                    }
-                } as CustomComponents}
-            />
-            {
-                message.attachment_list.filter((a: any) => a.attachment_type === "Image").length ?
-                    <div className="message-image" style={{ width: "100%", display: "flex", flexDirection: "column" }}>
-                        {
-                            message.attachment_list.filter((a: any) => a.attachment_type === "Image").map((attachment: any) => (
-                                <img key={attachment.attachment_url} style={{ flex: 1 }} src={attachment.attachment_content} />
-                            ))
-                        }
-                    </div>
-                    : null
-            }
-
-            <div className="message-item-button-container">
-                <IconButton icon={<Delete fill="black" />} onClick={() => { }} />
-                <IconButton icon={<Refresh fill="black" />} onClick={() => { }} />
-                <IconButton icon={copyIconState === 'copy' ? <Copy fill="black" /> : <Ok fill="black" />} onClick={handleCopy} />
-            </div>
-        </div>
-    )
-});
 
 function ConversationUI({ conversationId, onChangeConversationId }: ConversationUIProps) {
     const scroll = throttle(() => {
@@ -359,14 +269,12 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         }
     }, [fileInfoList]);
 
-    const [isDragging, setIsDragging] = useState(false);
-
     const onFilesSelect = useCallback((files: File[]) => {
         setIsDragging(false);
-        const newFiles = files.filter(file => 
+        const newFiles = files.filter(file =>
             file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif"
         );
-    
+
         const filePromises = newFiles.map(file => new Promise<FileInfo>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -384,82 +292,30 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             };
             reader.readAsDataURL(file);
         }));
-    
+
         Promise.all(filePromises)
             .then(newFileInfos => {
                 console.log(newFileInfos)
                 setFileInfoList(prev => [...(prev || []), ...newFileInfos]);
-    
+
                 // 批量上传文件到后端
                 newFileInfos.forEach(fileInfo => {
-                    invoke<AddAttachmentResponse>("add_attachment_base64", { 
-                        fileContent: fileInfo.thumbnail, 
-                        fileName: fileInfo.name 
+                    invoke<AddAttachmentResponse>("add_attachment_base64", {
+                        fileContent: fileInfo.thumbnail,
+                        fileName: fileInfo.name
                     })
-                    .then((res) => {
-                        setFileInfoList(prev => 
-                            prev?.map(f => f.name === fileInfo.name && f.id === -1 ? { ...f, id: res.attachment_id } : f) || null
-                        );
-                    })
-                    .catch(error => console.error(`Error uploading file: ${fileInfo.name}`, error));
+                        .then((res) => {
+                            setFileInfoList(prev =>
+                                prev?.map(f => f.name === fileInfo.name && f.id === -1 ? { ...f, id: res.attachment_id } : f) || null
+                            );
+                        })
+                        .catch(error => console.error(`Error uploading file: ${fileInfo.name}`, error));
                 });
             })
             .catch(error => console.error('Error processing files:', error));
     }, []);
 
-    const dragCounter = useRef(0);
-    const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current++;
-        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-            setIsDragging(true);
-        }
-    }, []);
-
-    const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dragCounter.current--;
-        if (dragCounter.current === 0) {
-            setIsDragging(false);
-        }
-    }, []);
-
-    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
-
-    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDragging(false);
-        dragCounter.current = 0;
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            onFilesSelect(Array.from(e.dataTransfer.files));
-        }
-    }, [onFilesSelect]);
-
-    const dropRef = useRef<HTMLDivElement | null>(null);
-    useEffect(() => {
-        const div = dropRef.current;
-        if (div) {
-            div.addEventListener('dragenter', handleDragEnter as any);
-            div.addEventListener('dragleave', handleDragLeave as any);
-            div.addEventListener('dragover', handleDragOver as any);
-            div.addEventListener('drop', handleDrop as any);
-        }
-
-        return () => {
-            if (div) {
-                div.removeEventListener('dragenter', handleDragEnter as any);
-                div.removeEventListener('dragleave', handleDragLeave as any);
-                div.removeEventListener('dragover', handleDragOver as any);
-                div.removeEventListener('drop', handleDrop as any);
-            }
-        };
-    }, [handleDragEnter, handleDragLeave, handleDragOver, handleDrop]);
+    const { isDragging, setIsDragging, dropRef } = useFileDropHandler(onFilesSelect);
 
     return (
         <div
@@ -468,16 +324,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         >
             {
                 conversationId ?
-                    <div className="conversation-title-panel">
-                        <div className="conversation-title-panel-text-group">
-                            <div className="conversation-title-panel-title">{conversation?.name}</div>
-                            <div className="conversation-title-panel-assistant-name">{conversation?.assistant_name}</div>
-                        </div>
-                        <div className="conversation-title-panel-button-group">
-                            <IconButton icon={<Edit fill="#468585" />} onClick={() => { }} border />
-                            <IconButton icon={<Delete fill="#468585" />} onClick={() => { }} border />
-                        </div>
-                    </div> : null
+                    <ConversationTitle onEdit={() => { }} onDelete={() => { }} conversation={conversation} /> : null
             }
 
             <div className="messages">
@@ -494,25 +341,16 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 <div ref={messagesEndRef} />
             </div>
             {isDragging ? <FileDropArea onDragChange={setIsDragging} onFilesSelect={onFilesSelect} /> : null}
-            <div className="input-area">
-                <div className="input-area-img-container">
-                    {fileInfoList && fileInfoList.length && fileInfoList.map((fileInfo) => (
-                        fileInfo.thumbnail && (
-                            <img key={fileInfo.name + fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />
-                        )
-                    ))}
-                </div>
-                <textarea
-                    className="input-area-textarea"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                />
 
-                <CircleButton onClick={handleChooseFile} icon={<Add fill="black" />} className="input-area-add-button" />
-                <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20} fill="white" /> : <UpArrow width={20} height={20} fill="white" />} primary className="input-area-send-button" />
-
-            </div>
+            <InputArea 
+                inputText={inputText} 
+                setInputText={setInputText} 
+                handleKeyDown={handleKeyDown} 
+                fileInfoList={fileInfoList} 
+                handleChooseFile={handleChooseFile} 
+                handleSend={handleSend} 
+                aiIsResponsing={aiIsResponsing} 
+            />
         </div>
     );
 }

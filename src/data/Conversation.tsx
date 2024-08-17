@@ -19,3 +19,10 @@ export interface Message {
 export interface AddAttachmentResponse {
     attachment_id: number;
 }
+
+export interface FileInfo {
+    id: number;
+    name: string;
+    path: string;
+    thumbnail?: string;
+}
