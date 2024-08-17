@@ -359,7 +359,6 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         }
     }, [fileInfoList]);
 
-    const dropRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
 
     const onFilesSelect = useCallback((files: File[]) => {
@@ -442,6 +441,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         }
     }, [onFilesSelect]);
 
+    const dropRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const div = dropRef.current;
         if (div) {
