@@ -338,7 +338,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 // 读取文件内容
                 const contents = await readBinaryFile(path);
 
-                // 如果是图片,创建缩略图
+                // 如果是图片, 创建缩略图
                 let thumbnail;
                 if (name.match(/\.(jpg|jpeg|png|gif)$/)) {
                     const blob = new Blob([contents]);
@@ -352,7 +352,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 invoke<AddAttachmentResponse>("add_attachment", { fileUrl: path })
                     .then((res) => {
                         newFile.id = res.attachment_id;
-                    })
+                    });
             }
         } catch (error) {
             console.error('Error selecting file:', error);
@@ -360,81 +360,111 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     }, [fileInfoList]);
 
     const dropRef = useRef(null);
-    const [dragFileOver, setDragFileOver] = useState<boolean>(false);
-    const [dropAreaOver, setDropAreaOver] = useState<boolean>(false);
+    const [isDragging, setIsDragging] = useState(false);
 
-    const handleDragEvents = (e: React.DragEvent<HTMLDivElement>, isEnter: boolean) => {
+    const onFilesSelect = useCallback((files: File[]) => {
+        setIsDragging(false);
+        const newFiles = files.filter(file => 
+            file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif"
+        );
+    
+        const filePromises = newFiles.map(file => new Promise<FileInfo>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const fileContent = event.target?.result;
+                if (typeof fileContent === 'string') {
+                    let newFile: FileInfo = { id: -1, name: file.name, path: "", thumbnail: fileContent };
+                    resolve(newFile);
+                } else {
+                    reject(new Error('Failed to read file content'));
+                }
+            };
+            reader.onerror = (error) => {
+                console.error(`Error reading file: ${file.name}`, error);
+                reject(error);
+            };
+            reader.readAsDataURL(file);
+        }));
+    
+        Promise.all(filePromises)
+            .then(newFileInfos => {
+                console.log(newFileInfos)
+                setFileInfoList(prev => [...(prev || []), ...newFileInfos]);
+    
+                // 批量上传文件到后端
+                newFileInfos.forEach(fileInfo => {
+                    invoke<AddAttachmentResponse>("add_attachment_base64", { 
+                        fileContent: fileInfo.thumbnail, 
+                        fileName: fileInfo.name 
+                    })
+                    .then((res) => {
+                        setFileInfoList(prev => 
+                            prev?.map(f => f.name === fileInfo.name && f.id === -1 ? { ...f, id: res.attachment_id } : f) || null
+                        );
+                    })
+                    .catch(error => console.error(`Error uploading file: ${fileInfo.name}`, error));
+                });
+            })
+            .catch(error => console.error('Error processing files:', error));
+    }, []);
+
+    const dragCounter = useRef(0);
+    const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
+        dragCounter.current++;
         if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-            setDragFileOver(isEnter);
+            setIsDragging(true);
         }
-    };
+    }, []);
 
-    const handleDrag = (e: React.DragEvent<HTMLDivElement>) => handleDragEvents(e, dragFileOver);
-    const handleDragIn = (e: React.DragEvent<HTMLDivElement>) => handleDragEvents(e, true);
-    const handleDragOut = (e: React.DragEvent<HTMLDivElement>) => handleDragEvents(e, false);
+    const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter.current--;
+        if (dragCounter.current === 0) {
+            setIsDragging(false);
+        }
+    }, []);
 
-    const onFilesSelect = (files: File[]) => {
-        setDragFileOver(false);
-        files.forEach(file => {
+    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
 
-            if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/gif") {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const fileContent = event.target?.result;
-                    console.log(`File content: ${fileContent}`);
-                    if (typeof fileContent === 'string') {
-                        // 调用Rust函数处理文件
-                        let newFile = { id: -1, name: file.name, path: "", thumbnail: fileContent };
-                        setFileInfoList([...(fileInfoList || []), newFile]);
-                        invoke<AddAttachmentResponse>("add_attachment_base64", { fileContent, fileName: file.name })
-                            .then((res) => {
-                                newFile.id = res.attachment_id;
-                            })
-                    }
-                };
-                reader.onerror = (error) => {
-                    console.error(`Error reading file: ${file.name}`, error);
-                };
-                reader.readAsDataURL(file); // 读取文件内容为二进制数据
-    
-                console.log(`File path: ${file.name}`); // 文件路径（仅文件名）
-            }
-            
-        });
-    };
+    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        dragCounter.current = 0;
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            onFilesSelect(Array.from(e.dataTransfer.files));
+        }
+    }, [onFilesSelect]);
 
     useEffect(() => {
-        const handleFileDrop = (e: DragEvent) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragFileOver(false);
-            if (e?.dataTransfer?.files && e?.dataTransfer.files.length > 0) {
-                onFilesSelect(Array.from(e.dataTransfer.files));
-            }
-        };
-
-        const dropElement = dropRef.current as HTMLElement | null;
-        if (dropElement) {
-            dropElement.addEventListener('drop', handleFileDrop);
+        const div = dropRef.current;
+        if (div) {
+            div.addEventListener('dragenter', handleDragEnter as any);
+            div.addEventListener('dragleave', handleDragLeave as any);
+            div.addEventListener('dragover', handleDragOver as any);
+            div.addEventListener('drop', handleDrop as any);
         }
 
         return () => {
-            if (dropElement) {
-                dropElement.removeEventListener('drop', handleFileDrop);
+            if (div) {
+                div.removeEventListener('dragenter', handleDragEnter as any);
+                div.removeEventListener('dragleave', handleDragLeave as any);
+                div.removeEventListener('dragover', handleDragOver as any);
+                div.removeEventListener('drop', handleDrop as any);
             }
         };
-    }, [onFilesSelect]);
-
+    }, [handleDragEnter, handleDragLeave, handleDragOver, handleDrop]);
 
     return (
         <div
             ref={dropRef}
             className="conversation-ui"
-            onDragEnter={handleDragIn}
-            onDragLeave={handleDragOut}
-            onDragOver={handleDrag}
         >
             {
                 conversationId ?
@@ -463,12 +493,12 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 <div className="message-anchor"></div>
                 <div ref={messagesEndRef} />
             </div>
-            {dragFileOver || dropAreaOver ? <FileDropArea onDragChange={(state) => setDropAreaOver(state)} onFilesSelect={onFilesSelect} /> : null}
+            {isDragging ? <FileDropArea onDragChange={setIsDragging} onFilesSelect={onFilesSelect} /> : null}
             <div className="input-area">
                 <div className="input-area-img-container">
                     {fileInfoList && fileInfoList.length && fileInfoList.map((fileInfo) => (
                         fileInfo.thumbnail && (
-                            <img key={fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />
+                            <img key={fileInfo.name + fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />
                         )
                     ))}
                 </div>

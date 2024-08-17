@@ -1,11 +1,14 @@
+use anyhow::{anyhow, Result};
+use base64::encode;
+use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use base64::encode;
-use anyhow::{Result, anyhow};
-use serde::Serialize;
 
-use crate::{db::conversation_db::{ConversationDatabase, MessageAttachment}, errors::AppError};
+use crate::{
+    db::conversation_db::{ConversationDatabase, MessageAttachment},
+    errors::AppError,
+};
 
 #[derive(Serialize)]
 pub struct AttachmentResult {
@@ -26,7 +29,8 @@ pub async fn add_attachment(
     }
 
     // 3. 解析文件类型
-    let file_extension = file_path.extension()
+    let file_extension = file_path
+        .extension()
         .and_then(|ext| ext.to_str())
         .ok_or_else(|| AppError::Anyhow(anyhow!("Invalid file URL").to_string()))?;
     let file_type = file_extension.to_lowercase();
@@ -39,9 +43,14 @@ pub async fn add_attachment(
         ("webp", "image/webp"),
     ];
 
-    let supported_types = file_type_map.iter().map(|(ext, _)| *ext).collect::<Vec<_>>();
+    let supported_types = file_type_map
+        .iter()
+        .map(|(ext, _)| *ext)
+        .collect::<Vec<_>>();
     if !supported_types.contains(&file_type.as_str()) {
-        return Err(AppError::Anyhow(anyhow!("Unsupported file type").to_string()));
+        return Err(AppError::Anyhow(
+            anyhow!("Unsupported file type").to_string(),
+        ));
     }
 
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
@@ -50,16 +59,25 @@ pub async fn add_attachment(
     let reader = match file_type.as_str() {
         "jpg" | "jpeg" | "png" | "gif" | "webp" => {
             // 使用 BufReader 读取图片文件
-            let base64_str = read_image_as_base64(file_path.to_str().unwrap()).map_err(AppError::from)?;
+            let base64_str =
+                read_image_as_base64(file_path.to_str().unwrap()).map_err(AppError::from)?;
             match file_type.as_str() {
                 "jpg" | "jpeg" => "data:image/jpeg;base64,".to_string() + &base64_str,
                 "png" => "data:image/png;base64,".to_string() + &base64_str,
                 "gif" => "data:image/gif;base64,".to_string() + &base64_str,
                 "webp" => "data:image/webp;base64,".to_string() + &base64_str,
-                _ => return Err(AppError::Anyhow(anyhow!("Unsupported file type").to_string())),
+                _ => {
+                    return Err(AppError::Anyhow(
+                        anyhow!("Unsupported file type").to_string(),
+                    ))
+                }
             }
         }
-        _ => return Err(AppError::Anyhow(anyhow!("Unsupported file type").to_string())),
+        _ => {
+            return Err(AppError::Anyhow(
+                anyhow!("Unsupported file type").to_string(),
+            ))
+        }
     };
 
     // 5. 保存到数据库
@@ -67,16 +85,53 @@ pub async fn add_attachment(
     let attachment_id = match file_type.as_str() {
         "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" => {
             // 使用 BufReader 读取图片文件
-            let message_attachment = MessageAttachment::create(&db.conn, -1, crate::db::conversation_db::AttachmentType::Image, Some(file_url), Some(reader), false, Some(0));
+            let message_attachment = MessageAttachment::create(
+                &db.conn,
+                -1,
+                crate::db::conversation_db::AttachmentType::Image,
+                Some(file_url),
+                Some(reader),
+                false,
+                Some(0),
+            );
             match message_attachment {
                 Ok(t) => t.id,
                 Err(e) => return Err(AppError::from(e)),
             }
         }
-        _ => return Err(AppError::Anyhow(anyhow!("Unsupported file type").to_string())),
+        _ => {
+            return Err(AppError::Anyhow(
+                anyhow!("Unsupported file type").to_string(),
+            ))
+        }
     };
 
     // 6. 返回到前端 attachment_id，等待之后的 message 创建和更新
+    Ok(AttachmentResult { attachment_id })
+}
+
+#[tauri::command]
+pub async fn add_attachment_base64(
+    app_handle: tauri::AppHandle,
+    file_content: String,
+    file_name: String,
+) -> Result<AttachmentResult, AppError> {
+    println!("add_attachment_base64 file_name: {}", file_name);
+    let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
+
+    let message_attachment = MessageAttachment::create(
+        &db.conn,
+        -1,
+        crate::db::conversation_db::AttachmentType::Image,
+        Some(file_name),
+        Some(file_content),
+        false,
+        Some(0),
+    );
+    let attachment_id = match message_attachment {
+        Ok(t) => t.id,
+        Err(e) => return Err(AppError::from(e)),
+    };
     Ok(AttachmentResult { attachment_id })
 }
 
