@@ -17,7 +17,6 @@ use futures::StreamExt;
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelsResponse {
     data: Vec<Model>,
-    object: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
