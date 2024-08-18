@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
-import { open } from '@tauri-apps/api/dialog';
+import { open, confirm } from '@tauri-apps/api/dialog';
 import { readBinaryFile } from '@tauri-apps/api/fs';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddAttachmentResponse, Conversation, FileInfo, Message } from "../data/Conversation";
@@ -12,6 +12,7 @@ import MessageItem from "./MessageItem";
 import ConversationTitle from "./conversation/ConversationTitle";
 import useFileDropHandler from "../hook/file-drag-drop-hook";
 import InputArea from "./conversation/InputArea";
+import FormDialog from "./FormDialog";
 
 interface AssistantListItem {
     id: number;
@@ -340,6 +341,30 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         }
     }
 
+    const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
+    const openFormDialog = useCallback(() => {
+        setFormConversationTitle(conversation?.name || "");
+        setFormDialogIsOpen(true);
+    }, [conversation]);
+    const closeFormDialog = useCallback(() => {
+        setFormDialogIsOpen(false);
+    }, []);
+    const [formConversationTitle, setFormConversationTitle] = useState<string>("");
+
+    const handleFormSubmit = useCallback(() => {
+        invoke("update_conversation", { conversationId: conversation?.id, name: formConversationTitle }).then(() => {
+            closeFormDialog();
+        })
+    }, [conversation, formConversationTitle]);
+
+    const deleteConversation = useCallback(async () => {
+        const confirmed = await confirm('该动作不可逆，是否确认删除对话?', { title: '删除对话', type: 'warning' });
+        if (confirmed) {
+            invoke("delete_conversation", { conversationId: conversation?.id })
+                .then(() => { onChangeConversationId("") });
+        }
+    }, [conversation]);
+
     return (
         <div
             ref={dropRef}
@@ -347,7 +372,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         >
             {
                 conversationId ?
-                    <ConversationTitle onEdit={() => { }} onDelete={() => { }} conversation={conversation} /> : null
+                    <ConversationTitle onEdit={openFormDialog} onDelete={deleteConversation} conversation={conversation} /> : null
             }
 
             <div className="messages">
@@ -375,6 +400,20 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 handleSend={handleSend}
                 aiIsResponsing={aiIsResponsing}
             />
+
+            <FormDialog
+                title={"修改对话标题"}
+                onSubmit={handleFormSubmit}
+                onClose={closeFormDialog}
+                isOpen={formDialogIsOpen}
+            >
+                <form className='form-group-container'>
+                    <div className='form-group'>
+                        <label>标题:</label>
+                        <input className='form-input' type="text" name="name" value={formConversationTitle} onChange={e => setFormConversationTitle(e.target.value)} />
+                    </div>
+                </form>
+            </FormDialog>
         </div>
     );
 }
