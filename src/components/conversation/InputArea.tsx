@@ -11,9 +11,10 @@ const InputArea: React.FC<{
     handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     fileInfoList: FileInfo[] | null;
     handleChooseFile: () => void;
+    handlePaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
     handleSend: () => void;
     aiIsResponsing: boolean;
-}> = React.memo(({ inputText, setInputText, handleKeyDown, fileInfoList, handleChooseFile, handleSend, aiIsResponsing }) => (
+}> = React.memo(({ inputText, setInputText, handleKeyDown, fileInfoList, handleChooseFile, handlePaste, handleSend, aiIsResponsing }) => (
     <div className="input-area">
         <div className="input-area-img-container">
             {fileInfoList?.map((fileInfo) => (
@@ -27,7 +28,7 @@ const InputArea: React.FC<{
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            onPaste={(e) => {console.log(e.clipboardData.items, e.clipboardData.files)}}
+            onPaste={handlePaste}
         />
         <CircleButton onClick={handleChooseFile} icon={<Add fill="black" />} className="input-area-add-button" />
         <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20} fill="white" /> : <UpArrow width={20} height={20} fill="white" />} primary className="input-area-send-button" />

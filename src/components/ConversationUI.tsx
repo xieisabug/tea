@@ -151,57 +151,63 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 };
 
                 setMessages(prevMessages => [...prevMessages, userMessage]);
-                invoke<AiResponse>('ask_ai', { request: { prompt: inputText, conversation_id: conversationId, assistant_id: +assistantId, attachment_list: fileInfoList?.map(i => i.id) } })
-                    .then((res) => {
-                        console.log("ask ai response", res);
-                        if (unsubscribeRef.current) {
-                            console.log('Unsubscribing from previous event listener');
-                            unsubscribeRef.current.then(f => f());
-                        }
+                invoke<AiResponse>('ask_ai', {
+                    request: {
+                        prompt: inputText,
+                        conversation_id: conversationId,
+                        assistant_id: +assistantId,
+                        attachment_list: fileInfoList?.map(i => i.id)
+                    }
+                }).then((res) => {
+                    console.log("ask ai response", res);
+                    if (unsubscribeRef.current) {
+                        console.log('Unsubscribing from previous event listener');
+                        unsubscribeRef.current.then(f => f());
+                    }
 
-                        setMessageId(res.add_message_id);
+                    setMessageId(res.add_message_id);
 
-                        if (conversationId != (res.conversation_id + "")) {
-                            onChangeConversationId(res.conversation_id + "");
+                    if (conversationId != (res.conversation_id + "")) {
+                        onChangeConversationId(res.conversation_id + "");
+                    } else {
+                        const assistantMessage = {
+                            id: res.add_message_id,
+                            conversation_id: conversationId ? -1 : +conversationId,
+                            llm_model_id: -1,
+                            content: "",
+                            token_count: 0,
+                            message_type: "assistant",
+                            created_time: new Date(),
+                            attachment_list: []
+                        };
+
+                        setMessages(prevMessages => [...prevMessages, assistantMessage]);
+                    }
+
+                    console.log("Listening for response", `message_${res.add_message_id}`);
+
+                    unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
+                        const payload = event.payload as string;
+                        if (payload !== "Tea::Event::MessageFinish") {
+                            // 更新messages的最后一个对象
+                            setMessages(prevMessages => {
+                                const newMessages = [...prevMessages];
+                                const index = newMessages.findIndex(msg => msg.id === res.add_message_id);
+                                if (index !== -1) {
+                                    newMessages[index] = {
+                                        ...newMessages[index],
+                                        content: event.payload as string
+                                    };
+                                    scroll();
+                                }
+                                return newMessages;
+                            });
                         } else {
-                            const assistantMessage = {
-                                id: res.add_message_id,
-                                conversation_id: conversationId ? -1 : +conversationId,
-                                llm_model_id: -1,
-                                content: "",
-                                token_count: 0,
-                                message_type: "assistant",
-                                created_time: new Date(),
-                                attachment_list: []
-                            };
-
-                            setMessages(prevMessages => [...prevMessages, assistantMessage]);
+                            setAiIsResponsing(false);
                         }
 
-                        console.log("Listening for response", `message_${res.add_message_id}`);
-
-                        unsubscribeRef.current = listen(`message_${res.add_message_id}`, (event) => {
-                            const payload = event.payload as string;
-                            if (payload !== "Tea::Event::MessageFinish") {
-                                // 更新messages的最后一个对象
-                                setMessages(prevMessages => {
-                                    const newMessages = [...prevMessages];
-                                    const index = newMessages.findIndex(msg => msg.id === res.add_message_id);
-                                    if (index !== -1) {
-                                        newMessages[index] = {
-                                            ...newMessages[index],
-                                            content: event.payload as string
-                                        };
-                                        scroll();
-                                    }
-                                    return newMessages;
-                                });
-                            } else {
-                                setAiIsResponsing(false);
-                            }
-
-                        });
                     });
+                });
             } catch (error) {
                 console.error('Error:', error);
             }
@@ -315,7 +321,14 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             .catch(error => console.error('Error processing files:', error));
     }, []);
 
+    // 文件拖拽处理
     const { isDragging, setIsDragging, dropRef } = useFileDropHandler(onFilesSelect);
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+        if (e.clipboardData.files.length > 0) {
+            onFilesSelect(Array.from(e.clipboardData.files));
+        }
+    }
 
     return (
         <div
@@ -342,14 +355,15 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             </div>
             {isDragging ? <FileDropArea onDragChange={setIsDragging} onFilesSelect={onFilesSelect} /> : null}
 
-            <InputArea 
-                inputText={inputText} 
-                setInputText={setInputText} 
-                handleKeyDown={handleKeyDown} 
-                fileInfoList={fileInfoList} 
-                handleChooseFile={handleChooseFile} 
-                handleSend={handleSend} 
-                aiIsResponsing={aiIsResponsing} 
+            <InputArea
+                inputText={inputText}
+                setInputText={setInputText}
+                handleKeyDown={handleKeyDown}
+                fileInfoList={fileInfoList}
+                handleChooseFile={handleChooseFile}
+                handlePaste={handlePaste}
+                handleSend={handleSend}
+                aiIsResponsing={aiIsResponsing}
             />
         </div>
     );
