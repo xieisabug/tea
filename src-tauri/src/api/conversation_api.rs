@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
+use tauri::Manager;
 
 use crate::{db::conversation_db::{ConversationDatabase, MessageDetail}, errors::AppError, NameCacheState};
 
@@ -100,6 +101,9 @@ pub fn delete_conversation(app_handle: tauri::AppHandle, conversation_id: i64) -
 #[tauri::command]
 pub fn update_conversation(app_handle: tauri::AppHandle, conversation_id: i64, name: String) -> Result<(), String> {
     let db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    db.update_conversation_name(conversation_id, name)
-        .map_err(|e| e.to_string())
+    let _ = db.update_conversation_name(conversation_id, name.clone())
+        .map_err(|e| e.to_string());
+
+    let _ = app_handle.emit_all("title_change", [conversation_id.to_string(), name]);
+    Ok(())
 }

@@ -36,7 +36,6 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     }, 300);
 
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
-    const unsubscribeDropFileRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const [messages, setMessages] = useState<Array<Message>>([]);
@@ -93,21 +92,32 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
             });
         });
 
-        unsubscribeDropFileRef.current = listen('tauri://file-drop', event => {
-            console.log(event)
-        });
 
         return () => {
             if (unsubscribeRef.current) {
                 console.log("unsubscribe")
                 unsubscribeRef.current.then(f => f());
             }
-            if (unsubscribeDropFileRef.current) {
-                console.log("unsubscribe drop file")
-                unsubscribeDropFileRef.current.then(f => f());
-            }
         };
     }, [conversationId]);
+
+    useEffect(() => {
+        const unsubscribe = listen("title_change", (event) => {
+            const [conversationId, title] = event.payload as [string, string];
+            console.log("title_change", conversationId, title);
+
+            if (conversation && conversation.id.toString() === conversationId) {
+                const newConversation = { ...conversation, name: title };
+                setConversation(newConversation);
+            }
+        });
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe.then((f) => f());
+            }
+        };
+    }, [conversation]);
 
     useEffect(() => {
         scroll();

@@ -57,6 +57,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
     useEffect(() => {
         const unsubscribe = listen("title_change", (event) => {
             const [conversationId, title] = event.payload as [string, string];
+            console.log("conversation list title change", conversationId, title);
 
             const index = conversations.findIndex((conversation) => conversation.id == conversationId);
             if (index !== -1) {
