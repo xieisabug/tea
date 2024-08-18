@@ -10,9 +10,10 @@ import NewChatComponent from "./NewChatComponent";
 import FileDropArea from "./FileDropArea";
 import MessageItem from "./MessageItem";
 import ConversationTitle from "./conversation/ConversationTitle";
-import useFileDropHandler from "../hook/file-drag-drop-hook";
+import useFileDropHandler from "../hooks/useFileDropHandler";
 import InputArea from "./conversation/InputArea";
 import FormDialog from "./FormDialog";
+import useConversationManager from "../hooks/useConversationManager";
 
 interface AssistantListItem {
     id: number;
@@ -105,7 +106,6 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
     useEffect(() => {
         const unsubscribe = listen("title_change", (event) => {
             const [conversationId, title] = event.payload as [string, string];
-            console.log("title_change", conversationId, title);
 
             if (conversation && conversation.id.toString() === conversationId) {
                 const newConversation = { ...conversation, name: title };
@@ -357,13 +357,14 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         })
     }, [conversation, formConversationTitle]);
 
-    const deleteConversation = useCallback(async () => {
-        const confirmed = await confirm('该动作不可逆，是否确认删除对话?', { title: '删除对话', type: 'warning' });
-        if (confirmed) {
-            invoke("delete_conversation", { conversationId: conversation?.id })
-                .then(() => { onChangeConversationId("") });
-        }
-    }, [conversation]);
+    const {deleteConversation} = useConversationManager();
+    const handleDeleteConversation = useCallback(() => {
+        deleteConversation(conversationId, {
+            onSuccess: () => {
+                onChangeConversationId("");
+            }
+        });
+    }, [conversationId]);
 
     return (
         <div
@@ -372,7 +373,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         >
             {
                 conversationId ?
-                    <ConversationTitle onEdit={openFormDialog} onDelete={deleteConversation} conversation={conversation} /> : null
+                    <ConversationTitle onEdit={openFormDialog} onDelete={handleDeleteConversation} conversation={conversation} /> : null
             }
 
             <div className="messages">

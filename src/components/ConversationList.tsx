@@ -1,20 +1,15 @@
 import { MouseEventHandler, useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
-import { confirm } from '@tauri-apps/api/dialog';
 import MenuIcon from "../assets/menu.svg?react";
 import IconButton from "./IconButton";
 import FormDialog from "./FormDialog";
+import useConversationManager from "../hooks/useConversationManager";
+import { Conversation } from "../data/Conversation";
 
 interface ConversationListProps {
     onSelectConversation: (conversation: string) => void;
     conversationId: string;
-}
-
-interface Conversation {
-    id: string;
-    name: string;
-    assistant_name: string;
 }
 
 interface MenuProps {
@@ -36,30 +31,31 @@ function Menu({ items }: MenuProps) {
 };
 
 function ConversationList({ onSelectConversation, conversationId }: ConversationListProps) {
-    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [conversations, setConversations] = useState<Array<Conversation>>([]);
+    const {deleteConversation, listConversations} = useConversationManager();
 
     useEffect(() => {
-        // Fetch conversations from the server
-        invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 }).then((conversations: Conversation[]) => {
-            setConversations(conversations);
-        });
+        listConversations()
+            .then(c => {
+                setConversations(c);
+            });
     }, []);
 
     useEffect(() => {
         // Fetch conversations from the server
-        if (conversations.findIndex((conversation) => conversation.id === conversationId) === -1) {
-            invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 }).then((conversations: Conversation[]) => {
-                setConversations(conversations);
-            });
+        if (conversations.findIndex((conversation) => conversation.id.toString() === conversationId) === -1) {
+            listConversations()
+                .then(c => {
+                    setConversations(c);
+                });
         }
     }, [conversationId]);
 
     useEffect(() => {
         const unsubscribe = listen("title_change", (event) => {
             const [conversationId, title] = event.payload as [string, string];
-            console.log("conversation list title change", conversationId, title);
 
-            const index = conversations.findIndex((conversation) => conversation.id == conversationId);
+            const index = conversations.findIndex((conversation) => conversation.id.toString() == conversationId);
             if (index !== -1) {
                 const newConversations = [...conversations];
                 newConversations[index] = { ...newConversations[index], name: title };
@@ -67,7 +63,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
             }
         });
 
-        const index = conversations.findIndex(c => conversationId == c.id);
+        const index = conversations.findIndex(c => conversationId == c.id.toString());
         if (index === -1) {
             onSelectConversation("");
         }
@@ -79,16 +75,14 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
         };
     }, [conversations]);
 
-    const deleteConversation = async (id: string) => {
-        const confirmed = await confirm('该动作不可逆，是否确认删除对话?', { title: '删除对话', type: 'warning' });
-        if (confirmed) {
-            invoke("delete_conversation", { conversationId: id }).then(() => {
-                return invoke<Array<Conversation>>("list_conversations", { page: 1, pageSize: 100 });
-            }).then((conversations: Conversation[]) => {
+    const handleDeleteConversation = useCallback(async (id: string) => {
+        await deleteConversation(id, {
+            onSuccess: async () => {
+                const conversations = await listConversations();
                 setConversations(conversations);
-            });
-        }
-    }
+            }
+        });
+    }, []);
 
     const [menuShow, setMenuShow] = useState(false);
     const [menuShowConversationId, setMenuShowConversationId] = useState("");
@@ -127,7 +121,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
         invoke("update_conversation", { conversationId: menuShowConversationId, name: formConversationTitle }).then(() => {
             const newConversations = 
                 conversations.map((conversation) => {
-                    if (conversation.id === menuShowConversationId) {
+                    if (conversation.id.toString() === menuShowConversationId) {
                         return { ...conversation, name: formConversationTitle };
                     }
                     return conversation;
@@ -141,19 +135,19 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
         <div className="conversation-list">
             <ul>
                 {conversations.map((conversation) => (
-                    <li className={`conversation-item ${conversationId == conversation.id ? "selected" : ""}`} key={conversation.id} onClick={() => {
-                        onSelectConversation(conversation.id);
+                    <li className={`conversation-item ${conversationId == conversation.id.toString() ? "selected" : ""}`} key={conversation.id} onClick={() => {
+                        onSelectConversation(conversation.id.toString());
                     }}>
                         <div className="conversation-list-item-name">{conversation.name}</div>
                         <div className="conversation-list-item-assistant-name">{conversation.assistant_name}</div>
 
-                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id ? "#468585": "black"} />} onClick={(e) => onMenuClick(e, conversation.id)} />
+                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id.toString() ? "#468585": "black"} />} onClick={(e) => onMenuClick(e, conversation.id.toString())} />
 
                         {
-                            menuShow && menuShowConversationId === conversation.id ? 
+                            menuShow && menuShowConversationId === conversation.id.toString() ? 
                                 <Menu items={[
                                     {label: "编辑", onClick: (e) => {e.stopPropagation(); setMenuShow(false); openFormDialog(conversation.name);}},
-                                    {label: "删除", onClick: (e) => {e.stopPropagation(); deleteConversation(conversation.id);}},
+                                    {label: "删除", onClick: (e) => {e.stopPropagation(); handleDeleteConversation(conversation.id.toString());}},
                                 ]} /> : null
                         }
                     </li>
