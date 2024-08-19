@@ -244,7 +244,7 @@ pub async fn open_preview_vue_window(app_handle: AppHandle, html: String) -> Res
     hasher.update(html.clone());
     let result = hasher.finalize();
     let html_hash = format!("{:x}", result);
-    let file_name = format!("{}.js", html_hash);
+    let file_name = format!("{}.vue", html_hash);
 
     let file_content = html.clone();
 

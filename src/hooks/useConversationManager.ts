@@ -26,7 +26,7 @@ function useConversationManager() {
       const confirmed = await confirm(confirmMessage, { title: confirmTitle, type: 'warning' });
       if (!confirmed) return;
 
-      await invoke("delete_conversation", { conversationId: id });
+      await invoke("delete_conversation", { conversationId: +id });
 
       if (onSuccess) {
         onSuccess();
