@@ -3,7 +3,9 @@ import CircleButton from "../CircleButton";
 import Add from "../../assets/add.svg?react";
 import Stop from "../../assets/stop.svg?react";
 import UpArrow from "../../assets/up-arrow.svg?react";
+import Delete from "../../assets/delete.svg?react";
 import { FileInfo } from "../../data/Conversation";
+import IconButton from "../IconButton";
 
 const InputArea: React.FC<{
     inputText: string;
@@ -12,14 +14,18 @@ const InputArea: React.FC<{
     fileInfoList: FileInfo[] | null;
     handleChooseFile: () => void;
     handlePaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+    handleDeleteFile: (fileId: number) => void;
     handleSend: () => void;
     aiIsResponsing: boolean;
-}> = React.memo(({ inputText, setInputText, handleKeyDown, fileInfoList, handleChooseFile, handlePaste, handleSend, aiIsResponsing }) => (
+}> = React.memo(({ inputText, setInputText, handleKeyDown, fileInfoList, handleChooseFile, handlePaste, handleDeleteFile, handleSend, aiIsResponsing }) => (
     <div className="input-area">
         <div className="input-area-img-container">
             {fileInfoList?.map((fileInfo) => (
                 fileInfo.thumbnail && (
-                    <img key={fileInfo.name + fileInfo.id} src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />
+                    <div key={fileInfo.name + fileInfo.id} className="input-area-img-wrapper">
+                        <img src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />
+                        <IconButton border icon={<Delete fill="black" />} className="input-area-img-delete-button" onClick={() => {handleDeleteFile(fileInfo.id)}} />
+                    </div>
                 )
             ))}
         </div>

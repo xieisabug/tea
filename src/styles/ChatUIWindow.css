@@ -270,6 +270,19 @@
     justify-content: center;
     align-content: flex-end;
 }
+.input-area-img-wrapper {
+    position: relative;
+}
+.input-area-img-delete-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+}
+.input-area-img-wrapper:hover > .input-area-img-delete-button {
+    display: block;
+}
 .input-area-img {
     max-width: 100px;
     margin-left: 10px;

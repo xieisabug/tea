@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/tauri";
-import { open, confirm } from '@tauri-apps/api/dialog';
+import { open } from '@tauri-apps/api/dialog';
 import { readBinaryFile } from '@tauri-apps/api/fs';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddAttachmentResponse, Conversation, FileInfo, Message } from "../data/Conversation";
@@ -286,6 +286,10 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
         }
     }, [fileInfoList]);
 
+    const handleDeleteFile = useCallback((fileId: number) => {
+        setFileInfoList(prevList => prevList ? prevList.filter(file => file.id !== fileId): null);
+    }, []);
+
     const onFilesSelect = useCallback((files: File[]) => {
         setIsDragging(false);
         const newFiles = files.filter(file =>
@@ -397,6 +401,7 @@ function ConversationUI({ conversationId, onChangeConversationId }: Conversation
                 handleKeyDown={handleKeyDown}
                 fileInfoList={fileInfoList}
                 handleChooseFile={handleChooseFile}
+                handleDeleteFile={handleDeleteFile}
                 handlePaste={handlePaste}
                 handleSend={handleSend}
                 aiIsResponsing={aiIsResponsing}
