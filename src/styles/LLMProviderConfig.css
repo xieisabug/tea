@@ -35,7 +35,7 @@
     align-items: center;
 }
 .form-group label {
-    flex: 0 0 100px;
+    flex: 0 0 120px;
 }
 .form-group input {
     flex: 1;
