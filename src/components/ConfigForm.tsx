@@ -22,6 +22,8 @@ interface ConfigFormProps {
     title: string;
     description?: string;
     config: Record<string, ConfigField>;
+    classNames?: string;
+    enableExpand?: boolean;
     layout?: 'default' | 'grid' | 'provider';
     onSave?: () => void;
     onCopy?: () => void;
@@ -34,6 +36,8 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
     title,
     description,
     config,
+    classNames,
+    enableExpand = false,
     layout = 'default',
     onSave,
     onCopy,
@@ -169,14 +173,14 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
     };
 
     return (
-        <div className="config-window-container">
+        <div className={classNames ? classNames + " config-window-container": "config-window-container"}>
             <div
                 className='config-window-title'
                 onClick={toggleExpand}
                 style={{ cursor: 'pointer' }}
             >
                 <div className='config-window-title-text-container'>
-                    <span className={`config-window-title-name ${isExpanded ? 'expanded' : ''}`} title={title}>
+                    <span className={enableExpand ? `config-window-title-name-enable-expand ${isExpanded ? 'expanded' : ''}`: "config-window-title-name"} title={title}>
                         {title}
                     </span>
                     {description && <span className='config-window-title-description' title={description}>{description}</span>}

@@ -134,6 +134,10 @@ input[type="checkbox"]:checked::after {
     color: white;
 }
 
+.bottom-space {
+    margin-bottom: 20px;
+}
+
 @keyframes fadeInOut {
 
     0%,

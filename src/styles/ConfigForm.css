@@ -24,7 +24,7 @@
     overflow: hidden;
 }
 
-.config-window-title-name {
+.config-window-title-name, .config-window-title-name-enable-expand {
     font-size: 24px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -51,14 +51,14 @@
 }
 
 
-.config-window-title-name::before {
+.config-window-title-name-enable-expand::before {
     content: '▶';
     display: inline-block;
     margin-right: 10px;
     transition: transform 0.3s ease;
 }
 
-.config-window-title-name.expanded::before {
+.config-window-title-name-enable-expand.expanded::before {
     transform: rotate(90deg);
 }
 
