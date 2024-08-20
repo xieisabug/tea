@@ -192,6 +192,34 @@ pub async fn fetch_model_list(
     }
 }
 
+#[tauri::command]
+pub async fn add_llm_model(
+    app_handle: tauri::AppHandle,
+    llm_provider_id: i64,
+    code: String
+) -> Result<(), String> {
+    let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
+    let code_str = code.as_str();
+    db.add_llm_model(
+        code_str,
+        llm_provider_id,
+        code_str,
+        code_str,
+        false,
+        false,
+        false,
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_llm_model(app_handle: tauri::AppHandle, llm_provider_id: i64, code: String) -> Result<(), String> {
+    let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
+    let _ = db.delete_llm_model(llm_provider_id, code);
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ModelForSelect {
     name: String,

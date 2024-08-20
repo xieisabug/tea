@@ -83,11 +83,18 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
                 setTags(modelList.map((model) => model.name));
             });
     }, [id]);
+
     const handleAddTag = (tag: string) => {
-        setTags([...tags, tag]);
+        invoke<Array<LLMModel>>('add_llm_model', { code: tag, llmProviderId: id })
+            .then(() => {
+                setTags([...tags, tag]);
+            });
     };
     const handleRemoveTag = (index: number) => {
-        setTags(tags.filter((_, i) => i !== index));
+        invoke<Array<LLMModel>>('delete_llm_model', { code: tags[index], llmProviderId: id })
+            .then(() => {
+                setTags(tags.filter((_, i) => i !== index));
+            });
     };
 
     return (

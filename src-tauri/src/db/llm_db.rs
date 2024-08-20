@@ -304,10 +304,10 @@ impl LLMDatabase {
         })
     }
 
-    pub fn delete_llm_model(&self, id: i64) -> rusqlite::Result<()> {
+    pub fn delete_llm_model(&self, provider_id: i64, code: String) -> rusqlite::Result<()> {
         self.conn.execute(
-            "DELETE FROM llm_model WHERE id = ?",
-            params![id],
+            "DELETE FROM llm_model WHERE llm_provider_id = ? AND code = ?",
+            params![provider_id, code],
         )?;
         Ok(())
     }
