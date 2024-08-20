@@ -24,7 +24,12 @@ interface ConfigFormProps {
     config: Record<string, ConfigField>;
     classNames?: string;
     enableExpand?: boolean;
-    layout?: 'default' | 'grid' | 'provider';
+    /**
+     * default 直接从上向下展示所有的配置项
+     * prompt 会单独将prompt配置项放在右侧
+     * provider 会单独将modelList配置项放在右侧
+     */
+    layout?: 'default' | 'prompt' | 'provider';
     onSave?: () => void;
     onCopy?: () => void;
     onDelete?: () => void;
@@ -121,7 +126,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 
     const renderContent = () => {
         switch (layout) {
-            case 'grid':
+            case 'prompt':
                 return (
                     <div className="assistant-config-grid">
                         <div className='assistant-config-properties'>

@@ -130,7 +130,7 @@ const FeatureAssistantConfig: React.FC = () => {
                 description="对话开始时总结该对话并且生成标题"
                 enableExpand={true}
                 config={summaryFormConfig}
-                layout="grid"
+                layout="prompt"
                 classNames='bottom-space'
                 onSave={() => handleSave('conversation_summary')}
             />
@@ -140,7 +140,7 @@ const FeatureAssistantConfig: React.FC = () => {
                 description="在大模型编写完react或者vue组件之后，能够快速预览"
                 enableExpand={true}
                 config={previewFormConfig}
-                layout="grid"
+                layout="default"
                 onSave={() => handleSave('preview')}
             />
         </div>
