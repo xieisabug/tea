@@ -1,13 +1,9 @@
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Manager, Url, WindowBuilder, WindowEvent, WindowUrl};
-use serde::{Serialize, Deserialize};
-use sha2::{Sha256, Digest};
 
 pub fn create_ask_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(
-        app,
-        "ask",
-        WindowUrl::App("index.html".into())
-    )
+    let window_builder = WindowBuilder::new(app, "ask", WindowUrl::App("index.html".into()))
         .title("Tea")
         .inner_size(800.0, 450.0)
         .fullscreen(false)
@@ -26,17 +22,13 @@ pub fn create_ask_window(app: &AppHandle) {
                     window_clone.hide().unwrap();
                 }
             });
-        },
+        }
         Err(e) => eprintln!("Failed to build window: {}", e),
     }
 }
 
 pub fn create_config_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(
-        app,
-        "config",
-        WindowUrl::App("index.html".into())
-    )
+    let window_builder = WindowBuilder::new(app, "config", WindowUrl::App("index.html".into()))
         .title("Tea")
         .inner_size(1000.0, 800.0)
         .fullscreen(false)
@@ -55,17 +47,13 @@ pub fn create_config_window(app: &AppHandle) {
                     window_clone.hide().unwrap();
                 }
             });
-        },
+        }
         Err(e) => eprintln!("Failed to build window: {}", e),
     }
 }
 
 pub fn create_chat_ui_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(
-        app,
-        "chat_ui",
-        WindowUrl::App("index.html".into())
-    )
+    let window_builder = WindowBuilder::new(app, "chat_ui", WindowUrl::App("index.html".into()))
         .title("Tea")
         .inner_size(1000.0, 800.0)
         .fullscreen(false)
@@ -86,7 +74,7 @@ pub fn create_chat_ui_window(app: &AppHandle) {
                 }
             });
             let _ = window.maximize();
-        },
+        }
         Err(e) => eprintln!("Failed to build window: {}", e),
     }
 }
@@ -131,14 +119,14 @@ pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Re
     let window_builder = WindowBuilder::new(
         &app_handle,
         "preview_html",
-        WindowUrl::App("index.html".into())
+        WindowUrl::App("index.html".into()),
     )
-        .title("Tea")
-        .inner_size(1000.0, 800.0)
-        .fullscreen(false)
-        .resizable(true)
-        .decorations(true)
-        .center();
+    .title("Tea")
+    .inner_size(1000.0, 800.0)
+    .fullscreen(false)
+    .resizable(true)
+    .decorations(true)
+    .center();
 
     #[cfg(not(target_os = "macos"))]
     let window_builder = window_builder.transparent(false);
@@ -153,12 +141,11 @@ pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Re
             });
 
             let window = app_handle.get_window("preview_html").unwrap();
-            
+
             window.clone().once("preview-window-load", move |_| {
                 window.emit("preview_html", html.clone()).unwrap();
             });
-            
-        },
+        }
         Err(e) => eprintln!("Failed to build window: {}", e),
     }
 
@@ -171,7 +158,11 @@ struct ReactComponentPayload {
     css: String,
 }
 
-pub async fn open_preview_react_window(app_handle: AppHandle, html: String) -> Result<(), String> {
+pub async fn open_preview_react_window(
+    app_handle: AppHandle,
+    html: String,
+    port: u16,
+) -> Result<(), String> {
     let mut hasher = Sha256::new();
     hasher.update(html.clone());
     let result = hasher.finalize();
@@ -182,7 +173,10 @@ pub async fn open_preview_react_window(app_handle: AppHandle, html: String) -> R
 
     let client = reqwest::Client::new();
     let response = client
-        .post("http://preview.teafakedomain.com:3001/api/saveFile")
+        .post(format!(
+            "http://preview.teafakedomain.com:{}/api/saveFile",
+            port
+        ))
         .json(&serde_json::json!({
             "fileName": file_name,
             "fileContent": file_content
@@ -192,19 +186,20 @@ pub async fn open_preview_react_window(app_handle: AppHandle, html: String) -> R
 
     if let Ok(response) = response {
         if response.status().is_success() {
-            let url = Url::parse(&("http://preview.teafakedomain.com:3001/previews/".to_owned() + &html_hash)).map_err(|e| e.to_string())?;
+            let url = Url::parse(&format!(
+                "http://preview.teafakedomain.com:{}/previews/{}",
+                port, html_hash
+            ))
+            .map_err(|e| e.to_string())?;
 
-            let window_builder = WindowBuilder::new(
-                &app_handle,
-                "preview_react",
-                WindowUrl::External(url)
-            )
-                .title("Tea")
-                .inner_size(1000.0, 800.0)
-                .fullscreen(false)
-                .resizable(true)
-                .decorations(true)
-                .center();
+            let window_builder =
+                WindowBuilder::new(&app_handle, "preview_react", WindowUrl::External(url))
+                    .title("Tea")
+                    .inner_size(1000.0, 800.0)
+                    .fullscreen(false)
+                    .resizable(true)
+                    .decorations(true)
+                    .center();
 
             #[cfg(not(target_os = "macos"))]
             let window_builder = window_builder.transparent(false);
@@ -219,14 +214,16 @@ pub async fn open_preview_react_window(app_handle: AppHandle, html: String) -> R
                     });
 
                     let window = app_handle.get_window("preview_react").unwrap();
-                    
+
                     window.clone().once("preview-window-load", move |_| {
-                        let payload = ReactComponentPayload { code: html.clone(), css: "".to_string() };
+                        let payload = ReactComponentPayload {
+                            code: html.clone(),
+                            css: "".to_string(),
+                        };
                         let json_payload = serde_json::to_string(&payload).unwrap();
                         window.emit("preview_react", json_payload).unwrap();
                     });
-                    
-                },
+                }
                 Err(e) => eprintln!("Failed to build window: {}", e),
             }
         } else {
@@ -239,7 +236,11 @@ pub async fn open_preview_react_window(app_handle: AppHandle, html: String) -> R
     Ok(())
 }
 
-pub async fn open_preview_vue_window(app_handle: AppHandle, html: String) -> Result<(), String> {
+pub async fn open_preview_vue_window(
+    app_handle: AppHandle,
+    html: String,
+    port: u16,
+) -> Result<(), String> {
     let mut hasher = Sha256::new();
     hasher.update(html.clone());
     let result = hasher.finalize();
@@ -250,7 +251,10 @@ pub async fn open_preview_vue_window(app_handle: AppHandle, html: String) -> Res
 
     let client = reqwest::Client::new();
     let response = client
-        .post("http://preview.teafakedomain.com:3002/api/saveFile")
+        .post(format!(
+            "http://preview.teafakedomain.com:{}/api/saveFile",
+            port
+        ))
         .json(&serde_json::json!({
             "fileName": file_name,
             "fileContent": file_content
@@ -260,19 +264,20 @@ pub async fn open_preview_vue_window(app_handle: AppHandle, html: String) -> Res
 
     if let Ok(response) = response {
         if response.status().is_success() {
-            let url = Url::parse(&("http://preview.teafakedomain.com:3002/previews/".to_owned() + &html_hash)).map_err(|e| e.to_string())?;
+            let url = Url::parse(&format!(
+                "http://preview.teafakedomain.com:{}/previews/{}",
+                port, html_hash
+            ))
+            .map_err(|e| e.to_string())?;
 
-            let window_builder = WindowBuilder::new(
-                &app_handle,
-                "preview_vue",
-                WindowUrl::External(url)
-            )
-                .title("Tea")
-                .inner_size(1000.0, 800.0)
-                .fullscreen(false)
-                .resizable(true)
-                .decorations(true)
-                .center();
+            let window_builder =
+                WindowBuilder::new(&app_handle, "preview_vue", WindowUrl::External(url))
+                    .title("Tea")
+                    .inner_size(1000.0, 800.0)
+                    .fullscreen(false)
+                    .resizable(true)
+                    .decorations(true)
+                    .center();
 
             #[cfg(not(target_os = "macos"))]
             let window_builder = window_builder.transparent(false);
@@ -287,14 +292,16 @@ pub async fn open_preview_vue_window(app_handle: AppHandle, html: String) -> Res
                     });
 
                     let window = app_handle.get_window("preview_vue").unwrap();
-                    
+
                     window.clone().once("preview-window-load", move |_| {
-                        let payload = ReactComponentPayload { code: html.clone(), css: "".to_string() };
+                        let payload = ReactComponentPayload {
+                            code: html.clone(),
+                            css: "".to_string(),
+                        };
                         let json_payload = serde_json::to_string(&payload).unwrap();
                         window.emit("preview_vue", json_payload).unwrap();
                     });
-                    
-                },
+                }
                 Err(e) => eprintln!("Failed to build window: {}", e),
             }
         } else {
@@ -303,7 +310,6 @@ pub async fn open_preview_vue_window(app_handle: AppHandle, html: String) -> Res
     } else {
         eprintln!("Failed to send request: {:?}", response);
     }
-    
 
     Ok(())
 }

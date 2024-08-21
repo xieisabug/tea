@@ -1,0 +1,7 @@
+[
+  {
+    "label": "dev",
+    "command": "cd $ZED_WORKTREE_ROOT && npm run tauri dev",
+    "args": []
+  }
+]
