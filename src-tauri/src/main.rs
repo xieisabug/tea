@@ -3,37 +3,48 @@
     windows_subsystem = "windows"
 )]
 
-mod db;
 mod api;
-mod plugin;
-mod window;
-mod template_engine;
-mod errors;
 mod artifacts;
+mod db;
+mod errors;
+mod plugin;
 mod state;
+mod template_engine;
+mod window;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::api::ai_api::{ask_ai, cancel_ai};
+use crate::api::artifacts_api::run_artifacts;
+use crate::api::assistant_api::{
+    add_assistant, copy_assistant, delete_assistant, get_assistant, get_assistants, save_assistant,
+};
+use crate::api::attachment_api::{add_attachment, add_attachment_base64};
+use crate::api::conversation_api::{
+    delete_conversation, get_conversation_with_messages, list_conversations, update_conversation,
+};
+use crate::api::llm_api::{
+    add_llm_model, add_llm_provider, delete_llm_model, delete_llm_provider, fetch_model_list,
+    get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select,
+    update_llm_provider, update_llm_provider_config,
+};
+use crate::api::system_api::{get_all_feature_config, save_feature_config};
+use crate::db::assistant_db::AssistantDatabase;
+use crate::db::llm_db::LLMDatabase;
+use crate::db::system_db::SystemDatabase;
+use crate::window::{create_ask_window, open_chat_ui_window, open_config_window};
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::system_db::FeatureConfig;
-use state::message_token::MessageTokenManager;
-use tauri::{GlobalShortcutManager, Manager, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, RunEvent};
-use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex as TokioMutex;
-use crate::api::system_api::{get_all_feature_config, save_feature_config};
-use crate::api::ai_api::{ask_ai, cancel_ai};
-use crate::api::attachment_api::{add_attachment, add_attachment_base64};
-use crate::api::assistant_api::{get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant, copy_assistant};
-use crate::api::conversation_api::{list_conversations, get_conversation_with_messages, delete_conversation, update_conversation};
 use get_selected_text::get_selected_text;
-use crate::api::llm_api::{fetch_model_list, get_llm_models, add_llm_model, delete_llm_model, get_llm_provider_config, get_llm_providers, add_llm_provider, delete_llm_provider, get_models_for_select, update_llm_provider, update_llm_provider_config};
-use crate::api::artifacts_api::run_artifacts;
-use crate::db::assistant_db::AssistantDatabase;
-use crate::db::system_db::SystemDatabase;
-use crate::db::llm_db::LLMDatabase;
-use crate::window::{create_ask_window, open_config_window, open_chat_ui_window};
+use serde::{Deserialize, Serialize};
+use state::message_token::MessageTokenManager;
+use tauri::{
+    CustomMenuItem, GlobalShortcutManager, Manager, RunEvent, SystemTray, SystemTrayEvent,
+    SystemTrayMenu,
+};
+use tokio::sync::Mutex as TokioMutex;
 
 struct AppState {
     selected_text: TokioMutex<String>,
@@ -99,9 +110,7 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     let show = CustomMenuItem::new("show".to_string(), "Show");
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(show)
-        .add_item(quit);
+    let tray_menu = SystemTrayMenu::new().add_item(show).add_item(quit);
     let system_tray = SystemTray::new().with_menu(tray_menu);
 
     let app = tauri::Builder::default()
@@ -120,12 +129,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "show" => {
                     let ask_window = app.get_window("ask");
                     let chat_ui_window = app.get_window("chat_ui");
-                
+
                     match (ask_window, chat_ui_window) {
                         (None, _) => {
                             println!("Creating ask window");
                             create_ask_window(&app);
-                        },
+                        }
                         (Some(window), _) => {
                             println!("Focusing ask window");
                             if window.is_minimized().unwrap_or(false) {
@@ -133,7 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                             window.show().unwrap();
                             window.set_focus().unwrap();
-                        },
+                        }
                     }
                 }
                 _ => {}
@@ -152,11 +161,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             assistant_db.create_table()?;
             conversation_db.create_table()?;
 
-            let _ = database_upgrade(&app_handle, system_db, llm_db, assistant_db, conversation_db);
+            let _ = database_upgrade(
+                &app_handle,
+                system_db,
+                llm_db,
+                assistant_db,
+                conversation_db,
+            );
 
             app.manage(initialize_state(&app_handle));
             app.manage(initialize_name_cache_state(&app_handle));
-
 
             if app.get_window("main").is_none() {
                 create_ask_window(&app_handle)
@@ -173,14 +187,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .manage(MessageTokenManager::new())
         .invoke_handler(tauri::generate_handler![
-            ask_ai, cancel_ai, get_selected, open_config_window, open_chat_ui_window,
-            save_config, get_config, get_all_feature_config, save_feature_config,
-            get_llm_providers, update_llm_provider, add_llm_provider, delete_llm_provider,
-            get_llm_provider_config, update_llm_provider_config,
-            get_llm_models, fetch_model_list, get_models_for_select, add_llm_model, delete_llm_model,
-            add_attachment, add_attachment_base64,
-            get_assistants, get_assistant, save_assistant, add_assistant, delete_assistant, copy_assistant,
-            list_conversations, get_conversation_with_messages, delete_conversation, update_conversation,
+            ask_ai,
+            cancel_ai,
+            get_selected,
+            open_config_window,
+            open_chat_ui_window,
+            save_config,
+            get_config,
+            get_all_feature_config,
+            save_feature_config,
+            get_llm_providers,
+            update_llm_provider,
+            add_llm_provider,
+            delete_llm_provider,
+            get_llm_provider_config,
+            update_llm_provider_config,
+            get_llm_models,
+            fetch_model_list,
+            get_models_for_select,
+            add_llm_model,
+            delete_llm_model,
+            add_attachment,
+            add_attachment_base64,
+            get_assistants,
+            get_assistant,
+            save_assistant,
+            add_assistant,
+            delete_assistant,
+            copy_assistant,
+            list_conversations,
+            get_conversation_with_messages,
+            delete_conversation,
+            update_conversation,
             run_artifacts
         ])
         .build(tauri::generate_context!())
@@ -194,33 +232,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             // 什么都没有的时候，快捷打开ask窗口
             // ask窗口打开的时候，快捷打开chat_ui窗口（这一步现在是在js里做的）
             // chat_ui窗口打开的时候，不会再打开任何窗口了
-            app_handle.global_shortcut_manager().register("CmdOrCtrl+Shift+I", move || {
-                println!("CmdOrCtrl+Shift+I pressed");
-            
-                let text = get_selected_text().unwrap_or_default();
-                println!("Selected text: {}", text);
-            
-                let app_state = app_handle.state::<AppState>();
-                *app_state.selected_text.blocking_lock() = text;
-            
-                let ask_window = app_handle.get_window("ask");
-                let chat_ui_window = app_handle.get_window("chat_ui");
-            
-                match (ask_window, chat_ui_window) {
-                    (None, _) => {
-                        println!("Creating ask window");
-                        create_ask_window(&app_handle);
-                    },
-                    (Some(window), _) => {
-                        println!("Focusing ask window");
-                        if window.is_minimized().unwrap_or(false) {
-                            window.unminimize().unwrap();
+            app_handle
+                .global_shortcut_manager()
+                .register("CmdOrCtrl+Shift+I", move || {
+                    println!("CmdOrCtrl+Shift+I pressed");
+
+                    let text = get_selected_text().unwrap_or_default();
+                    println!("Selected text: {}", text);
+
+                    let app_state = app_handle.state::<AppState>();
+                    *app_state.selected_text.blocking_lock() = text;
+
+                    let ask_window = app_handle.get_window("ask");
+                    let chat_ui_window = app_handle.get_window("chat_ui");
+
+                    match (ask_window, chat_ui_window) {
+                        (None, _) => {
+                            println!("Creating ask window");
+                            create_ask_window(&app_handle);
                         }
-                        window.show().unwrap();
-                        window.set_focus().unwrap();
-                    },
-                }
-            }).expect("Failed to register global shortcut");
+                        (Some(window), _) => {
+                            println!("Focusing ask window");
+                            if window.is_minimized().unwrap_or(false) {
+                                window.unminimize().unwrap();
+                            }
+                            window.show().unwrap();
+                            window.set_focus().unwrap();
+                        }
+                    }
+                })
+                .expect("Failed to register global shortcut");
         }
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
@@ -233,12 +274,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn initialize_state(app_handle: &tauri::AppHandle) -> FeatureConfigState {
     let db = SystemDatabase::new(app_handle).expect("Failed to connect to database");
-    let configs = db.get_all_feature_config().expect("Failed to load feature configs");
+    let configs = db
+        .get_all_feature_config()
+        .expect("Failed to load feature configs");
     let mut configs_map = HashMap::new();
     for config in configs.clone().into_iter() {
         let feature_code = config.feature_code.clone();
         let key = config.key.clone();
-        configs_map.entry(feature_code.clone()).or_insert(HashMap::new()).insert(key.clone(), config);
+        configs_map
+            .entry(feature_code.clone())
+            .or_insert(HashMap::new())
+            .insert(key.clone(), config);
     }
     FeatureConfigState {
         configs: Arc::new(TokioMutex::new(configs)),
@@ -248,14 +294,18 @@ fn initialize_state(app_handle: &tauri::AppHandle) -> FeatureConfigState {
 
 fn initialize_name_cache_state(app_handle: &tauri::AppHandle) -> NameCacheState {
     let assistant_db = AssistantDatabase::new(app_handle).expect("Failed to connect to database");
-    let assistants = assistant_db.get_assistants().expect("Failed to load assistants");
+    let assistants = assistant_db
+        .get_assistants()
+        .expect("Failed to load assistants");
     let mut assistant_names = HashMap::new();
     for assistant in assistants.clone().into_iter() {
         assistant_names.insert(assistant.id, assistant.name.clone());
     }
 
     let llm_db = LLMDatabase::new(app_handle).expect("Failed to connect to database");
-    let models = llm_db.get_models_for_select().expect("Failed to load models");
+    let models = llm_db
+        .get_models_for_select()
+        .expect("Failed to load models");
     let mut model_names = HashMap::new();
     for model in models.clone().into_iter() {
         model_names.insert(model.2, model.0);

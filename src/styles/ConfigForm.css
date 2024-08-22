@@ -24,7 +24,8 @@
     overflow: hidden;
 }
 
-.config-window-title-name, .config-window-title-name-enable-expand {
+.config-window-title-name,
+.config-window-title-name-enable-expand {
     font-size: 24px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -50,9 +51,8 @@
     flex-direction: column;
 }
 
-
 .config-window-title-name-enable-expand::before {
-    content: '▶';
+    content: "▶";
     display: inline-block;
     margin-right: 10px;
     transition: transform 0.3s ease;
