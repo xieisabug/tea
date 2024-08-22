@@ -77,12 +77,12 @@ const FeatureAssistantConfig: React.FC = () => {
       type: "select" as const,
       label: "Model",
       options: models.map((m) => ({
-        value: `${m.llm_provider_id}/${m.code}`,
+        value: `${m.llm_provider_id}%%${m.code}`,
         label: m.name,
       })),
-      value: `${featureConfig.get("conversation_summary")?.get("provider_id")}/${featureConfig.get("conversation_summary")?.get("model_code")}`,
+      value: `${featureConfig.get("conversation_summary")?.get("provider_id")}%%${featureConfig.get("conversation_summary")?.get("model_code")}`,
       onChange: (value: string | boolean) => {
-        const [provider_id, model_code] = (value as string).split("/");
+        const [provider_id, model_code] = (value as string).split("%%");
         handleConfigChange("conversation_summary", "provider_id", provider_id);
         handleConfigChange("conversation_summary", "model_code", model_code);
       },

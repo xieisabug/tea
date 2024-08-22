@@ -82,7 +82,6 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
           content.style.overflow = "hidden";
         }
       };
-
       content.addEventListener("transitionend", handleTransitionEnd);
       content.addEventListener("transitionstart", handleTransitionStart);
 
@@ -92,6 +91,18 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
       };
     }
   }, [isExpanded]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+
+    if (content) {
+      if (isExpanded) {
+        content.style.overflow = "visible";
+      } else {
+        content.style.overflow = "hidden";
+      }
+    }
+  }, []);
 
   const renderFormField = (_: string, field: ConfigField) => {
     switch (field.type) {
