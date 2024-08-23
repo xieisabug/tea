@@ -2,6 +2,15 @@
   "languages": {
     "Rust": {
       "tab_size": 4
+    },
+    "TypeScript": {
+      "tab_size": 4
+    },
+    "TSX": {
+      "tab_size": 4
+    },
+    "CSS": {
+      "tab_size": 4
     }
   },
   "proxy": "http://127.0.0.1:50887"
