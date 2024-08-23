@@ -464,6 +464,7 @@ function ConversationUI({
                             key={index}
                             message={message}
                             onCodeRun={handleArtifact}
+                            onMessageRegenerate={() => {}}
                         />
                     ))
                 ) : (
