@@ -1,3 +1,4 @@
+use crate::db::conversation_db::{AttachmentType, Repository};
 use anyhow::{anyhow, Result};
 use base64::encode;
 use serde::Serialize;
@@ -85,19 +86,16 @@ pub async fn add_attachment(
     let attachment_id = match file_type.as_str() {
         "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" => {
             // 使用 BufReader 读取图片文件
-            let message_attachment = MessageAttachment::create(
-                &db.conn,
-                -1,
-                crate::db::conversation_db::AttachmentType::Image,
-                Some(file_url),
-                Some(reader),
-                false,
-                Some(0),
-            );
-            match message_attachment {
-                Ok(t) => t.id,
-                Err(e) => return Err(AppError::from(e)),
-            }
+            let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
+                id: 0,
+                message_id: -1,
+                attachment_type: AttachmentType::Image,
+                attachment_url: Some(file_url),
+                attachment_content: Some(reader),
+                use_vector: false,
+                token_count: Some(0),
+            })?;
+            message_attachment.id
         }
         _ => {
             return Err(AppError::Anyhow(
@@ -119,15 +117,15 @@ pub async fn add_attachment_base64(
     println!("add_attachment_base64 file_name: {}", file_name);
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
 
-    let message_attachment = MessageAttachment::create(
-        &db.conn,
-        -1,
-        crate::db::conversation_db::AttachmentType::Image,
-        Some(file_name),
-        Some(file_content),
-        false,
-        Some(0),
-    );
+    let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
+        id: 0,
+        message_id: -1,
+        attachment_type: AttachmentType::Image,
+        attachment_url: Some(file_name),
+        attachment_content: Some(file_content),
+        use_vector: false,
+        token_count: Some(0),
+    });
     let attachment_id = match message_attachment {
         Ok(t) => t.id,
         Err(e) => return Err(AppError::from(e)),

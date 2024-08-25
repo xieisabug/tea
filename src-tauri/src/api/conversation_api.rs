@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
-use crate::{db::conversation_db::{ConversationDatabase, MessageDetail}, errors::AppError, NameCacheState};
+use crate::{
+    db::conversation_db::{ConversationDatabase, MessageDetail, Repository},
+    errors::AppError,
+    NameCacheState,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ConversationResult {
@@ -24,7 +28,10 @@ pub async fn list_conversations(
 ) -> Result<Vec<ConversationResult>, AppError> {
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
 
-    let conversations = db.list_conversations(page, page_size)
+    let conversations = db
+        .conversation_repo()
+        .unwrap()
+        .list(page, page_size)
         .map_err(|e| e.to_string());
 
     let mut conversation_results = Vec::new();
@@ -51,28 +58,40 @@ pub async fn get_conversation_with_messages(
     conversation_id: i64,
 ) -> Result<(ConversationResult, Vec<MessageDetail>), String> {
     let db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    let (conversation, messages) = db.get_conversation_with_messages(conversation_id)
+    let conversation = db
+        .conversation_repo()
+        .unwrap()
+        .read(conversation_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Conversation not found".to_string())?;
+    let messages = db
+        .message_repo()
+        .unwrap()
+        .list_by_conversation_id(conversation_id)
         .map_err(|e| e.to_string())?;
 
     let mut message_map: HashMap<i64, MessageDetail> = HashMap::new();
     for (message, attachment) in messages {
-        let message_detail = message_map.entry(message.id).or_insert_with(|| MessageDetail {
-            attachment_list: Vec::new(),
-            id: message.id,
-            conversation_id: message.conversation_id,
-            message_type: message.message_type,
-            content: message.content,
-            llm_model_id: message.llm_model_id,
-            created_time: message.created_time,
-            token_count: message.token_count,
-        });
+        let message_detail = message_map
+            .entry(message.id)
+            .or_insert_with(|| MessageDetail {
+                attachment_list: Vec::new(),
+                id: message.id,
+                conversation_id: message.conversation_id,
+                message_type: message.message_type,
+                content: message.content,
+                llm_model_id: message.llm_model_id,
+                created_time: message.created_time,
+                token_count: message.token_count,
+            });
         if let Some(attachment) = attachment {
             message_detail.attachment_list.push(attachment);
         }
     }
 
     let assistant_name_cache = name_cache_state.assistant_names.lock().await;
-    let assistant_name = assistant_name_cache.get(&conversation.assistant_id.unwrap_or(0))
+    let assistant_name = assistant_name_cache
+        .get(&conversation.assistant_id.unwrap_or(0))
         .cloned()
         .unwrap_or_else(|| "未知".to_string());
 
@@ -92,17 +111,35 @@ pub async fn get_conversation_with_messages(
 }
 
 #[tauri::command]
-pub fn delete_conversation(app_handle: tauri::AppHandle, conversation_id: i64) -> Result<(), String> {
+pub fn delete_conversation(
+    app_handle: tauri::AppHandle,
+    conversation_id: i64,
+) -> Result<(), String> {
     let db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    db.delete_conversation(conversation_id)
+    db.conversation_repo()
+        .unwrap()
+        .delete(conversation_id)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn update_conversation(app_handle: tauri::AppHandle, conversation_id: i64, name: String) -> Result<(), String> {
+pub fn update_conversation(
+    app_handle: tauri::AppHandle,
+    conversation_id: i64,
+    name: String,
+) -> Result<(), String> {
     let db = ConversationDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    let _ = db.update_conversation_name(conversation_id, name.clone())
-        .map_err(|e| e.to_string());
+    let mut conversation = db
+        .conversation_repo()
+        .unwrap()
+        .read(conversation_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Conversation not found".to_string())?;
+    conversation.name = name.clone();
+    db.conversation_repo()
+        .unwrap()
+        .update(&conversation)
+        .map_err(|e| e.to_string())?;
 
     let _ = app_handle.emit_all("title_change", [conversation_id.to_string(), name]);
     Ok(())
