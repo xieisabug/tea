@@ -451,7 +451,7 @@ function ConversationUI({
 
     const handleMessageRegenerate = useCallback(
         (regenerateMessageId: number) => {
-            invoke<AiResponse>("regenerate_messages", {
+            invoke<AiResponse>("regenerate_ai", {
                 messageId: regenerateMessageId,
             }).then((res) => {
                 console.log("regenerate ai response", res);

@@ -66,6 +66,7 @@ pub struct Message {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageDetail {
     pub id: i64,
+    pub parent_id: Option<i64>,
     pub conversation_id: i64,
     pub message_type: String,
     pub content: String,
@@ -73,6 +74,7 @@ pub struct MessageDetail {
     pub created_time: DateTime<Utc>,
     pub token_count: i32,
     pub attachment_list: Vec<MessageAttachment>,
+    pub regenerate: Vec<MessageDetail>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

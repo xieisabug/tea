@@ -328,11 +328,10 @@ fn init_conversation(
 }
 
 #[tauri::command]
-pub async fn regenerate_messages(
+pub async fn regenerate_ai(
     app_handle: tauri::AppHandle,
-    state: State<'_, AppState>,
-    feature_config_state: State<'_, FeatureConfigState>,
     message_token_manager: State<'_, MessageTokenManager>,
+    window: tauri::Window,
     message_id: i64,
 ) -> Result<AiResponse, AppError> {
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
@@ -356,15 +355,6 @@ pub async fn regenerate_messages(
     let assistant_id = conversation.assistant_id.unwrap();
     let assistant_detail = get_assistant(app_handle.clone(), assistant_id).unwrap();
 
-    let template_engine = TemplateEngine::new();
-    let mut template_context = HashMap::new();
-    let selected_text = state.inner().selected_text.lock().await.clone();
-    template_context.insert("selected_text".to_string(), selected_text);
-
-    let assistant_prompt_origin = &assistant_detail.prompts[0].prompt;
-    let assistant_prompt_result =
-        template_engine.parse(&assistant_prompt_origin, &template_context);
-
     if assistant_detail.model.is_empty() {
         return Err(AppError::NoModelFound);
     }
@@ -372,7 +362,7 @@ pub async fn regenerate_messages(
     let init_message_list = messages
         .into_iter()
         .filter_map(|m| {
-            if m.0.id <= message_id {
+            if m.0.id < message_id {
                 Some((m.0.message_type, m.0.content, vec![]))
             } else {
                 None
@@ -380,10 +370,12 @@ pub async fn regenerate_messages(
         })
         .collect::<Vec<_>>();
 
+    let (tx, mut rx) = mpsc::channel(100);
+
     let app_handle_clone = app_handle.clone();
     let new_message = add_message(
         &app_handle_clone,
-        None,
+        Some(message_id),
         conversation_id,
         "assistant".to_string(),
         String::new(),
@@ -441,16 +433,21 @@ pub async fn regenerate_messages(
             .unwrap_or(false);
 
         if stream {
+            let tx_clone = tx.clone();
             if let Err(e) = provider
                 .chat_stream(
                     new_message_id,
                     init_message_list,
                     model_config_clone,
-                    mpsc::channel(100).0,
+                    tx,
                     cancel_token,
                 )
                 .await
             {
+                let mut map = tokens.lock().await;
+                map.remove(&new_message_id);
+                let err_msg = format!("Chat stream error: {}", e);
+                tx_clone.send((new_message_id, err_msg, true)).await.unwrap();
                 eprintln!("Chat stream error: {}", e);
             }
         } else {
@@ -475,9 +472,73 @@ pub async fn regenerate_messages(
                 .unwrap()
                 .update_finish_time(new_message_id)
                 .unwrap();
+            tx.send((new_message_id, content.clone(), true)).await.unwrap();
+            // Ensure tx is closed after sending the message
+            drop(tx);
         }
 
         Ok::<(), Error>(())
+    });
+
+    let app_handle_clone = app_handle.clone();
+    let tokens = message_token_manager.get_tokens();
+    let window_clone = window.clone();
+    tokio::spawn(async move {
+        loop {
+            match timeout(Duration::from_secs(60), rx.recv()).await {
+                Ok(Some((id, content, done))) => {
+                    println!("Received data: id={}, content={}", id, content);
+                    window_clone
+                        .emit(format!("message_{}", id).as_str(), content.clone())
+                        .map_err(|e| e.to_string())
+                        .unwrap();
+
+                    if done {
+                        let conversation_db = ConversationDatabase::new(&app_handle_clone)
+                            .map_err(|e: rusqlite::Error| e.to_string())
+                            .unwrap();
+
+                        let mut message = conversation_db
+                            .message_repo()
+                            .unwrap()
+                            .read(new_message_id)
+                            .unwrap()
+                            .unwrap();
+                        message.content = content.clone().to_string();
+                        conversation_db
+                            .message_repo()
+                            .unwrap()
+                            .update(&message)
+                            .unwrap();
+
+                        println!("Message finish: id={}", id);
+                        window_clone
+                            .emit(
+                                format!("message_{}", id).as_str(),
+                                "Tea::Event::MessageFinish",
+                            )
+                            .map_err(|e| e.to_string())
+                            .unwrap();
+
+                        let mut map = tokens.lock().await;
+                        map.remove(&new_message_id);
+                        break;
+                    }
+                }
+                Ok(None) => {
+                    let mut map = tokens.lock().await;
+                    map.remove(&new_message_id);
+                    println!("Channel closed");
+                    break;
+                }
+                Err(err) => {
+                    let mut map = tokens.lock().await;
+                    map.remove(&new_message_id);
+                    println!("Timeout waiting for data from channel: {:?}", err);
+                    break;
+                }
+            }
+        }
     });
 
     Ok(AiResponse {
@@ -485,6 +546,7 @@ pub async fn regenerate_messages(
         add_message_id: new_message_id,
     })
 }
+
 
 fn add_message(
     app_handle: &tauri::AppHandle,

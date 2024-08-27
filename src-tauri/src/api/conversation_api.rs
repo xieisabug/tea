@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -64,18 +64,17 @@ pub async fn get_conversation_with_messages(
         .read(conversation_id)
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Conversation not found".to_string())?;
+
     let messages = db
         .message_repo()
         .unwrap()
         .list_by_conversation_id(conversation_id)
         .map_err(|e| e.to_string())?;
 
-    let mut message_map: HashMap<i64, MessageDetail> = HashMap::new();
-    for (message, attachment) in messages {
-        let message_detail = message_map
-            .entry(message.id)
-            .or_insert_with(|| MessageDetail {
-                attachment_list: Vec::new(),
+    let mut message_details: Vec<MessageDetail> = messages
+        .into_iter()
+        .map(|(message, attachment)| {
+            MessageDetail {
                 id: message.id,
                 conversation_id: message.conversation_id,
                 message_type: message.message_type,
@@ -83,20 +82,41 @@ pub async fn get_conversation_with_messages(
                 llm_model_id: message.llm_model_id,
                 created_time: message.created_time,
                 token_count: message.token_count,
-            });
-        if let Some(attachment) = attachment {
-            message_detail.attachment_list.push(attachment);
+                attachment_list: attachment.into_iter().collect(),
+                regenerate: Vec::new(),
+                parent_id: message.parent_id,
+            }
+        })
+        .collect();
+
+    // 处理 regenerate 关系
+    let regenerate_map: HashMap<i64, Vec<MessageDetail>> = message_details
+        .iter()
+        .filter(|m| m.parent_id.is_some())
+        .map(|m| (m.parent_id.unwrap(), m.clone()))
+        .fold(HashMap::new(), |mut acc, (parent_id, message)| {
+            acc.entry(parent_id).or_default().push(message);
+            acc
+        });
+
+    for message in &mut message_details {
+        if let Some(regenerated) = regenerate_map.get(&message.id) {
+            message.regenerate = regenerated.clone();
         }
     }
 
+    // 过滤掉有 parent_id 的消息，并按 ID 排序
+    message_details = message_details
+        .into_iter()
+        .filter(|m| m.parent_id.is_none())
+        .collect();
+    message_details.sort_by_key(|m| m.id);
+    
     let assistant_name_cache = name_cache_state.assistant_names.lock().await;
     let assistant_name = assistant_name_cache
         .get(&conversation.assistant_id.unwrap_or(0))
         .cloned()
         .unwrap_or_else(|| "未知".to_string());
-
-    let mut message_details: Vec<MessageDetail> = message_map.into_values().collect();
-    message_details.sort_by(|a, b| a.id.cmp(&b.id)); // 按照 id 排序
 
     Ok((
         ConversationResult {
@@ -109,6 +129,7 @@ pub async fn get_conversation_with_messages(
         message_details,
     ))
 }
+
 
 #[tauri::command]
 pub fn delete_conversation(

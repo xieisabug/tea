@@ -20,11 +20,13 @@ const MessageItem = React.memo(
         const [copyIconState, setCopyIconState] = useState<"copy" | "ok">(
             "copy",
         );
+        const [currentMessageContent, setCurrentMessageContent] = useState<string>(message.regenerate && message.regenerate.length > 0 ? message.regenerate[message.regenerate.length - 1].content : message.content);
+        const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(message.regenerate && message.regenerate.length > 0 ? message.regenerate.length + 1: -1);
 
         const handleCopy = useCallback(() => {
-            writeText(message.content);
+            writeText(currentMessageContent);
             setCopyIconState("ok");
-        }, [message.content]);
+        }, [currentMessageContent]);
 
         useEffect(() => {
             if (copyIconState === "ok") {
@@ -36,6 +38,21 @@ const MessageItem = React.memo(
             }
         }, [copyIconState]);
 
+        const handleMessageIndexChange = useCallback((newMessageIndex: number) => {
+            if (newMessageIndex < 1) {
+                newMessageIndex = 1;
+            }
+            if (newMessageIndex > (message.regenerate.length + 1)) {
+                newMessageIndex = message.regenerate.length + 1;
+            }
+            setCurrentMessageIndex(newMessageIndex);
+            if (newMessageIndex === 1) {
+                setCurrentMessageContent(message.content);
+            } else {
+                setCurrentMessageContent(message.regenerate[newMessageIndex - 2].content);
+            }
+        }, [currentMessageIndex, message.regenerate]);
+
         return (
             <div
                 className={
@@ -46,11 +63,15 @@ const MessageItem = React.memo(
                 }
             >
                 {message.regenerate && message.regenerate.length > 0 ? (
-                    <div className="message-regenerate-bar">{"< 1 >"}</div>
+                    <div className="message-regenerate-bar">
+                        <span className="message-regenerate-bar-button" onClick={() => handleMessageIndexChange(currentMessageIndex - 1)}>{"<"}</span>
+                        <span>{currentMessageIndex} / {message.regenerate.length + 1}</span>
+                        <span className="message-regenerate-bar-button" onClick={() => handleMessageIndexChange(currentMessageIndex + 1)}>{">"}</span>
+                    </div>
                 ) : null}
 
                 <ReactMarkdown
-                    children={message.content}
+                    children={currentMessageContent}
                     remarkPlugins={[remarkMath, remarkBreaks]}
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                     components={
