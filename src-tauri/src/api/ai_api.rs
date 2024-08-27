@@ -12,7 +12,7 @@ use crate::{AppState, FeatureConfigState};
 use anyhow::Context;
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use tauri::State;
 use tokio::sync::mpsc;
@@ -639,13 +639,44 @@ async fn initialize_conversation(
             .list_by_id(&request.attachment_list.clone().unwrap_or(vec![]))?;
         // 已存在对话逻辑
         let conversation_id = request.conversation_id.parse::<i64>()?;
-        let message_list = db
+        let all_messages = db
             .message_repo()
             .unwrap()
-            .list_by_conversation_id(conversation_id)?
+            .list_by_conversation_id(conversation_id)?;
+
+        // 创建一个 HashMap 来存储每个消息的最新子消息
+        let mut latest_children: HashMap<i64, (Message, Option<MessageAttachment>)> = HashMap::new();
+        // 创建一个 HashSet 来存储所有作为子消息的消息 ID
+        let mut child_ids: HashSet<i64> = HashSet::new();
+
+        // 遍历所有消息，更新最新子消息和子消息 ID 集合
+        for (message, attachment) in all_messages.iter() {
+            if let Some(parent_id) = message.parent_id {
+                child_ids.insert(message.id);
+                latest_children
+                    .entry(parent_id)
+                    .and_modify(|e| *e = (message.clone(), attachment.clone()))
+                    .or_insert((message.clone(), attachment.clone()));
+            }
+        }
+
+        // 构建最终的消息列表
+        let message_list: Vec<(String, String, Vec<MessageAttachment>)> = all_messages
             .into_iter()
-            .map(|m| (m.0.message_type, m.0.content, vec![]))
-            .collect::<Vec<_>>();
+            .filter(|(message, _)| !child_ids.contains(&message.id))
+            .map(|(message, attachment)| {
+                let (final_message, final_attachment) = latest_children
+                    .get(&message.id)
+                    .map(|child| child.clone())
+                    .unwrap_or((message, attachment));
+
+                (
+                    final_message.message_type,
+                    final_message.content,
+                    final_attachment.map(|a| vec![a]).unwrap_or_else(Vec::new),
+                )
+            })
+            .collect();
 
         let _ = add_message(
             app_handle,
