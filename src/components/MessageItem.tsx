@@ -20,8 +20,8 @@ const MessageItem = React.memo(
         const [copyIconState, setCopyIconState] = useState<"copy" | "ok">(
             "copy",
         );
-        const [currentMessageContent, setCurrentMessageContent] = useState<string>(message.regenerate && message.regenerate.length > 0 ? message.regenerate[message.regenerate.length - 1].content : message.content);
-        const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(message.regenerate && message.regenerate.length > 0 ? message.regenerate.length + 1: -1);
+        const [currentMessageContent, setCurrentMessageContent] = useState<string>(message.regenerate?.length > 0 ? message.regenerate[message.regenerate.length - 1].content : message.content);
+        const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(message.regenerate?.length > 0 ? message.regenerate.length + 1: -1);
 
         const handleCopy = useCallback(() => {
             writeText(currentMessageContent);
@@ -40,7 +40,7 @@ const MessageItem = React.memo(
 
         // 处理message content变化
         useEffect(() => {
-            if (message.regenerate && message.regenerate.length > 0) {
+            if (message.regenerate?.length > 0) {
                 if (currentMessageIndex === 1) {
                     setCurrentMessageContent(message.content);
                 } else {
