@@ -2,9 +2,7 @@ use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
 use crate::db::assistant_db::AssistantModelConfig;
 use crate::db::conversation_db::Repository;
-use crate::db::conversation_db::{
-    Conversation, ConversationDatabase, Message, MessageAttachment, MessageRepository,
-};
+use crate::db::conversation_db::{Conversation, ConversationDatabase, Message, MessageAttachment};
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::FeatureConfig;
 use crate::errors::AppError;
@@ -279,6 +277,7 @@ fn init_conversation(
     app_handle: &tauri::AppHandle,
     assistant_id: i64,
     llm_model_id: i64,
+    llm_model_code: String,
     messages: &Vec<(String, String, Vec<MessageAttachment>)>,
 ) -> Result<(Conversation, Vec<Message>), AppError> {
     let db = ConversationDatabase::new(app_handle).map_err(AppError::from)?;
@@ -302,11 +301,15 @@ fn init_conversation(
             .unwrap()
             .create(&Message {
                 id: 0,
+                parent_id: None,
                 conversation_id,
                 message_type: message_type.clone(),
                 content: content.clone(),
                 llm_model_id: Some(llm_model_id),
+                llm_model_name: Some(llm_model_code.clone()),
                 created_time: chrono::Utc::now(),
+                start_time: None,
+                finish_time: None,
                 token_count: 0,
             })
             .map_err(AppError::from)?;
@@ -324,12 +327,175 @@ fn init_conversation(
     Ok((conversation_clone, message_result_array))
 }
 
+#[tauri::command]
+pub async fn regenerate_messages(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+    feature_config_state: State<'_, FeatureConfigState>,
+    message_token_manager: State<'_, MessageTokenManager>,
+    message_id: i64,
+) -> Result<AiResponse, AppError> {
+    let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
+    let message = db
+        .message_repo()
+        .unwrap()
+        .read(message_id)?
+        .ok_or(AppError::DatabaseError("未找到消息".to_string()))?;
+
+    let conversation_id = message.conversation_id;
+    let conversation = db
+        .conversation_repo()
+        .unwrap()
+        .read(conversation_id)?
+        .ok_or(AppError::DatabaseError("未找到对话".to_string()))?;
+    let messages = db
+        .message_repo()
+        .unwrap()
+        .list_by_conversation_id(conversation_id)?;
+
+    let assistant_id = conversation.assistant_id.unwrap();
+    let assistant_detail = get_assistant(app_handle.clone(), assistant_id).unwrap();
+
+    let template_engine = TemplateEngine::new();
+    let mut template_context = HashMap::new();
+    let selected_text = state.inner().selected_text.lock().await.clone();
+    template_context.insert("selected_text".to_string(), selected_text);
+
+    let assistant_prompt_origin = &assistant_detail.prompts[0].prompt;
+    let assistant_prompt_result =
+        template_engine.parse(&assistant_prompt_origin, &template_context);
+
+    if assistant_detail.model.is_empty() {
+        return Err(AppError::NoModelFound);
+    }
+
+    let init_message_list = messages
+        .into_iter()
+        .filter_map(|m| {
+            if m.0.id <= message_id {
+                Some((m.0.message_type, m.0.content, vec![]))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let app_handle_clone = app_handle.clone();
+    let new_message = add_message(
+        &app_handle_clone,
+        None,
+        conversation_id,
+        "assistant".to_string(),
+        String::new(),
+        Some(assistant_detail.model[0].id),
+        Some(assistant_detail.model[0].model_code.clone()),
+        None,
+        None,
+        0,
+    )?;
+    let new_message_id = new_message.id;
+
+    let cancel_token = CancellationToken::new();
+    message_token_manager
+        .store_token(new_message_id, cancel_token.clone())
+        .await;
+
+    let tokens = message_token_manager.get_tokens();
+    tokio::spawn(async move {
+        let db = LLMDatabase::new(&app_handle_clone)
+            .map_err(Error::from)
+            .context("Failed to create LLMDatabase")?;
+        let conversation_db = ConversationDatabase::new(&app_handle_clone).unwrap();
+        let provider_id = &assistant_detail.model[0].provider_id;
+        let model_code = &assistant_detail.model[0].model_code;
+        let model_detail = db
+            .get_llm_model_detail(provider_id, model_code)
+            .context("Failed to get LLM model detail")?;
+
+        let provider = get_provider(model_detail.provider, model_detail.configs);
+
+        let mut model_config_clone = assistant_detail.model_configs.clone();
+        model_config_clone.push(AssistantModelConfig {
+            id: 0,
+            assistant_id: assistant_detail.assistant.id,
+            assistant_model_id: model_detail.model.id,
+            name: "model".to_string(),
+            value: Some(model_detail.model.code),
+            value_type: "string".to_string(),
+        });
+
+        let config_map = assistant_detail
+            .model_configs
+            .iter()
+            .filter_map(|config| {
+                config
+                    .value
+                    .as_ref()
+                    .map(|value| (config.name.clone(), value.clone()))
+            })
+            .collect::<HashMap<String, String>>();
+
+        let stream = config_map
+            .get("stream")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(false);
+
+        if stream {
+            if let Err(e) = provider
+                .chat_stream(
+                    new_message_id,
+                    init_message_list,
+                    model_config_clone,
+                    mpsc::channel(100).0,
+                    cancel_token,
+                )
+                .await
+            {
+                eprintln!("Chat stream error: {}", e);
+            }
+        } else {
+            conversation_db
+                .message_repo()
+                .unwrap()
+                .update_start_time(new_message_id)
+                .unwrap();
+            let content = provider
+                .chat(
+                    new_message_id,
+                    init_message_list,
+                    model_config_clone,
+                    cancel_token,
+                )
+                .await
+                .map_err(Error::from)
+                .context("Failed to chat")?;
+
+            conversation_db
+                .message_repo()
+                .unwrap()
+                .update_finish_time(new_message_id)
+                .unwrap();
+        }
+
+        Ok::<(), Error>(())
+    });
+
+    Ok(AiResponse {
+        conversation_id,
+        add_message_id: new_message_id,
+    })
+}
+
 fn add_message(
     app_handle: &tauri::AppHandle,
+    parent_id: Option<i64>,
     conversation_id: i64,
     message_type: String,
     content: String,
     llm_model_id: Option<i64>,
+    llm_model_name: Option<String>,
+    start_time: Option<chrono::DateTime<chrono::Utc>>,
+    finish_time: Option<chrono::DateTime<chrono::Utc>>,
     token_count: i32,
 ) -> Result<Message, AppError> {
     let db = ConversationDatabase::new(app_handle).map_err(AppError::from)?;
@@ -338,10 +504,14 @@ fn add_message(
         .unwrap()
         .create(&Message {
             id: 0,
+            parent_id,
             conversation_id,
             message_type,
             content,
             llm_model_id,
+            llm_model_name,
+            start_time,
+            finish_time,
             created_time: chrono::Utc::now(),
             token_count,
         })
@@ -384,14 +554,19 @@ async fn initialize_conversation(
             app_handle,
             request.assistant_id,
             assistant_detail.model[0].id,
+            assistant_detail.model[0].model_code.clone(),
             &init_message_list,
         )?;
         let add_message = add_message(
             app_handle,
+            None,
             conversation.id,
             "assistant".to_string(),
             String::new(),
             Some(assistant_detail.model[0].id),
+            Some(assistant_detail.model[0].model_code.clone()),
+            None,
+            None,
             0,
         )?;
         (conversation.id, Some(add_message.id), init_message_list)
@@ -412,10 +587,14 @@ async fn initialize_conversation(
 
         let _ = add_message(
             app_handle,
+            None,
             conversation_id,
             "user".to_string(),
             request_prompt_result.clone(),
             Some(assistant_detail.model[0].id),
+            Some(assistant_detail.model[0].model_code.clone()),
+            None,
+            None,
             0,
         )?;
         let mut updated_message_list = message_list;
@@ -427,10 +606,14 @@ async fn initialize_conversation(
 
         let add_assistant_message = add_message(
             app_handle,
+            None,
             conversation_id,
             "assistant".to_string(),
             String::new(),
             Some(assistant_detail.model[0].id),
+            Some(assistant_detail.model[0].model_code.clone()),
+            None,
+            None,
             0,
         )?;
         (

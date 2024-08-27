@@ -51,11 +51,15 @@ pub struct Conversation {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
     pub id: i64,
+    pub parent_id: Option<i64>,
     pub conversation_id: i64,
     pub message_type: String,
     pub content: String,
     pub llm_model_id: Option<i64>,
+    pub llm_model_name: Option<String>,
     pub created_time: DateTime<Utc>,
+    pub start_time: Option<DateTime<Utc>>,
+    pub finish_time: Option<DateTime<Utc>>,
     pub token_count: i32,
 }
 
@@ -198,33 +202,37 @@ impl MessageRepository {
         &self,
         conversation_id: i64,
     ) -> Result<Vec<(Message, Option<MessageAttachment>)>> {
-        let mut stmt = self.conn.prepare("SELECT message.*, ma.attachment_type, ma.attachment_url, ma.attachment_content, ma.use_vector as attachment_use_vector, ma.token_count as attachment_token_count
+        let mut stmt = self.conn.prepare("SELECT message.id, message.parent_id, message.conversation_id, message.message_type, message.content, message.llm_model_id, message.llm_model_name, message.created_time, message.start_time, message.finish_time, message.token_count, ma.attachment_type, ma.attachment_url, ma.attachment_content, ma.use_vector as attachment_use_vector, ma.token_count as attachment_token_count
                                           FROM message
                                           LEFT JOIN message_attachment ma on message.id = ma.message_id
                                           WHERE conversation_id = ?1")?;
         let rows = stmt.query_map(&[&conversation_id], |row| {
-            let attachment_type_int: Option<i64> = row.get(7).ok();
+            let attachment_type_int: Option<i64> = row.get(11).ok();
             let attachment_type = attachment_type_int
                 .map(AttachmentType::try_from)
                 .transpose()?;
             let message = Message {
                 id: row.get(0)?,
-                conversation_id: row.get(1)?,
-                message_type: row.get(2)?,
-                content: row.get(3)?,
-                llm_model_id: row.get(4)?,
-                created_time: row.get(5)?,
-                token_count: row.get(6)?,
+                parent_id: row.get(1)?,
+                conversation_id: row.get(2)?,
+                message_type: row.get(3)?,
+                content: row.get(4)?,
+                llm_model_id: row.get(5)?,
+                llm_model_name: row.get(6)?,
+                created_time: row.get(7)?,
+                start_time: row.get(8)?,
+                finish_time: row.get(9)?,
+                token_count: row.get(10)?,
             };
             let attachment = if attachment_type.is_some() {
                 Some(MessageAttachment {
                     id: 0,
                     message_id: row.get(0)?,
                     attachment_type: attachment_type.unwrap(),
-                    attachment_url: row.get(8)?,
-                    attachment_content: row.get(9)?,
-                    use_vector: row.get(10)?,
-                    token_count: row.get(11)?,
+                    attachment_url: row.get(12)?,
+                    attachment_content: row.get(13)?,
+                    use_vector: row.get(14)?,
+                    token_count: row.get(15)?,
                 })
             } else {
                 None
@@ -254,32 +262,51 @@ impl MessageRepository {
 impl Repository<Message> for MessageRepository {
     fn create(&self, message: &Message) -> Result<Message> {
         self.conn.execute(
-            "INSERT INTO message (conversation_id, message_type, content, llm_model_id, token_count) VALUES (?1, ?2, ?3, ?4, ?5)",
-            (&message.conversation_id, &message.message_type, &message.content, &message.llm_model_id, &message.token_count),
+            "INSERT INTO message (parent_id, conversation_id, message_type, content, llm_model_id, llm_model_name, created_time, start_time, finish_time, token_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            (
+                &message.parent_id,
+                &message.conversation_id,
+                &message.message_type,
+                &message.content,
+                &message.llm_model_id,
+                &message.llm_model_name,
+                &message.created_time,
+                &message.start_time,
+                &message.finish_time,
+                &message.token_count,
+            ),
         )?;
         let id = self.conn.last_insert_rowid();
         Ok(Message {
             id,
+            parent_id: message.parent_id,
             conversation_id: message.conversation_id,
             message_type: message.message_type.clone(),
             content: message.content.clone(),
             llm_model_id: message.llm_model_id,
-            created_time: Utc::now(),
+            llm_model_name: message.llm_model_name.clone(),
+            created_time: message.created_time,
+            start_time: message.start_time,
+            finish_time: message.finish_time,
             token_count: message.token_count,
         })
     }
 
     fn read(&self, id: i64) -> Result<Option<Message>> {
         self.conn
-            .query_row("SELECT * FROM message WHERE id = ?", &[&id], |row| {
+            .query_row("SELECT id, parent_id, conversation_id, message_type, content, llm_model_id, llm_model_name, created_time, start_time, finish_time, token_count FROM message WHERE id = ?", &[&id], |row| {
                 Ok(Message {
                     id: row.get(0)?,
-                    conversation_id: row.get(1)?,
-                    message_type: row.get(2)?,
-                    content: row.get(3)?,
-                    llm_model_id: row.get(4)?,
-                    created_time: row.get(5)?,
-                    token_count: row.get(6)?,
+                    parent_id: row.get(1)?,
+                    conversation_id: row.get(2)?,
+                    message_type: row.get(3)?,
+                    content: row.get(4)?,
+                    llm_model_id: row.get(5)?,
+                    llm_model_name: row.get(6)?,
+                    created_time: row.get(7)?,
+                    start_time: row.get(8)?,
+                    finish_time: row.get(9)?,
+                    token_count: row.get(10)?,
                 })
             })
             .optional()
@@ -287,10 +314,13 @@ impl Repository<Message> for MessageRepository {
 
     fn update(&self, message: &Message) -> Result<()> {
         self.conn.execute(
-            "UPDATE message SET conversation_id = ?1, content = ?2, token_count = ?3 WHERE id = ?4",
+            "UPDATE message SET conversation_id = ?1, message_type = ?2, content = ?3, llm_model_id = ?4, llm_model_name = ?5, token_count = ?6 WHERE id = ?7",
             (
                 &message.conversation_id,
+                &message.message_type,
                 &message.content,
+                &message.llm_model_id,
+                &message.llm_model_name,
                 &message.token_count,
                 &message.id,
             ),
@@ -437,11 +467,15 @@ impl ConversationDatabase {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS message (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parent_id INTEGER,
                 conversation_id INTEGER NOT NULL,
                 message_type TEXT NOT NULL,
                 content TEXT NOT NULL,
                 llm_model_id INTEGER,
+                llm_model_name TEXT,
                 created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                start_time DATETIME,
+                end_time DATETIME,
                 token_count INTEGER
             )",
             [],

@@ -45,6 +45,10 @@ const MessageItem = React.memo(
                         : "bot-message")
                 }
             >
+                {message.regenerate && message.regenerate.length > 0 ? (
+                    <div className="message-regenerate-bar">{"< 1 >"}</div>
+                ) : null}
+
                 <ReactMarkdown
                     children={message.content}
                     remarkPlugins={[remarkMath, remarkBreaks]}

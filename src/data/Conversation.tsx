@@ -14,6 +14,7 @@ export interface Message {
     llm_model_id: number | null;
     created_time: Date;
     token_count: number;
+    regenerate: Array<Message> | null;
 }
 
 export interface AddAttachmentResponse {

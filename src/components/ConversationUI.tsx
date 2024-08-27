@@ -184,6 +184,7 @@ function ConversationUI({
                     message_type: "user",
                     created_time: new Date(),
                     attachment_list: [],
+                    regenerate: null,
                 };
 
                 setMessages((prevMessages) => [...prevMessages, userMessage]);
@@ -219,6 +220,7 @@ function ConversationUI({
                             message_type: "assistant",
                             created_time: new Date(),
                             attachment_list: [],
+                            regenerate: null,
                         };
 
                         setMessages((prevMessages) => [
@@ -447,6 +449,82 @@ function ConversationUI({
         });
     }, [conversationId]);
 
+    const handleMessageRegenerate = useCallback(
+        (regenerateMessageId: number) => {
+            invoke<AiResponse>("regenerate_messages", {
+                messageId: regenerateMessageId,
+            }).then((res) => {
+                console.log("regenerate ai response", res);
+
+                const assistantMessage = {
+                    id: res.add_message_id,
+                    conversation_id: conversationId ? -1 : +conversationId,
+                    llm_model_id: -1,
+                    content: "",
+                    token_count: 0,
+                    message_type: "assistant",
+                    created_time: new Date(),
+                    attachment_list: [],
+                    regenerate: null,
+                };
+
+                setMessages((prevMessages) => {
+                    const newMessages = [...prevMessages];
+                    const index = newMessages.findIndex(
+                        (msg) => msg.id === regenerateMessageId,
+                    );
+                    if (index !== -1) {
+                        if (!newMessages[index].regenerate) {
+                            newMessages[index].regenerate = [];
+                        }
+                        newMessages[index].regenerate.push(assistantMessage);
+                    }
+                    return newMessages;
+                });
+
+                console.log(
+                    "Listening for response",
+                    `message_${res.add_message_id}`,
+                );
+
+                unsubscribeRef.current = listen(
+                    `message_${res.add_message_id}`,
+                    (event) => {
+                        const payload = event.payload as string;
+                        if (payload !== "Tea::Event::MessageFinish") {
+                            // 更新messages的最后一个对象
+                            setMessages((prevMessages) => {
+                                const newMessages = [...prevMessages];
+                                const index = newMessages.findIndex(
+                                    (msg) => msg.id === regenerateMessageId,
+                                );
+                                if (index !== -1) {
+                                    const regenerateIndex =
+                                        newMessages[
+                                            index
+                                        ].regenerate?.findIndex(
+                                            (msg) =>
+                                                msg.id === res.add_message_id,
+                                        ) || -1;
+                                    if (regenerateIndex !== -1) {
+                                        newMessages[index].regenerate?.splice(
+                                            regenerateIndex,
+                                            1,
+                                        );
+                                    }
+                                }
+                                return newMessages;
+                            });
+                        } else {
+                            setAiIsResponsing(false);
+                        }
+                    },
+                );
+            });
+        },
+        [],
+    );
+
     return (
         <div ref={dropRef} className="conversation-ui">
             {conversationId ? (
@@ -464,7 +542,9 @@ function ConversationUI({
                             key={index}
                             message={message}
                             onCodeRun={handleArtifact}
-                            onMessageRegenerate={() => {}}
+                            onMessageRegenerate={() =>
+                                handleMessageRegenerate(message.id)
+                            }
                         />
                     ))
                 ) : (
