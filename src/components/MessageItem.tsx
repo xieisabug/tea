@@ -38,6 +38,24 @@ const MessageItem = React.memo(
             }
         }, [copyIconState]);
 
+        // 处理message content变化
+        useEffect(() => {
+            if (message.regenerate && message.regenerate.length > 0) {
+                if (currentMessageIndex === 1) {
+                    setCurrentMessageContent(message.content);
+                } else {
+                    setCurrentMessageContent(message.regenerate[currentMessageIndex - 2].content);
+                }
+            } else {
+                setCurrentMessageContent(message.content);
+            }
+        }, [message]);
+
+        // 处理regenerate的时候，自动选中最新的message
+        useEffect(() => {
+            handleMessageIndexChange(message.regenerate.length + 1)
+        }, [message.regenerate?.length])
+
         const handleMessageIndexChange = useCallback((newMessageIndex: number) => {
             if (newMessageIndex < 1) {
                 newMessageIndex = 1;
