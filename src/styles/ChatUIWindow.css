@@ -286,6 +286,7 @@
 }
 .input-area-img-wrapper {
     position: relative;
+    margin-left: 10px;
 }
 .input-area-img-delete-button {
     position: absolute;
@@ -299,7 +300,6 @@
 }
 .input-area-img {
     max-width: 100px;
-    margin-left: 10px;
 }
 
 .input-area-textarea {
