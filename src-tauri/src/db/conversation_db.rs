@@ -134,6 +134,14 @@ impl ConversationRepository {
         )?;
         Ok(())
     }
+
+    pub fn update_name(&self, conversation: &Conversation) -> Result<()> {
+        self.conn.execute(
+            "UPDATE conversation SET name = ?1 WHERE id = ?2",
+            (&conversation.name, &conversation.id),
+        )?;
+        Ok(())
+    }
 }
 
 impl Repository<Conversation> for ConversationRepository {

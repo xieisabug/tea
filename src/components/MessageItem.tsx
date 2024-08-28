@@ -52,9 +52,12 @@ const MessageItem = React.memo(
         }, [message]);
 
         // 处理regenerate的时候，自动选中最新的message
+        const messageRegenerateLength = message.regenerate?.length ?? 0;
         useEffect(() => {
-            handleMessageIndexChange(message.regenerate.length + 1)
-        }, [message.regenerate?.length])
+            if (messageRegenerateLength !== 0) {
+                handleMessageIndexChange(message.regenerate.length + 1)
+            }
+        }, [messageRegenerateLength])
 
         const handleMessageIndexChange = useCallback((newMessageIndex: number) => {
             if (newMessageIndex < 1) {
@@ -80,10 +83,10 @@ const MessageItem = React.memo(
                         : "bot-message")
                 }
             >
-                {message.regenerate && message.regenerate.length > 0 ? (
+                {message.regenerate?.length > 0 ? (
                     <div className="message-regenerate-bar">
                         <span className="message-regenerate-bar-button" onClick={() => handleMessageIndexChange(currentMessageIndex - 1)}>{"<"}</span>
-                        <span>{currentMessageIndex} / {message.regenerate.length + 1}</span>
+                        <span>{currentMessageIndex} / {message.regenerate?.length + 1}</span>
                         <span className="message-regenerate-bar-button" onClick={() => handleMessageIndexChange(currentMessageIndex + 1)}>{">"}</span>
                     </div>
                 ) : null}

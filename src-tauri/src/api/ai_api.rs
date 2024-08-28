@@ -281,6 +281,7 @@ fn init_conversation(
     messages: &Vec<(String, String, Vec<MessageAttachment>)>,
 ) -> Result<(Conversation, Vec<Message>), AppError> {
     let db = ConversationDatabase::new(app_handle).map_err(AppError::from)?;
+    println!("init_conversation !{:?}", assistant_id);
     let conversation = db
         .conversation_repo()
         .unwrap()
@@ -612,6 +613,7 @@ async fn initialize_conversation(
                 message_attachment_list,
             ),
         ];
+        println!("initialize_conversation !{:?}", request.assistant_id);
         let (conversation, _) = init_conversation(
             app_handle,
             request.assistant_id,
@@ -819,7 +821,7 @@ async fn generate_title(
                 let _ = conversation_db
                     .conversation_repo()
                     .unwrap()
-                    .update(&Conversation {
+                    .update_name(&Conversation {
                         id: conversation_id,
                         name: response_text.clone(),
                         assistant_id: None,
