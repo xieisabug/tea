@@ -13,6 +13,7 @@ import CodeBlock from "./CodeBlock";
 
 interface CustomComponents extends Components {
     thinking: React.ElementType;
+    fileattachment: React.ElementType;
 }
 
 const MessageItem = React.memo(
@@ -134,6 +135,14 @@ const MessageItem = React.memo(
                                         </div>
                                     </div>
                                 );
+                            },
+                            fileattachment(props) {
+                                const { name } = props;
+                                return (
+                                    <div className="message-file-attachment">
+                                        <span>文件名称：{name}</span>
+                                    </div>
+                                )
                             },
                         } as CustomComponents
                     }

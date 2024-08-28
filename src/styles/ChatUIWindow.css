@@ -368,6 +368,15 @@
     display: inline-block;
     cursor: pointer;
 }
+.message-file-attachment {
+    padding: 10px 20px;
+    background-color: white;
+    color: var(--main-color);
+    border-radius: 5px;
+    display: inline-block;
+    cursor: pointer;
+    margin-top: 5px;
+}
 
 .chat-ui-window .loading {
     background-color: white;

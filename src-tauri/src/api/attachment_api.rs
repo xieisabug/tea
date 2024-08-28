@@ -42,6 +42,7 @@ pub async fn add_attachment(
         ("png", "image/png"),
         ("gif", "image/gif"),
         ("webp", "image/webp"),
+        ("txt", "text/plain"),
     ];
 
     let supported_types = file_type_map
@@ -74,6 +75,13 @@ pub async fn add_attachment(
                 }
             }
         }
+        "txt" => {
+            // 读取文本文件
+            let mut file = File::open(file_path)?;
+            let mut content = String::new();
+            file.read_to_string(&mut content)?;
+            content
+        }
         _ => {
             return Err(AppError::Anyhow(
                 anyhow!("Unsupported file type").to_string(),
@@ -97,6 +105,19 @@ pub async fn add_attachment(
             })?;
             message_attachment.id
         }
+        "txt" => {
+            // 使用 BufReader 读取图片文件
+            let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
+                id: 0,
+                message_id: -1,
+                attachment_type: AttachmentType::Text,
+                attachment_url: Some(file_url),
+                attachment_content: Some(reader),
+                use_vector: false,
+                token_count: Some(0),
+            })?;
+            message_attachment.id
+        }
         _ => {
             return Err(AppError::Anyhow(
                 anyhow!("Unsupported file type").to_string(),
@@ -109,18 +130,19 @@ pub async fn add_attachment(
 }
 
 #[tauri::command]
-pub async fn add_attachment_base64(
+pub async fn add_attachment_content(
     app_handle: tauri::AppHandle,
     file_content: String,
     file_name: String,
+    attachment_type: i64,
 ) -> Result<AttachmentResult, AppError> {
-    println!("add_attachment_base64 file_name: {}", file_name);
+    println!("add_attachment_content file_name: {}", file_name);
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
 
     let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
         id: 0,
         message_id: -1,
-        attachment_type: AttachmentType::Image,
+        attachment_type: AttachmentType::try_from(attachment_type).unwrap(),
         attachment_url: Some(file_name),
         attachment_content: Some(file_content),
         use_vector: false,

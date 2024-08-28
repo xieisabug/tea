@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import {
     AddAttachmentResponse,
+    AttachmentType,
     Conversation,
     FileInfo,
     Message,
@@ -301,7 +302,6 @@ function ConversationUI({
         try {
             const selected = await open({
                 multiple: false,
-                filters: [{ name: "Image", extensions: ["png", "jpg"] }],
             });
 
             if (selected) {
@@ -313,13 +313,15 @@ function ConversationUI({
                 const contents = await readBinaryFile(path);
 
                 // 如果是图片, 创建缩略图
-                let thumbnail;
+                let thumbnail, type = AttachmentType.Text;
                 if (name.match(/\.(jpg|jpeg|png|gif)$/)) {
                     const blob = new Blob([contents]);
                     thumbnail = URL.createObjectURL(blob);
+                    type = AttachmentType.Image;
                 }
+                // TODO 这里还需要处理文件类型
 
-                let newFile = { id: -1, name, path, thumbnail };
+                let newFile = { id: -1, name, path, thumbnail, type };
                 setFileInfoList([...(fileInfoList || []), newFile]);
 
                 // 调用Rust函数处理文件
@@ -340,13 +342,24 @@ function ConversationUI({
         );
     }, []);
 
+    const getAttachmentType = useCallback((fileType: string) => {
+        if (fileType.startsWith('image/')) {
+            return AttachmentType.Image;
+        } else if (fileType === 'text/plain') {
+            return AttachmentType.Text;
+        } else {
+            return AttachmentType.Text;
+        }
+    }, []);
+
     const onFilesSelect = useCallback((files: File[]) => {
         setIsDragging(false);
         const newFiles = files.filter(
             (file) =>
                 file.type === "image/png" ||
                 file.type === "image/jpeg" ||
-                file.type === "image/gif",
+                file.type === "image/gif" ||
+                file.type === "text/plain",
         );
 
         const filePromises = newFiles.map(
@@ -359,7 +372,8 @@ function ConversationUI({
                             let newFile: FileInfo = {
                                 id: -1,
                                 name: file.name,
-                                path: "",
+                                path: file.name,
+                                type: getAttachmentType(file.type),
                                 thumbnail: fileContent,
                             };
                             resolve(newFile);
@@ -374,20 +388,25 @@ function ConversationUI({
                         );
                         reject(error);
                     };
-                    reader.readAsDataURL(file);
+                    if (file.type.startsWith('image/')) {
+                        reader.readAsDataURL(file);
+                    } else if (file.type === 'text/plain') {
+                        reader.readAsText(file);
+                    } else {
+                        reader.readAsArrayBuffer(file);
+                    }
                 }),
         );
 
         Promise.all(filePromises)
             .then((newFileInfos) => {
-                console.log(newFileInfos);
                 setFileInfoList((prev) => [...(prev || []), ...newFileInfos]);
 
-                // 批量上传文件到后端
                 newFileInfos.forEach((fileInfo) => {
-                    invoke<AddAttachmentResponse>("add_attachment_base64", {
+                    invoke<AddAttachmentResponse>("add_attachment_content", {
                         fileContent: fileInfo.thumbnail,
                         fileName: fileInfo.name,
+                        attachmentType: fileInfo.type,
                     })
                         .then((res) => {
                             setFileInfoList(

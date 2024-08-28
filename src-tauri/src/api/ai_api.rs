@@ -1,7 +1,7 @@
 use crate::api::assistant_api::get_assistant;
 use crate::api::llm::get_provider;
 use crate::db::assistant_db::AssistantModelConfig;
-use crate::db::conversation_db::Repository;
+use crate::db::conversation_db::{AttachmentType, Repository};
 use crate::db::conversation_db::{Conversation, ConversationDatabase, Message, MessageAttachment};
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::FeatureConfig;
@@ -605,15 +605,22 @@ async fn initialize_conversation(
             .unwrap()
             .list_by_id(&request.attachment_list.clone().unwrap_or(vec![]))?;
         // 新对话逻辑
+        let text_attachments: Vec<String> = message_attachment_list
+            .iter()
+            .filter(|a| matches!(a.attachment_type, AttachmentType::Text ))
+            .filter_map(|a| Some(format!("<file_attachment name=\"{}\">{}</file_attachment>", a.attachment_url.clone().unwrap(), a.attachment_content.clone().unwrap().as_str())))
+            .collect();
+        let context = text_attachments.join("\n");
         let init_message_list = vec![
             (String::from("system"), assistant_prompt_result, vec![]),
             (
                 String::from("user"),
-                request_prompt_result,
+                format!("{}\n{}", request_prompt_result, context),
                 message_attachment_list,
             ),
         ];
-        println!("initialize_conversation !{:?}", request.assistant_id);
+        println!("initialize_conversation {:?}", request.assistant_id);
+        println!("initialize_conversation init_message_list {:?}", init_message_list);
         let (conversation, _) = init_conversation(
             app_handle,
             request.assistant_id,
@@ -672,9 +679,16 @@ async fn initialize_conversation(
                     .map(|child| child.clone())
                     .unwrap_or((message, attachment));
 
+                let mut content = final_message.content.clone();
+                if let Some(ref attachment) = final_attachment { // 使用引用
+                    if let Some(attachment_content) = &attachment.attachment_content {
+                        content.push_str(&format!("\n\n{}", attachment_content));
+                    }
+                }
+
                 (
                     final_message.message_type,
-                    final_message.content,
+                    content, // 使用修改后的 content
                     final_attachment.map(|a| vec![a]).unwrap_or_else(Vec::new),
                 )
             })

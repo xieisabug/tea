@@ -25,5 +25,15 @@ export interface FileInfo {
     id: number;
     name: string;
     path: string;
+    type: AttachmentType;
     thumbnail?: string;
+}
+
+export enum AttachmentType { // 添加AttachmentType枚举
+    Image = 1,
+    Text = 2,
+    PDF = 3,
+    Word = 4,
+    PowerPoint = 5,
+    Excel = 6,
 }

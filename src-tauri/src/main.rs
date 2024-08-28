@@ -20,7 +20,7 @@ use crate::api::artifacts_api::run_artifacts;
 use crate::api::assistant_api::{
     add_assistant, copy_assistant, delete_assistant, get_assistant, get_assistants, save_assistant,
 };
-use crate::api::attachment_api::{add_attachment, add_attachment_base64};
+use crate::api::attachment_api::{add_attachment, add_attachment_content};
 use crate::api::conversation_api::{
     delete_conversation, get_conversation_with_messages, list_conversations, update_conversation,
 };
@@ -209,7 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             add_llm_model,
             delete_llm_model,
             add_attachment,
-            add_attachment_base64,
+            add_attachment_content,
             get_assistants,
             get_assistant,
             save_assistant,
