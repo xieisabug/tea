@@ -4,6 +4,7 @@ import Add from "../../assets/add.svg?react";
 import Stop from "../../assets/stop.svg?react";
 import UpArrow from "../../assets/up-arrow.svg?react";
 import Delete from "../../assets/delete.svg?react";
+import Text from "../../assets/text.svg?react";
 import { AttachmentType, FileInfo } from "../../data/Conversation";
 import IconButton from "../IconButton";
 
@@ -22,24 +23,24 @@ const InputArea: React.FC<{
         <div className="input-area-img-container">
             {fileInfoList?.map((fileInfo) => (
                 <div key={fileInfo.name + fileInfo.id} className={
-                    fileInfo.type === AttachmentType.Image ? "input-area-img-wrapper" : "other-class-name" // 替换 "other-class-name" 为实际的 className
+                    fileInfo.type === AttachmentType.Image ? "input-area-img-wrapper" : "input-area-text-wrapper"
                 }>
                     {(() => {
                         switch (fileInfo.type) {
                             case AttachmentType.Image:
                                 return <img src={fileInfo.thumbnail} alt="缩略图" className="input-area-img" />;
                             case AttachmentType.Text:
-                                return <span>{fileInfo.name}</span>;
+                                return [<Text fill="black" />, <span title={fileInfo.name}>{fileInfo.name}</span>];
                             case AttachmentType.PDF:
-                                return <span>{fileInfo.name} (PDF)</span>;
+                                return <span title={fileInfo.name}>{fileInfo.name} (PDF)</span>;
                             case AttachmentType.Word:
-                                return <span>{fileInfo.name} (Word)</span>;
+                                return <span title={fileInfo.name}>{fileInfo.name} (Word)</span>;
                             case AttachmentType.PowerPoint:
-                                return <span>{fileInfo.name} (PowerPoint)</span>;
+                                return <span title={fileInfo.name}>{fileInfo.name} (PowerPoint)</span>;
                             case AttachmentType.Excel:
-                                return <span>{fileInfo.name} (Excel)</span>;
+                                return <span title={fileInfo.name}>{fileInfo.name} (Excel)</span>;
                             default:
-                                return <span>{fileInfo.name}</span>;
+                                return <span title={fileInfo.name}>{fileInfo.name}</span>;
                         }
                     })()}
                     <IconButton border icon={<Delete fill="black" />} className="input-area-img-delete-button" onClick={() => {handleDeleteFile(fileInfo.id)}} />
