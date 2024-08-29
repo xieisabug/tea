@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::FeatureConfigState;
 use serde_json::json;
 use tauri::Manager;
@@ -20,7 +22,8 @@ pub async fn run_artifacts(
     let config_map = state.config_feature_map.lock().await;
     let preview_config = config_map
         .get("preview")
-        .ok_or(AppError::NoConfigError("Preview config not found".into()))?;
+        .map(|c| c.to_owned())
+        .unwrap_or_else(HashMap::new);
 
     let nextjs_port = preview_config
         .get("nextjs_port")

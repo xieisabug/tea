@@ -16,7 +16,7 @@ import {
     Message,
 } from "../data/Conversation";
 import "katex/dist/katex.min.css";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { throttle } from "lodash";
 import NewChatComponent from "./NewChatComponent";
 import FileDropArea from "./FileDropArea";
@@ -262,6 +262,10 @@ function ConversationUI({
                     );
                 });
             } catch (error) {
+                emit('chat-window-alert-dialog', {
+                    text: '发送消息失败: ' + error,
+                    type: 'error'
+                });
                 console.error("Error:", error);
             }
             setInputText("");
@@ -292,6 +296,12 @@ function ConversationUI({
     const handleArtifact = useCallback((lang: string, inputStr: string) => {
         invoke("run_artifacts", { lang, inputStr }).then((res) => {
             console.log(res);
+        }).catch((error) => {
+            emit('chat-window-alert-dialog', {
+                text: '运行失败: ' + JSON.stringify(error),
+                type: 'error'
+            });
+            console.error("artifact run error:", error);
         });
     }, []);
 
@@ -332,6 +342,10 @@ function ConversationUI({
                 });
             }
         } catch (error) {
+            emit('chat-window-alert-dialog', {
+                text: '文件选择失败: ' + error,
+                type: 'error'
+            });
             console.error("Error selecting file:", error);
         }
     }, [fileInfoList]);
@@ -418,15 +432,25 @@ function ConversationUI({
                                     ) || null,
                             );
                         })
-                        .catch((error) =>
+                        .catch((error) => {
+                            emit('chat-window-alert-dialog', {
+                                text: '文件上传失败: ' + error,
+                                type: 'error'
+                            });
                             console.error(
                                 `Error uploading file: ${fileInfo.name}`,
                                 error,
-                            ),
-                        );
+                            );
+                        });
                 });
             })
-            .catch((error) => console.error("Error processing files:", error));
+            .catch((error) => {
+                emit('chat-window-alert-dialog', {
+                    text: '文件选择失败: ' + error,
+                    type: 'error'
+                });
+                console.error("Error processing files:", error);
+            });
     }, []);
 
     // 文件拖拽处理
