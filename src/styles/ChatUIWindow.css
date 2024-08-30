@@ -279,18 +279,22 @@
     position: absolute;
     bottom: 90px;
     right: 170px;
+    left: 170px;
     display: flex;
     flex-direction: row;
-    justify-content: center;
-    align-content: flex-end;
+    justify-content: flex-end;
+    align-content: center;
+    flex-wrap: wrap;
 }
 .input-area-img-wrapper {
     position: relative;
     margin-left: 10px;
+    margin-top: 10px;
 }
 .input-area-text-wrapper {
     position: relative;
     margin-left: 10px;
+    margin-top: 10px;
     width: 120px;
     height: 30px;
     font-size: 12px;
@@ -318,7 +322,8 @@
     transform: translate(-50%, -50%);
     display: none;
 }
-.input-area-img-wrapper:hover > .input-area-img-delete-button, .input-area-text-wrapper:hover > .input-area-img-delete-button {
+.input-area-img-wrapper:hover > .input-area-img-delete-button,
+.input-area-text-wrapper:hover > .input-area-img-delete-button {
     display: block;
 }
 .input-area-img {
