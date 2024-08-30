@@ -329,7 +329,6 @@ function ConversationUI({
                     thumbnail = URL.createObjectURL(blob);
                     type = AttachmentType.Image;
                 }
-                // TODO 这里还需要处理文件类型
 
                 let newFile = { id: -1, name, path, thumbnail, type };
                 setFileInfoList([...(fileInfoList || []), newFile]);
@@ -339,6 +338,15 @@ function ConversationUI({
                     fileUrl: path,
                 }).then((res) => {
                     newFile.id = res.attachment_id;
+                }).catch((error) => {
+                    emit('chat-window-alert-dialog', {
+                        text: '文件上传失败: ' + JSON.stringify(error),
+                        type: 'error'
+                    });
+                    console.error(
+                        `Error uploading file: ${newFile.name}`,
+                        error,
+                    );
                 });
             }
         } catch (error) {

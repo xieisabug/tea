@@ -608,7 +608,7 @@ async fn initialize_conversation(
         let text_attachments: Vec<String> = message_attachment_list
             .iter()
             .filter(|a| matches!(a.attachment_type, AttachmentType::Text ))
-            .filter_map(|a| Some(format!("<file_attachment name=\"{}\">{}</file_attachment>", a.attachment_url.clone().unwrap(), a.attachment_content.clone().unwrap().as_str())))
+            .filter_map(|a| Some(format!(r#"<fileattachment name="{}">{}</fileattachment>"#, a.attachment_url.clone().unwrap(), a.attachment_content.clone().unwrap().as_str())))
             .collect();
         let context = text_attachments.join("\n");
         let init_message_list = vec![

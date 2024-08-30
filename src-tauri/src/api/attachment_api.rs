@@ -5,6 +5,7 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use mime_guess::from_path;
 
 use crate::{
     db::conversation_db::{ConversationDatabase, MessageAttachment},
@@ -30,44 +31,33 @@ pub async fn add_attachment(
     }
 
     // 3. 解析文件类型
-    let file_extension = file_path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .ok_or_else(|| AppError::Anyhow(anyhow!("Invalid file URL").to_string()))?;
-    let file_type = file_extension.to_lowercase();
+    let file_type = from_path(&file_path)
+        .first_or_octet_stream()
+        .to_string();
+    let mut file_type_classify = String::new();
 
-    let file_type_map = [
-        ("jpg", "image/jpeg"),
-        ("jpeg", "image/jpeg"),
-        ("png", "image/png"),
-        ("gif", "image/gif"),
-        ("webp", "image/webp"),
-        ("txt", "text/plain"),
-    ];
+    println!("检测到的文件类型: {}", file_type);
 
-    let supported_types = file_type_map
-        .iter()
-        .map(|(ext, _)| *ext)
-        .collect::<Vec<_>>();
-    if !supported_types.contains(&file_type.as_str()) {
-        return Err(AppError::Anyhow(
-            anyhow!("Unsupported file type").to_string(),
-        ));
+    if file_type.starts_with("text/") {
+        file_type_classify = "text".to_string();
+    } else if file_type.starts_with("image/") {
+        file_type_classify = "image".to_string();
     }
+    println!("文件类型大类: {}", file_type_classify);
 
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
 
     // 4. 使用不同类型的文件读取方式来进行读取
-    let reader = match file_type.as_str() {
-        "jpg" | "jpeg" | "png" | "gif" | "webp" => {
+    let reader = match file_type_classify.as_str() {
+        "image" => {
             // 使用 BufReader 读取图片文件
             let base64_str =
                 read_image_as_base64(file_path.to_str().unwrap()).map_err(AppError::from)?;
             match file_type.as_str() {
-                "jpg" | "jpeg" => "data:image/jpeg;base64,".to_string() + &base64_str,
-                "png" => "data:image/png;base64,".to_string() + &base64_str,
-                "gif" => "data:image/gif;base64,".to_string() + &base64_str,
-                "webp" => "data:image/webp;base64,".to_string() + &base64_str,
+                "image/jpeg" => "data:image/jpeg;base64,".to_string() + &base64_str,
+                "image/png" => "data:image/png;base64,".to_string() + &base64_str,
+                "image/gif" => "data:image/gif;base64,".to_string() + &base64_str,
+                "image/webp" => "data:image/webp;base64,".to_string() + &base64_str,
                 _ => {
                     return Err(AppError::Anyhow(
                         anyhow!("Unsupported file type").to_string(),
@@ -75,7 +65,7 @@ pub async fn add_attachment(
                 }
             }
         }
-        "txt" => {
+        "text" => {
             // 读取文本文件
             let mut file = File::open(file_path)?;
             let mut content = String::new();
@@ -91,8 +81,8 @@ pub async fn add_attachment(
 
     // 5. 保存到数据库
     // todo: 添加数据库配置和 CRUD 操作
-    let attachment_id = match file_type.as_str() {
-        "jpg" | "jpeg" | "png" | "gif" | "bmp" | "svg" | "webp" => {
+    let attachment_id = match file_type_classify.as_str() {
+        "image" => {
             // 使用 BufReader 读取图片文件
             let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
                 id: 0,
@@ -105,7 +95,7 @@ pub async fn add_attachment(
             })?;
             message_attachment.id
         }
-        "txt" => {
+        "text" => {
             // 使用 BufReader 读取图片文件
             let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
                 id: 0,

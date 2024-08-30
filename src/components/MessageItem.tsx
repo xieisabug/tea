@@ -21,8 +21,15 @@ const MessageItem = React.memo(
         const [copyIconState, setCopyIconState] = useState<"copy" | "ok">(
             "copy",
         );
-        const [currentMessageContent, setCurrentMessageContent] = useState<string>(message.regenerate?.length > 0 ? message.regenerate[message.regenerate.length - 1].content : message.content);
-        const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(message.regenerate?.length > 0 ? message.regenerate.length + 1: -1);
+        const [currentMessageContent, setCurrentMessageContent] =
+            useState<string>(
+                message.regenerate?.length > 0
+                    ? message.regenerate[message.regenerate.length - 1].content
+                    : message.content,
+            );
+        const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(
+            message.regenerate?.length > 0 ? message.regenerate.length + 1 : -1,
+        );
 
         const handleCopy = useCallback(() => {
             writeText(currentMessageContent);
@@ -45,7 +52,9 @@ const MessageItem = React.memo(
                 if (currentMessageIndex === 1) {
                     setCurrentMessageContent(message.content);
                 } else {
-                    setCurrentMessageContent(message.regenerate[currentMessageIndex - 2].content);
+                    setCurrentMessageContent(
+                        message.regenerate[currentMessageIndex - 2].content,
+                    );
                 }
             } else {
                 setCurrentMessageContent(message.content);
@@ -56,24 +65,52 @@ const MessageItem = React.memo(
         const messageRegenerateLength = message.regenerate?.length ?? 0;
         useEffect(() => {
             if (messageRegenerateLength !== 0) {
-                handleMessageIndexChange(message.regenerate.length + 1)
+                handleMessageIndexChange(message.regenerate.length + 1);
             }
-        }, [messageRegenerateLength])
+        }, [messageRegenerateLength]);
 
-        const handleMessageIndexChange = useCallback((newMessageIndex: number) => {
-            if (newMessageIndex < 1) {
-                newMessageIndex = 1;
+        const handleMessageIndexChange = useCallback(
+            (newMessageIndex: number) => {
+                if (newMessageIndex < 1) {
+                    newMessageIndex = 1;
+                }
+                if (newMessageIndex > message.regenerate.length + 1) {
+                    newMessageIndex = message.regenerate.length + 1;
+                }
+                setCurrentMessageIndex(newMessageIndex);
+                if (newMessageIndex === 1) {
+                    setCurrentMessageContent(message.content);
+                } else {
+                    setCurrentMessageContent(
+                        message.regenerate[newMessageIndex - 2].content,
+                    );
+                }
+            },
+            [currentMessageIndex, message.regenerate],
+        );
+
+        // 自定义解析器来处理 fileattachment 标签
+        const customParser = (markdown: string) => {
+            const regex =
+                /<fileattachment([^>]*)>([\s\S]*?)<\/fileattachment>/gm;
+            let lastIndex = 0;
+            const result = [];
+
+            let match;
+            while ((match = regex.exec(markdown)) !== null) {
+                if (match.index > lastIndex) {
+                    result.push(markdown.slice(lastIndex, match.index));
+                }
+                result.push(`<fileattachment ${match[1]} />`);
+                lastIndex = regex.lastIndex;
             }
-            if (newMessageIndex > (message.regenerate.length + 1)) {
-                newMessageIndex = message.regenerate.length + 1;
+
+            if (lastIndex < markdown.length) {
+                result.push(markdown.slice(lastIndex));
             }
-            setCurrentMessageIndex(newMessageIndex);
-            if (newMessageIndex === 1) {
-                setCurrentMessageContent(message.content);
-            } else {
-                setCurrentMessageContent(message.regenerate[newMessageIndex - 2].content);
-            }
-        }, [currentMessageIndex, message.regenerate]);
+
+            return result.join("");
+        };
 
         return (
             <div
@@ -86,14 +123,35 @@ const MessageItem = React.memo(
             >
                 {message.regenerate?.length > 0 ? (
                     <div className="message-regenerate-bar">
-                        <span className="message-regenerate-bar-button" onClick={() => handleMessageIndexChange(currentMessageIndex - 1)}>{"<"}</span>
-                        <span>{currentMessageIndex} / {message.regenerate?.length + 1}</span>
-                        <span className="message-regenerate-bar-button" onClick={() => handleMessageIndexChange(currentMessageIndex + 1)}>{">"}</span>
+                        <span
+                            className="message-regenerate-bar-button"
+                            onClick={() =>
+                                handleMessageIndexChange(
+                                    currentMessageIndex - 1,
+                                )
+                            }
+                        >
+                            {"<"}
+                        </span>
+                        <span>
+                            {currentMessageIndex} /{" "}
+                            {message.regenerate?.length + 1}
+                        </span>
+                        <span
+                            className="message-regenerate-bar-button"
+                            onClick={() =>
+                                handleMessageIndexChange(
+                                    currentMessageIndex + 1,
+                                )
+                            }
+                        >
+                            {">"}
+                        </span>
                     </div>
                 ) : null}
 
                 <ReactMarkdown
-                    children={currentMessageContent}
+                    children={customParser(currentMessageContent)}
                     remarkPlugins={[remarkMath, remarkBreaks]}
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                     components={
@@ -137,12 +195,15 @@ const MessageItem = React.memo(
                                 );
                             },
                             fileattachment(props) {
-                                const { name } = props;
+                                const { name, content } = props;
                                 return (
-                                    <div className="message-file-attachment">
+                                    <div
+                                        className="message-file-attachment"
+                                        title={content?.substring(0, 20)}
+                                    >
                                         <span>文件名称：{name}</span>
                                     </div>
-                                )
+                                );
                             },
                         } as CustomComponents
                     }
