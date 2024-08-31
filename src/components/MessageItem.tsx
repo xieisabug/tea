@@ -1,21 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { writeText } from "@tauri-apps/api/clipboard";
-import ReactMarkdown, { Components } from "react-markdown";
-import remarkMath from "remark-math";
-import remarkBreaks from "remark-breaks";
-import rehypeRaw from "rehype-raw";
-import rehypeKatex from "rehype-katex";
+import Markdown, { MarkdownToJSX } from "markdown-to-jsx";
 import IconButton from "./IconButton";
 import Copy from "../assets/copy.svg?react";
 import Ok from "../assets/ok.svg?react";
 import Refresh from "../assets/refresh.svg?react";
 import CodeBlock from "./CodeBlock";
 import MessageFileAttachment from "./MessageFileAttachment";
-
-interface CustomComponents extends Components {
-    thinking: React.ElementType;
-    fileattachment: React.ElementType;
-}
 
 const MessageItem = React.memo(
     ({ message, onCodeRun, onMessageRegenerate }: any) => {
@@ -143,16 +134,15 @@ const MessageItem = React.memo(
                     </div>
                 ) : null}
 
-                <ReactMarkdown
+                <Markdown
                     children={customParser(currentMessageContent)}
-                    remarkPlugins={[remarkMath, remarkBreaks]}
-                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                    components={
-                        {
-                            code({ node, className, children, ref, ...props }) {
-                                const match = /language-(\w+)/.exec(
+                    options={{
+                        overrides: {
+                            code: ({ className, children, ...props }) => {
+                                const match = /lang-(\w+)/.exec(
                                     className || "",
                                 );
+                                console.log(className, props);
                                 return match ? (
                                     <CodeBlock
                                         language={match[1]}
@@ -162,8 +152,6 @@ const MessageItem = React.memo(
                                     </CodeBlock>
                                 ) : (
                                     <code
-                                        {...props}
-                                        ref={ref}
                                         className={className}
                                         style={{
                                             overflow: "auto",
@@ -174,7 +162,7 @@ const MessageItem = React.memo(
                                     </code>
                                 );
                             },
-                            thinking({ children }) {
+                            thinking: ({ children }) => {
                                 return (
                                     <div>
                                         <div
@@ -187,11 +175,9 @@ const MessageItem = React.memo(
                                     </div>
                                 );
                             },
-                            fileattachment({ node, ...props }) {
-                                return <MessageFileAttachment {...props} />;
-                            },
-                        } as CustomComponents
-                    }
+                            fileattachment: MessageFileAttachment,
+                        },
+                    }}
                 />
                 {message.attachment_list.filter(
                     (a: any) => a.attachment_type === "Image",
