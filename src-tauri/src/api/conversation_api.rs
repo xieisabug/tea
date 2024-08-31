@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
 use crate::{
-    db::conversation_db::{ConversationDatabase, MessageDetail, Repository},
+    db::conversation_db::{
+        ConversationDatabase, Message, MessageAttachment, MessageDetail, Repository,
+    },
     errors::AppError,
     NameCacheState,
 };
@@ -71,23 +73,41 @@ pub async fn get_conversation_with_messages(
         .list_by_conversation_id(conversation_id)
         .map_err(|e| e.to_string())?;
 
-    let mut message_details: Vec<MessageDetail> = messages
+    let mut message_details: Vec<MessageDetail> = Vec::new();
+    let mut attachment_map: HashMap<i64, Vec<MessageAttachment>> = HashMap::new();
+
+    for (message, attachment) in messages.clone() {
+        if let Some(attachment) = attachment {
+            attachment_map
+                .entry(message.id)
+                .or_default()
+                .push(attachment);
+        }
+    }
+
+    // Convert messages to a HashMap to preserve it for the second pass
+    let message_map: HashMap<i64, Message> = messages
+        .clone()
         .into_iter()
-        .map(|(message, attachment)| {
-            MessageDetail {
-                id: message.id,
-                conversation_id: message.conversation_id,
-                message_type: message.message_type,
-                content: message.content,
-                llm_model_id: message.llm_model_id,
-                created_time: message.created_time,
-                token_count: message.token_count,
-                attachment_list: attachment.into_iter().collect(),
-                regenerate: Vec::new(),
-                parent_id: message.parent_id,
-            }
-        })
+        .map(|(message, _)| (message.id, message))
         .collect();
+
+    // Second pass: Create MessageDetail with the collected attachments
+    for (message_id, message) in message_map {
+        let attachment_list = attachment_map.get(&message_id).cloned().unwrap_or_default();
+        message_details.push(MessageDetail {
+            id: message.id,
+            conversation_id: message.conversation_id,
+            message_type: message.message_type,
+            content: message.content,
+            llm_model_id: message.llm_model_id,
+            created_time: message.created_time,
+            token_count: message.token_count,
+            attachment_list,
+            regenerate: Vec::new(),
+            parent_id: message.parent_id,
+        });
+    }
 
     // 处理 regenerate 关系
     let regenerate_map: HashMap<i64, Vec<MessageDetail>> = message_details
@@ -111,7 +131,7 @@ pub async fn get_conversation_with_messages(
         .filter(|m| m.parent_id.is_none())
         .collect();
     message_details.sort_by_key(|m| m.id);
-    
+
     let assistant_name_cache = name_cache_state.assistant_names.lock().await;
     let assistant_name = assistant_name_cache
         .get(&conversation.assistant_id.unwrap_or(0))
@@ -129,7 +149,6 @@ pub async fn get_conversation_with_messages(
         message_details,
     ))
 }
-
 
 #[tauri::command]
 pub fn delete_conversation(

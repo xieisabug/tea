@@ -10,6 +10,7 @@ import Copy from "../assets/copy.svg?react";
 import Ok from "../assets/ok.svg?react";
 import Refresh from "../assets/refresh.svg?react";
 import CodeBlock from "./CodeBlock";
+import MessageFileAttachment from "./MessageFileAttachment";
 
 interface CustomComponents extends Components {
     thinking: React.ElementType;
@@ -92,24 +93,16 @@ const MessageItem = React.memo(
         // 自定义解析器来处理 fileattachment 标签
         const customParser = (markdown: string) => {
             const regex =
-                /<fileattachment([^>]*)>([\s\S]*?)<\/fileattachment>/gm;
-            let lastIndex = 0;
-            const result = [];
+                /<fileattachment([^>]*)>([\s\S]*?)<\/fileattachment>/g;
+            let result = markdown;
 
             let match;
             while ((match = regex.exec(markdown)) !== null) {
-                if (match.index > lastIndex) {
-                    result.push(markdown.slice(lastIndex, match.index));
-                }
-                result.push(`<fileattachment ${match[1]} />`);
-                lastIndex = regex.lastIndex;
+                const replacement = `\n<fileattachment ${match[1]} />`;
+                result = result.replace(match[0], replacement);
             }
 
-            if (lastIndex < markdown.length) {
-                result.push(markdown.slice(lastIndex));
-            }
-
-            return result.join("");
+            return result;
         };
 
         return (
@@ -194,16 +187,8 @@ const MessageItem = React.memo(
                                     </div>
                                 );
                             },
-                            fileattachment(props) {
-                                const { name, content } = props;
-                                return (
-                                    <div
-                                        className="message-file-attachment"
-                                        title={content?.substring(0, 20)}
-                                    >
-                                        <span>文件名称：{name}</span>
-                                    </div>
-                                );
+                            fileattachment({ node, ...props }) {
+                                return <MessageFileAttachment {...props} />;
                             },
                         } as CustomComponents
                     }
