@@ -1,12 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { writeText } from "@tauri-apps/api/clipboard";
-import Markdown, { MarkdownToJSX } from "markdown-to-jsx";
+import ReactMarkdown, { Components } from "react-markdown";
+import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
+import rehypeRaw from "rehype-raw";
+import rehypeKatex from "rehype-katex";
 import IconButton from "./IconButton";
 import Copy from "../assets/copy.svg?react";
 import Ok from "../assets/ok.svg?react";
 import Refresh from "../assets/refresh.svg?react";
 import CodeBlock from "./CodeBlock";
 import MessageFileAttachment from "./MessageFileAttachment";
+
+interface CustomComponents extends Components {
+    thinking: React.ElementType;
+    fileattachment: React.ElementType;
+}
 
 const MessageItem = React.memo(
     ({ message, onCodeRun, onMessageRegenerate }: any) => {
@@ -134,12 +143,14 @@ const MessageItem = React.memo(
                     </div>
                 ) : null}
 
-                <Markdown
+                <ReactMarkdown
                     children={customParser(currentMessageContent)}
-                    options={{
-                        overrides: {
-                            code: ({ className, children, ...props }) => {
-                                const match = /lang-(\w+)/.exec(
+                    remarkPlugins={[remarkMath, remarkBreaks]}
+                    rehypePlugins={[rehypeRaw, rehypeKatex]}
+                    components={
+                        {
+                            code: ({ className, children }) => {
+                                const match = /language-(\w+)/.exec(
                                     className || "",
                                 );
                                 return match ? (
@@ -154,7 +165,6 @@ const MessageItem = React.memo(
                                         className={className}
                                         style={{
                                             overflow: "auto",
-                                            display: "block",
                                         }}
                                     >
                                         {children}
@@ -175,8 +185,8 @@ const MessageItem = React.memo(
                                 );
                             },
                             fileattachment: MessageFileAttachment,
-                        },
-                    }}
+                        } as CustomComponents
+                    }
                 />
                 {message.attachment_list.filter(
                     (a: any) => a.attachment_type === "Image",
