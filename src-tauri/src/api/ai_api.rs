@@ -38,6 +38,7 @@ pub struct AiRequest {
 pub struct AiResponse {
     conversation_id: i64,
     add_message_id: i64,
+    request_prompt_result_with_context: String,
 }
 #[tauri::command]
 pub async fn ask_ai(
@@ -71,14 +72,15 @@ pub async fn ask_ai(
     let request_prompt_result = template_engine.parse(&request.prompt, &template_context);
 
     let app_handle_clone = app_handle.clone();
-    let (conversation_id, new_message_id, init_message_list) = initialize_conversation(
-        &app_handle_clone,
-        &request,
-        &assistant_detail,
-        assistant_prompt_result,
-        request_prompt_result.clone(),
-    )
-    .await?;
+    let (conversation_id, new_message_id, request_prompt_result_with_context, init_message_list) =
+        initialize_conversation(
+            &app_handle_clone,
+            &request,
+            &assistant_detail,
+            assistant_prompt_result,
+            request_prompt_result.clone(),
+        )
+        .await?;
 
     if new_message_id.is_some() {
         let config_feature_map = feature_config_state.config_feature_map.lock().await.clone();
@@ -261,6 +263,7 @@ pub async fn ask_ai(
     Ok(AiResponse {
         conversation_id,
         add_message_id: new_message_id.unwrap(),
+        request_prompt_result_with_context,
     })
 }
 
@@ -448,7 +451,10 @@ pub async fn regenerate_ai(
                 let mut map = tokens.lock().await;
                 map.remove(&new_message_id);
                 let err_msg = format!("Chat stream error: {}", e);
-                tx_clone.send((new_message_id, err_msg, true)).await.unwrap();
+                tx_clone
+                    .send((new_message_id, err_msg, true))
+                    .await
+                    .unwrap();
                 eprintln!("Chat stream error: {}", e);
             }
         } else {
@@ -473,7 +479,9 @@ pub async fn regenerate_ai(
                 .unwrap()
                 .update_finish_time(new_message_id)
                 .unwrap();
-            tx.send((new_message_id, content.clone(), true)).await.unwrap();
+            tx.send((new_message_id, content.clone(), true))
+                .await
+                .unwrap();
             // Ensure tx is closed after sending the message
             drop(tx);
         }
@@ -545,9 +553,9 @@ pub async fn regenerate_ai(
     Ok(AiResponse {
         conversation_id,
         add_message_id: new_message_id,
+        request_prompt_result_with_context: String::new(),
     })
 }
-
 
 fn add_message(
     app_handle: &tauri::AppHandle,
@@ -592,146 +600,181 @@ async fn initialize_conversation(
     (
         i64,
         Option<i64>,
+        String,
         Vec<(String, String, Vec<MessageAttachment>)>,
     ),
     AppError,
 > {
     let db = get_conversation_db(app_handle)?;
 
-    let (conversation_id, add_message_id, init_message_list) = if request.conversation_id.is_empty()
-    {
-        let message_attachment_list = db
-            .attachment_repo()
-            .unwrap()
-            .list_by_id(&request.attachment_list.clone().unwrap_or(vec![]))?;
-        // 新对话逻辑
-        let text_attachments: Vec<String> = message_attachment_list
-            .iter()
-            .filter(|a| matches!(a.attachment_type, AttachmentType::Text ))
-            .filter_map(|a| Some(format!(r#"<fileattachment name="{}">{}</fileattachment>"#, a.attachment_url.clone().unwrap(), a.attachment_content.clone().unwrap().as_str())))
-            .collect();
-        let context = text_attachments.join("\n");
-        let init_message_list = vec![
-            (String::from("system"), assistant_prompt_result, vec![]),
-            (
-                String::from("user"),
-                format!("{}\n{}", request_prompt_result, context),
-                message_attachment_list,
-            ),
-        ];
-        println!("initialize_conversation {:?}", request.assistant_id);
-        println!("initialize_conversation init_message_list {:?}", init_message_list);
-        let (conversation, _) = init_conversation(
-            app_handle,
-            request.assistant_id,
-            assistant_detail.model[0].id,
-            assistant_detail.model[0].model_code.clone(),
-            &init_message_list,
-        )?;
-        let add_message = add_message(
-            app_handle,
-            None,
-            conversation.id,
-            "assistant".to_string(),
-            String::new(),
-            Some(assistant_detail.model[0].id),
-            Some(assistant_detail.model[0].model_code.clone()),
-            None,
-            None,
-            0,
-        )?;
-        (conversation.id, Some(add_message.id), init_message_list)
-    } else {
-        let message_attachment_list = db
-            .attachment_repo()
-            .unwrap()
-            .list_by_id(&request.attachment_list.clone().unwrap_or(vec![]))?;
-        // 已存在对话逻辑
-        let conversation_id = request.conversation_id.parse::<i64>()?;
-        let all_messages = db
-            .message_repo()
-            .unwrap()
-            .list_by_conversation_id(conversation_id)?;
-
-        // 创建一个 HashMap 来存储每个消息的最新子消息
-        let mut latest_children: HashMap<i64, (Message, Option<MessageAttachment>)> = HashMap::new();
-        // 创建一个 HashSet 来存储所有作为子消息的消息 ID
-        let mut child_ids: HashSet<i64> = HashSet::new();
-
-        // 遍历所有消息，更新最新子消息和子消息 ID 集合
-        for (message, attachment) in all_messages.iter() {
-            if let Some(parent_id) = message.parent_id {
-                child_ids.insert(message.id);
-                latest_children
-                    .entry(parent_id)
-                    .and_modify(|e| *e = (message.clone(), attachment.clone()))
-                    .or_insert((message.clone(), attachment.clone()));
-            }
-        }
-
-        // 构建最终的消息列表
-        let message_list: Vec<(String, String, Vec<MessageAttachment>)> = all_messages
-            .into_iter()
-            .filter(|(message, _)| !child_ids.contains(&message.id))
-            .map(|(message, attachment)| {
-                let (final_message, final_attachment) = latest_children
-                    .get(&message.id)
-                    .map(|child| child.clone())
-                    .unwrap_or((message, attachment));
-
-                let mut content = final_message.content.clone();
-                if let Some(ref attachment) = final_attachment { // 使用引用
-                    if let Some(attachment_content) = &attachment.attachment_content {
-                        content.push_str(&format!("\n\n{}", attachment_content));
-                    }
-                }
-
+    let (conversation_id, add_message_id, request_prompt_result_with_context, init_message_list) =
+        if request.conversation_id.is_empty() {
+            let message_attachment_list = db
+                .attachment_repo()
+                .unwrap()
+                .list_by_id(&request.attachment_list.clone().unwrap_or(vec![]))?;
+            // 新对话逻辑
+            let text_attachments: Vec<String> = message_attachment_list
+                .iter()
+                .filter(|a| matches!(a.attachment_type, AttachmentType::Text))
+                .filter_map(|a| {
+                    Some(format!(
+                        r#"<fileattachment name="{}">{}</fileattachment>"#,
+                        a.attachment_url.clone().unwrap(),
+                        a.attachment_content.clone().unwrap().as_str()
+                    ))
+                })
+                .collect();
+            let context = text_attachments.join("\n");
+            let request_prompt_result_with_context =
+                format!("{}\n{}", request_prompt_result, context);
+            let init_message_list = vec![
+                (String::from("system"), assistant_prompt_result, vec![]),
                 (
-                    final_message.message_type,
-                    content, // 使用修改后的 content
-                    final_attachment.map(|a| vec![a]).unwrap_or_else(Vec::new),
-                )
-            })
-            .collect();
+                    String::from("user"),
+                    request_prompt_result_with_context.clone(),
+                    message_attachment_list,
+                ),
+            ];
+            println!("initialize_conversation {:?}", request.assistant_id);
+            println!(
+                "initialize_conversation init_message_list {:?}",
+                init_message_list
+            );
+            let (conversation, _) = init_conversation(
+                app_handle,
+                request.assistant_id,
+                assistant_detail.model[0].id,
+                assistant_detail.model[0].model_code.clone(),
+                &init_message_list,
+            )?;
+            let add_message = add_message(
+                app_handle,
+                None,
+                conversation.id,
+                "assistant".to_string(),
+                String::new(),
+                Some(assistant_detail.model[0].id),
+                Some(assistant_detail.model[0].model_code.clone()),
+                None,
+                None,
+                0,
+            )?;
+            (
+                conversation.id,
+                Some(add_message.id),
+                request_prompt_result_with_context,
+                init_message_list,
+            )
+        } else {
+            // 已存在对话逻辑
+            let conversation_id = request.conversation_id.parse::<i64>()?;
+            let all_messages = db
+                .message_repo()
+                .unwrap()
+                .list_by_conversation_id(conversation_id)?;
 
-        let _ = add_message(
-            app_handle,
-            None,
-            conversation_id,
-            "user".to_string(),
-            request_prompt_result.clone(),
-            Some(assistant_detail.model[0].id),
-            Some(assistant_detail.model[0].model_code.clone()),
-            None,
-            None,
-            0,
-        )?;
-        let mut updated_message_list = message_list;
-        updated_message_list.push((
-            String::from("user"),
-            request_prompt_result,
-            message_attachment_list,
-        ));
+            // 创建一个 HashMap 来存储每个消息的最新子消息
+            let mut latest_children: HashMap<i64, (Message, Option<MessageAttachment>)> =
+                HashMap::new();
+            // 创建一个 HashSet 来存储所有作为子消息的消息 ID
+            let mut child_ids: HashSet<i64> = HashSet::new();
 
-        let add_assistant_message = add_message(
-            app_handle,
-            None,
-            conversation_id,
-            "assistant".to_string(),
-            String::new(),
-            Some(assistant_detail.model[0].id),
-            Some(assistant_detail.model[0].model_code.clone()),
-            None,
-            None,
-            0,
-        )?;
-        (
-            conversation_id,
-            Some(add_assistant_message.id),
-            updated_message_list,
-        )
-    };
-    Ok((conversation_id, add_message_id, init_message_list))
+            // 遍历所有消息，更新最新子消息和子消息 ID 集合
+            for (message, attachment) in all_messages.iter() {
+                if let Some(parent_id) = message.parent_id {
+                    child_ids.insert(message.id);
+                    latest_children
+                        .entry(parent_id)
+                        .and_modify(|e| *e = (message.clone(), attachment.clone()))
+                        .or_insert((message.clone(), attachment.clone()));
+                }
+            }
+
+            // 构建最终的消息列表
+            let message_list: Vec<(String, String, Vec<MessageAttachment>)> = all_messages
+                .into_iter()
+                .filter(|(message, _)| !child_ids.contains(&message.id))
+                .map(|(message, attachment)| {
+                    let (final_message, final_attachment) = latest_children
+                        .get(&message.id)
+                        .map(|child| child.clone())
+                        .unwrap_or((message, attachment));
+
+                    (
+                        final_message.message_type,
+                        final_message.content, // 使用修改后的 content
+                        final_attachment.map(|a| vec![a]).unwrap_or_else(Vec::new),
+                    )
+                })
+                .collect();
+
+            // 获取到消息的附件列表
+            let message_attachment_list = db
+                .attachment_repo()
+                .unwrap()
+                .list_by_id(&request.attachment_list.clone().unwrap_or(vec![]))?;
+            // 过滤出文本附件
+            let text_attachments: Vec<String> = message_attachment_list
+                .iter()
+                .filter(|a| matches!(a.attachment_type, AttachmentType::Text))
+                .filter_map(|a| {
+                    Some(format!(
+                        r#"<fileattachment name="{}">{}</fileattachment>"#,
+                        a.attachment_url.clone().unwrap(),
+                        a.attachment_content.clone().unwrap().as_str()
+                    ))
+                })
+                .collect();
+            let context = text_attachments.join("\n");
+
+            let request_prompt_result_with_context =
+                format!("{}\n{}", request_prompt_result, context);
+            // 添加用户消息
+            let _ = add_message(
+                app_handle,
+                None,
+                conversation_id,
+                "user".to_string(),
+                request_prompt_result_with_context.clone(),
+                Some(assistant_detail.model[0].id),
+                Some(assistant_detail.model[0].model_code.clone()),
+                None,
+                None,
+                0,
+            )?;
+            let mut updated_message_list = message_list;
+            updated_message_list.push((
+                String::from("user"),
+                request_prompt_result_with_context.clone(),
+                message_attachment_list,
+            ));
+
+            let add_assistant_message = add_message(
+                app_handle,
+                None,
+                conversation_id,
+                "assistant".to_string(),
+                String::new(),
+                Some(assistant_detail.model[0].id),
+                Some(assistant_detail.model[0].model_code.clone()),
+                None,
+                None,
+                0,
+            )?;
+            (
+                conversation_id,
+                Some(add_assistant_message.id),
+                request_prompt_result_with_context,
+                updated_message_list,
+            )
+        };
+    Ok((
+        conversation_id,
+        add_message_id,
+        request_prompt_result_with_context,
+        init_message_list,
+    ))
 }
 
 async fn generate_title(

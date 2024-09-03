@@ -142,7 +142,6 @@ const MessageItem = React.memo(
                                 const match = /lang-(\w+)/.exec(
                                     className || "",
                                 );
-                                console.log(className, props);
                                 return match ? (
                                     <CodeBlock
                                         language={match[1]}

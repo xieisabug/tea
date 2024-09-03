@@ -40,6 +40,7 @@ interface ConversationUIProps {
 interface AiResponse {
     conversation_id: number;
     add_message_id: number;
+    request_prompt_result_with_context: string;
 }
 
 function ConversationUI({
@@ -207,6 +208,20 @@ function ConversationUI({
 
                     setMessageId(res.add_message_id);
 
+                    setMessages((prevMessages) => {
+                        const newMessages = [...prevMessages];
+                        const index = prevMessages.findIndex(
+                            (msg) => msg == userMessage,
+                        );
+                        if (index !== -1) {
+                            newMessages[index] = {
+                                ...newMessages[index],
+                                content: res.request_prompt_result_with_context,
+                            };
+                        }
+                        return newMessages;
+                    });
+
                     if (conversationId != res.conversation_id + "") {
                         onChangeConversationId(res.conversation_id + "");
                     } else {
@@ -262,9 +277,9 @@ function ConversationUI({
                     );
                 });
             } catch (error) {
-                emit('chat-window-alert-dialog', {
-                    text: '发送消息失败: ' + error,
-                    type: 'error'
+                emit("chat-window-alert-dialog", {
+                    text: "发送消息失败: " + error,
+                    type: "error",
                 });
                 console.error("Error:", error);
             }
@@ -294,15 +309,17 @@ function ConversationUI({
     const [selectedAssistant, setSelectedAssistant] = useState(-1);
 
     const handleArtifact = useCallback((lang: string, inputStr: string) => {
-        invoke("run_artifacts", { lang, inputStr }).then((res) => {
-            console.log(res);
-        }).catch((error) => {
-            emit('chat-window-alert-dialog', {
-                text: '运行失败: ' + JSON.stringify(error),
-                type: 'error'
+        invoke("run_artifacts", { lang, inputStr })
+            .then((res) => {
+                console.log(res);
+            })
+            .catch((error) => {
+                emit("chat-window-alert-dialog", {
+                    text: "运行失败: " + JSON.stringify(error),
+                    type: "error",
+                });
+                console.error("artifact run error:", error);
             });
-            console.error("artifact run error:", error);
-        });
     }, []);
 
     const [fileInfoList, setFileInfoList] = useState<Array<FileInfo> | null>(
@@ -323,7 +340,8 @@ function ConversationUI({
                 const contents = await readBinaryFile(path);
 
                 // 如果是图片, 创建缩略图
-                let thumbnail, type = AttachmentType.Text;
+                let thumbnail,
+                    type = AttachmentType.Text;
                 if (name.match(/\.(jpg|jpeg|png|gif)$/)) {
                     const blob = new Blob([contents]);
                     thumbnail = URL.createObjectURL(blob);
@@ -336,23 +354,25 @@ function ConversationUI({
                 // 调用Rust函数处理文件
                 invoke<AddAttachmentResponse>("add_attachment", {
                     fileUrl: path,
-                }).then((res) => {
-                    newFile.id = res.attachment_id;
-                }).catch((error) => {
-                    emit('chat-window-alert-dialog', {
-                        text: '文件上传失败: ' + JSON.stringify(error),
-                        type: 'error'
+                })
+                    .then((res) => {
+                        newFile.id = res.attachment_id;
+                    })
+                    .catch((error) => {
+                        emit("chat-window-alert-dialog", {
+                            text: "文件上传失败: " + JSON.stringify(error),
+                            type: "error",
+                        });
+                        console.error(
+                            `Error uploading file: ${newFile.name}`,
+                            error,
+                        );
                     });
-                    console.error(
-                        `Error uploading file: ${newFile.name}`,
-                        error,
-                    );
-                });
             }
         } catch (error) {
-            emit('chat-window-alert-dialog', {
-                text: '文件选择失败: ' + error,
-                type: 'error'
+            emit("chat-window-alert-dialog", {
+                text: "文件选择失败: " + error,
+                type: "error",
             });
             console.error("Error selecting file:", error);
         }
@@ -365,9 +385,9 @@ function ConversationUI({
     }, []);
 
     const getAttachmentType = useCallback((fileType: string) => {
-        if (fileType.startsWith('image/')) {
+        if (fileType.startsWith("image/")) {
             return AttachmentType.Image;
-        } else if (fileType === 'text/plain') {
+        } else if (fileType === "text/plain") {
             return AttachmentType.Text;
         } else {
             return AttachmentType.Text;
@@ -410,9 +430,9 @@ function ConversationUI({
                         );
                         reject(error);
                     };
-                    if (file.type.startsWith('image/')) {
+                    if (file.type.startsWith("image/")) {
                         reader.readAsDataURL(file);
-                    } else if (file.type === 'text/plain') {
+                    } else if (file.type === "text/plain") {
                         reader.readAsText(file);
                     } else {
                         reader.readAsArrayBuffer(file);
@@ -441,9 +461,9 @@ function ConversationUI({
                             );
                         })
                         .catch((error) => {
-                            emit('chat-window-alert-dialog', {
-                                text: '文件上传失败: ' + error,
-                                type: 'error'
+                            emit("chat-window-alert-dialog", {
+                                text: "文件上传失败: " + error,
+                                type: "error",
                             });
                             console.error(
                                 `Error uploading file: ${fileInfo.name}`,
@@ -453,9 +473,9 @@ function ConversationUI({
                 });
             })
             .catch((error) => {
-                emit('chat-window-alert-dialog', {
-                    text: '文件选择失败: ' + error,
-                    type: 'error'
+                emit("chat-window-alert-dialog", {
+                    text: "文件选择失败: " + error,
+                    type: "error",
                 });
                 console.error("Error processing files:", error);
             });
@@ -559,7 +579,9 @@ function ConversationUI({
                                                 msg.id === res.add_message_id,
                                         ) || -1;
                                     if (regenerateIndex !== -1) {
-                                        const newRegenerate = [...newMessages[index].regenerate!];
+                                        const newRegenerate = [
+                                            ...newMessages[index].regenerate!,
+                                        ];
                                         newRegenerate[regenerateIndex] = {
                                             ...newRegenerate[regenerateIndex],
                                             content: payload,
