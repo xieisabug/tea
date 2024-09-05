@@ -12,6 +12,7 @@ dependencies = [
  "config",
  "futures",
  "get-selected-text",
+ "hex",
  "macos-accessibility-client",
  "mime_guess",
  "regex",

@@ -84,6 +84,7 @@ pub struct MessageAttachment {
     pub attachment_type: AttachmentType,
     pub attachment_url: Option<String>,
     pub attachment_content: Option<String>,
+    pub attachment_hash: Option<String>,
     pub use_vector: bool,
     pub token_count: Option<i32>,
 }
@@ -241,6 +242,7 @@ impl MessageRepository {
                     attachment_type: attachment_type.unwrap(),
                     attachment_url: row.get(12)?,
                     attachment_content: row.get(13)?,
+                    attachment_hash: None,
                     use_vector: row.get(14)?,
                     token_count: row.get(15)?,
                 })
@@ -371,19 +373,42 @@ impl MessageAttachmentRepository {
                 attachment_type,
                 attachment_url: row.get(3)?,
                 attachment_content: row.get(4)?,
+                attachment_hash: None,
                 use_vector: row.get(5)?,
                 token_count: row.get(6)?,
             })
         })?;
         rows.collect()
     }
+
+    pub fn read_by_attachment_hash(
+        &self,
+        attachment_hash: &str,
+    ) -> Result<Option<MessageAttachment>> {
+        self.conn
+            .query_row("SELECT id, message_id, attachment_type, attachment_url, attachment_content, use_vector, token_count FROM message_attachment WHERE attachment_hash = ?", &[&attachment_hash], |row| {
+                let attachment_type_int: i64 = row.get(2)?;
+                let attachment_type = AttachmentType::try_from(attachment_type_int)?;
+                Ok(MessageAttachment {
+                    id: row.get(0)?,
+                    message_id: row.get(1)?,
+                    attachment_type,
+                    attachment_url: row.get(3)?,
+                    attachment_content: row.get(4)?,
+                    attachment_hash: None,
+                    use_vector: row.get(5)?,
+                    token_count: row.get(6)?,
+                })
+            })
+            .optional()
+    }
 }
 
 impl Repository<MessageAttachment> for MessageAttachmentRepository {
     fn create(&self, attachment: &MessageAttachment) -> Result<MessageAttachment> {
         self.conn.execute(
-            "INSERT INTO message_attachment (message_id, attachment_type, attachment_url, attachment_content, use_vector, token_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            (&attachment.message_id, &(attachment.attachment_type as i64), &attachment.attachment_url, &attachment.attachment_content, &attachment.use_vector, &attachment.token_count),
+            "INSERT INTO message_attachment (message_id, attachment_type, attachment_url, attachment_content, attachment_hash, use_vector, token_count) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            (&attachment.message_id, &(attachment.attachment_type as i64), &attachment.attachment_url, &attachment.attachment_content, &attachment.attachment_hash, &attachment.use_vector, &attachment.token_count),
         )?;
         let id = self.conn.last_insert_rowid();
         Ok(MessageAttachment {
@@ -392,6 +417,7 @@ impl Repository<MessageAttachment> for MessageAttachmentRepository {
             attachment_type: attachment.attachment_type,
             attachment_url: attachment.attachment_url.clone(),
             attachment_content: attachment.attachment_content.clone(),
+            attachment_hash: None,
             use_vector: attachment.use_vector,
             token_count: attachment.token_count,
         })
@@ -411,6 +437,7 @@ impl Repository<MessageAttachment> for MessageAttachmentRepository {
                         attachment_type,
                         attachment_url: row.get(3)?,
                         attachment_content: row.get(4)?,
+                        attachment_hash: None,
                         use_vector: row.get(5)?,
                         token_count: row.get(6)?,
                     })
@@ -497,6 +524,7 @@ impl ConversationDatabase {
                 attachment_type INTEGER NOT NULL,
                 attachment_url TEXT,
                 attachment_content TEXT,
+                attachment_hash TEXT,
                 use_vector BOOLEAN NOT NULL DEFAULT 0,
                 token_count INTEGER
             )",

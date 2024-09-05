@@ -1,11 +1,12 @@
 use crate::db::conversation_db::{AttachmentType, Repository};
 use anyhow::{anyhow, Result};
 use base64::encode;
+use mime_guess::from_path;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use mime_guess::from_path;
 
 use crate::{
     db::conversation_db::{ConversationDatabase, MessageAttachment},
@@ -31,9 +32,7 @@ pub async fn add_attachment(
     }
 
     // 3. 解析文件类型
-    let file_type = from_path(&file_path)
-        .first_or_octet_stream()
-        .to_string();
+    let file_type = from_path(&file_path).first_or_octet_stream().to_string();
     let mut file_type_classify = String::new();
 
     println!("检测到的文件类型: {}", file_type);
@@ -79,44 +78,69 @@ pub async fn add_attachment(
         }
     };
 
-    // 5. 保存到数据库
-    // todo: 添加数据库配置和 CRUD 操作
-    let attachment_id = match file_type_classify.as_str() {
-        "image" => {
-            // 使用 BufReader 读取图片文件
-            let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
-                id: 0,
-                message_id: -1,
-                attachment_type: AttachmentType::Image,
-                attachment_url: Some(file_url),
-                attachment_content: Some(reader),
-                use_vector: false,
-                token_count: Some(0),
-            })?;
-            message_attachment.id
-        }
-        "text" => {
-            // 使用 BufReader 读取图片文件
-            let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
-                id: 0,
-                message_id: -1,
-                attachment_type: AttachmentType::Text,
-                attachment_url: Some(file_url),
-                attachment_content: Some(reader),
-                use_vector: false,
-                token_count: Some(0),
-            })?;
-            message_attachment.id
-        }
-        _ => {
-            return Err(AppError::Anyhow(
-                anyhow!("Unsupported file type").to_string(),
-            ))
-        }
-    };
+    let mut hasher = Sha256::new();
+    hasher.update(reader.as_bytes());
+    let hash_str = hex::encode(hasher.finalize());
 
-    // 6. 返回到前端 attachment_id，等待之后的 message 创建和更新
-    Ok(AttachmentResult { attachment_id })
+    println!("file hash: {}", hash_str);
+
+    // 去数据库根据sha256的数据查看是否有相同的attachment
+    let option_attachment = db
+        .attachment_repo()
+        .unwrap()
+        .read_by_attachment_hash(hash_str.as_str())?;
+    match option_attachment {
+        Some(attachment) => {
+            println!("add_attachment 找到相同的sha256: {}", attachment.id);
+            return Ok(AttachmentResult {
+                attachment_id: attachment.id,
+            });
+        }
+        None => {
+            // 5. 保存到数据库
+            // todo: 添加数据库配置和 CRUD 操作
+            let attachment_id = match file_type_classify.as_str() {
+                "image" => {
+                    // 使用 BufReader 读取图片文件
+                    let message_attachment =
+                        db.attachment_repo().unwrap().create(&MessageAttachment {
+                            id: 0,
+                            message_id: -1,
+                            attachment_type: AttachmentType::Image,
+                            attachment_url: Some(file_url),
+                            attachment_content: Some(reader),
+                            attachment_hash: Some(hash_str),
+                            use_vector: false,
+                            token_count: Some(0),
+                        })?;
+                    message_attachment.id
+                }
+                "text" => {
+                    // 使用 BufReader 读取图片文件
+                    let message_attachment =
+                        db.attachment_repo().unwrap().create(&MessageAttachment {
+                            id: 0,
+                            message_id: -1,
+                            attachment_type: AttachmentType::Text,
+                            attachment_url: Some(file_url),
+                            attachment_content: Some(reader),
+                            attachment_hash: Some(hash_str),
+                            use_vector: false,
+                            token_count: Some(0),
+                        })?;
+                    message_attachment.id
+                }
+                _ => {
+                    return Err(AppError::Anyhow(
+                        anyhow!("Unsupported file type").to_string(),
+                    ))
+                }
+            };
+
+            // 6. 返回到前端 attachment_id，等待之后的 message 创建和更新
+            Ok(AttachmentResult { attachment_id })
+        }
+    }
 }
 
 #[tauri::command]
@@ -129,20 +153,43 @@ pub async fn add_attachment_content(
     println!("add_attachment_content file_name: {}", file_name);
     let db = ConversationDatabase::new(&app_handle).map_err(AppError::from)?;
 
-    let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
-        id: 0,
-        message_id: -1,
-        attachment_type: AttachmentType::try_from(attachment_type).unwrap(),
-        attachment_url: Some(file_name),
-        attachment_content: Some(file_content),
-        use_vector: false,
-        token_count: Some(0),
-    });
-    let attachment_id = match message_attachment {
-        Ok(t) => t.id,
-        Err(e) => return Err(AppError::from(e)),
-    };
-    Ok(AttachmentResult { attachment_id })
+    let mut hasher = Sha256::new();
+    hasher.update(file_content.clone());
+    let hash_str = hex::encode(hasher.finalize());
+
+    println!("file hash: {}", hash_str);
+
+    // 去数据库根据sha256的数据查看是否有相同的attachment
+    let option_attachment = db
+        .attachment_repo()
+        .unwrap()
+        .read_by_attachment_hash(hash_str.as_str())?;
+
+    match option_attachment {
+        Some(attachment) => {
+            println!("add_attachment_content 找到相同的sha256: {}", attachment.id);
+            return Ok(AttachmentResult {
+                attachment_id: attachment.id,
+            });
+        }
+        None => {
+            let message_attachment = db.attachment_repo().unwrap().create(&MessageAttachment {
+                id: 0,
+                message_id: -1,
+                attachment_type: AttachmentType::try_from(attachment_type).unwrap(),
+                attachment_url: Some(file_name),
+                attachment_content: Some(file_content),
+                attachment_hash: Some(hash_str),
+                use_vector: false,
+                token_count: Some(0),
+            });
+            let attachment_id = match message_attachment {
+                Ok(t) => t.id,
+                Err(e) => return Err(AppError::from(e)),
+            };
+            Ok(AttachmentResult { attachment_id })
+        }
+    }
 }
 
 fn read_image_as_base64(file_path: &str) -> Result<String> {
