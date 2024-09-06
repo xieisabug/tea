@@ -132,9 +132,9 @@ function ConversationUI({
 
     useEffect(() => {
         const unsubscribe = listen("title_change", (event) => {
-            const [conversationId, title] = event.payload as [string, string];
+            const [conversationId, title] = event.payload as [number, string];
 
-            if (conversation && conversation.id.toString() === conversationId) {
+            if (conversation && conversation.id === conversationId) {
                 const newConversation = { ...conversation, name: title };
                 setConversation(newConversation);
             }
