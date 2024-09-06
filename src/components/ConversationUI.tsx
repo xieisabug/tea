@@ -572,7 +572,6 @@ function ConversationUI({
                     `message_${res.add_message_id}`,
                     (event) => {
                         const payload = event.payload as string;
-                        console.log(payload);
                         if (payload !== "Tea::Event::MessageFinish") {
                             // 更新messages的最后一个对象
                             setMessages((prevMessages) => {
@@ -580,6 +579,7 @@ function ConversationUI({
                                 const index = newMessages.findIndex(
                                     (msg) => msg.id === regenerateMessageId,
                                 );
+
                                 if (index !== -1) {
                                     const regenerateIndex =
                                         newMessages[
@@ -587,10 +587,12 @@ function ConversationUI({
                                         ].regenerate?.findIndex(
                                             (msg) =>
                                                 msg.id === res.add_message_id,
-                                        ) || -1;
+                                        ) ?? -1;
+
                                     if (regenerateIndex !== -1) {
                                         const newRegenerate = [
-                                            ...newMessages[index].regenerate!,
+                                            ...(newMessages[index].regenerate ??
+                                                []),
                                         ];
                                         newRegenerate[regenerateIndex] = {
                                             ...newRegenerate[regenerateIndex],
