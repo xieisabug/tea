@@ -1,18 +1,15 @@
 import React from "react";
 
 interface MessageFileAttachmentProps {
-    content?: string;
+    title: string;
     name: string;
 }
 
 const MessageFileAttachment: React.FC<MessageFileAttachmentProps> = (props) => {
-    const { content, name } = props;
+    const { title, name } = props;
 
     return (
-        <div
-            className="message-file-attachment"
-            title={content?.substring(0, 20)}
-        >
+        <div className="message-file-attachment" title={title}>
             <span>文件名称：{name}</span>
         </div>
     );

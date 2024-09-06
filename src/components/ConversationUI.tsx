@@ -548,7 +548,17 @@ function ConversationUI({
                         if (!newMessages[index].regenerate) {
                             newMessages[index].regenerate = [];
                         }
-                        newMessages[index].regenerate.push(assistantMessage);
+
+                        // 检查regenerate里是否存在对应的assistantMessage
+                        if (
+                            newMessages[index].regenerate.findIndex(
+                                (msg) => msg.id === res.add_message_id,
+                            ) === -1
+                        ) {
+                            newMessages[index].regenerate.push(
+                                assistantMessage,
+                            );
+                        }
                     }
                     return newMessages;
                 });

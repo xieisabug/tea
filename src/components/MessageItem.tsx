@@ -49,12 +49,17 @@ const MessageItem = React.memo(
 
         // 处理message content变化
         useEffect(() => {
+            let index =
+                message.regenerate?.length > 0
+                    ? message.regenerate.length + 1
+                    : -1;
+            setCurrentMessageIndex(index);
             if (message.regenerate?.length > 0) {
-                if (currentMessageIndex === 1) {
+                if (index === 1) {
                     setCurrentMessageContent(message.content);
                 } else {
                     setCurrentMessageContent(
-                        message.regenerate[currentMessageIndex - 2].content,
+                        message.regenerate[index - 2].content,
                     );
                 }
             } else {
@@ -98,7 +103,7 @@ const MessageItem = React.memo(
 
             let match;
             while ((match = regex.exec(markdown)) !== null) {
-                const replacement = `\n<fileattachment ${match[1]} />`;
+                const replacement = `\n<fileattachment ${match[1]}></fileattachment>\n`;
                 result = result.replace(match[0], replacement);
             }
 
