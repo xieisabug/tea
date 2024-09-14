@@ -47,11 +47,42 @@ function ConversationUI({
     conversationId,
     onChangeConversationId,
 }: ConversationUIProps) {
+    // 是否应用滚动，默认是
+    const [isUserScrolling, setIsUserScrolling] = useState(true);
     const scroll = throttle(() => {
-        if (messagesEndRef.current) {
+        if (!isUserScrolling && messagesEndRef.current) {
             messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
         }
     }, 300);
+    useEffect(() => {
+        let lastScrollTop = 0;
+
+        const handleScroll = () => {
+            if (messagesEndRef.current) {
+                const { scrollTop, scrollHeight, clientHeight } =
+                    messagesEndRef.current.parentElement!;
+                const isScrollingUp = scrollTop < lastScrollTop;
+
+                if (isScrollingUp) {
+                    setIsUserScrolling(true);
+                }
+
+                const isAtBottom = scrollHeight - scrollTop === clientHeight;
+                if (isAtBottom) {
+                    setIsUserScrolling(false);
+                }
+
+                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile or negative scrolling
+            }
+        };
+
+        const messagesContainer = messagesEndRef.current?.parentElement;
+        messagesContainer?.addEventListener("scroll", handleScroll);
+
+        return () => {
+            messagesContainer?.removeEventListener("scroll", handleScroll);
+        };
+    }, []);
 
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
