@@ -55,7 +55,8 @@
           "domain": "preview.teafakedomain.com",
           "windows": ["preview_react"]
         }
-      ]
+      ],
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; connect-src 'self' http://localhost:8097"
     },
     "systemTray": {
       "iconPath": "icons/icon.png",

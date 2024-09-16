@@ -332,11 +332,6 @@ function ConversationUI({
         }
     };
 
-    const filteredMessages = useMemo(
-        () => messages.filter((m) => m.message_type !== "system"),
-        [messages],
-    );
-
     const [selectedAssistant, setSelectedAssistant] = useState(-1);
 
     const handleArtifact = useCallback((lang: string, inputStr: string) => {
@@ -352,6 +347,18 @@ function ConversationUI({
                 console.error("artifact run error:", error);
             });
     }, []);
+
+    const filteredMessages = useMemo(
+        () => messages.filter((m) => m.message_type !== "system").map((message) => (
+            <MessageItem
+                key={message.id} // 使用唯一的 id 作为 key，而不是索引
+                message={message}
+                onCodeRun={handleArtifact}
+                onMessageRegenerate={() => handleMessageRegenerate(message.id)}
+            />
+        )),
+        [messages],
+    );
 
     const [fileInfoList, setFileInfoList] = useState<Array<FileInfo> | null>(
         null,
@@ -659,16 +666,7 @@ function ConversationUI({
 
             <div className="messages">
                 {conversationId ? (
-                    filteredMessages.map((message, index) => (
-                        <MessageItem
-                            key={index}
-                            message={message}
-                            onCodeRun={handleArtifact}
-                            onMessageRegenerate={() =>
-                                handleMessageRegenerate(message.id)
-                            }
-                        />
-                    ))
+                    filteredMessages
                 ) : (
                     <NewChatComponent
                         selectedAssistant={selectedAssistant}
