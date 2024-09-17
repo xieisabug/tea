@@ -330,29 +330,44 @@
     max-width: 100px;
 }
 
-.input-area-textarea {
-    height: 55px;
+.input-area-textarea-container {
+    min-height: 55px;
+    max-height: 40vh; /* 约为10行文本的高度 */
     left: 100px;
     right: 170px;
-    resize: none;
-    overflow: auto;
+    overflow: hidden;
     position: absolute;
-    font-size: 16px;
-    padding: 15px 50px 10px 20px;
     box-sizing: border-box;
     border-radius: 28px;
+    padding: 0 50px 0 20px;
     border: 2px solid var(--main-color);
     bottom: 30px;
     opacity: 0.4;
+    background-color: white;
+    transition: height 0.2s;
 }
-.input-area-textarea:focus {
+
+.input-area-textarea {
+    padding: 15px 5px 10px 5px;
+    border: 0;
+    box-sizing: border-box;
+    font-size: 16px;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+    width: 100%;
+    height: 55px;
+}
+
+.input-area-textarea-container:focus-within {
     outline: none;
     box-shadow: none;
     box-shadow: 0px 2px 4px rgba(17, 133, 83, 0.25);
     border: 1px solid var(--main-color);
     opacity: 1;
 }
-.input-area-textarea:hover {
+
+.input-area-textarea-container:hover {
     opacity: 1;
 }
 
