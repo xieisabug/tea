@@ -60,7 +60,7 @@ impl AssistantDatabase {
         Ok(AssistantDatabase { conn })
     }
 
-    pub fn create_table(&self) -> rusqlite::Result<()> {
+    pub fn create_tables(&self) -> rusqlite::Result<()> {
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS assistant (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

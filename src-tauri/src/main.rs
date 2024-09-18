@@ -37,6 +37,7 @@ use crate::window::{create_ask_window, open_chat_ui_window, open_config_window};
 use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
+use db::plugin_db::PluginDatabase;
 use db::system_db::FeatureConfig;
 use get_selected_text::get_selected_text;
 use serde::{Deserialize, Serialize};
@@ -157,10 +158,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let llm_db = LLMDatabase::new(&app_handle)?;
             let assistant_db = AssistantDatabase::new(&app_handle)?;
             let conversation_db = ConversationDatabase::new(&app_handle)?;
-            system_db.create_table()?;
-            llm_db.create_table()?;
-            assistant_db.create_table()?;
-            conversation_db.create_table()?;
+            let plugin_db = PluginDatabase::new(&app_handle)?;
+            system_db.create_tables()?;
+            llm_db.create_tables()?;
+            assistant_db.create_tables()?;
+            conversation_db.create_tables()?;
+            plugin_db.create_tables()?;
 
             let _ = database_upgrade(
                 &app_handle,

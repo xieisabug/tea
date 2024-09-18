@@ -489,7 +489,7 @@ impl ConversationDatabase {
         Ok(MessageAttachmentRepository::new(conn))
     }
 
-    pub fn create_table(&self) -> rusqlite::Result<()> {
+    pub fn create_tables(&self) -> rusqlite::Result<()> {
         let conn = Connection::open(self.db_path.clone()).unwrap();
 
         conn.execute(

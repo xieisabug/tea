@@ -24,7 +24,7 @@ impl SystemDatabase {
         Ok(SystemDatabase { conn })
     }
 
-    pub fn create_table(&self) -> Result<()> {
+    pub fn create_tables(&self) -> Result<()> {
 
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS system_config (
