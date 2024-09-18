@@ -34,6 +34,7 @@ use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::SystemDatabase;
 use crate::window::{create_ask_window, open_chat_ui_window, open_config_window};
+use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::system_db::FeatureConfig;
@@ -236,10 +237,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app_handle
                 .global_shortcut_manager()
                 .register("CmdOrCtrl+Shift+I", move || {
-                    println!("CmdOrCtrl+Shift+I pressed");
+                    println!(
+                        "CmdOrCtrl+Shift+I pressed at time : {}",
+                        &Local::now().to_string()
+                    );
 
                     let text = get_selected_text().unwrap_or_default();
-                    println!("Selected text: {}", text);
+                    println!(
+                        "Selected text: {}, at time: {}",
+                        text,
+                        &Local::now().to_string()
+                    );
 
                     let app_state = app_handle.state::<AppState>();
                     *app_state.selected_text.blocking_lock() = text;
@@ -249,11 +257,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     match (ask_window, chat_ui_window) {
                         (None, _) => {
-                            println!("Creating ask window");
+                            println!(
+                                "Creating ask window, at time: {}",
+                                &Local::now().to_string()
+                            );
                             create_ask_window(&app_handle);
                         }
                         (Some(window), _) => {
-                            println!("Focusing ask window");
+                            println!(
+                                "Focusing ask window, at time: {}",
+                                &Local::now().to_string()
+                            );
                             if window.is_minimized().unwrap_or(false) {
                                 window.unminimize().unwrap();
                             }

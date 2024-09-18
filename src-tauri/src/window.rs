@@ -102,7 +102,7 @@ pub async fn open_chat_ui_window(app_handle: AppHandle) -> Result<(), String> {
         println!("Creating window");
 
         create_chat_ui_window(&app_handle);
-        app_handle.get_window("ask").unwrap().close().unwrap();
+        app_handle.get_window("ask").unwrap().hide().unwrap();
     } else if let Some(window) = app_handle.get_window("config") {
         println!("Showing window");
         if window.is_minimized().unwrap_or(false) {
@@ -110,7 +110,7 @@ pub async fn open_chat_ui_window(app_handle: AppHandle) -> Result<(), String> {
         }
         window.show().unwrap();
         window.set_focus().unwrap();
-        app_handle.get_window("ask").unwrap().close().unwrap();
+        app_handle.get_window("ask").unwrap().hide().unwrap();
     }
     Ok(())
 }

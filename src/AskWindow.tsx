@@ -112,10 +112,10 @@ function AskWindow() {
         const handleShortcut = async (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 console.log("Closing window");
-                await appWindow.close();
+                await appWindow.hide();
             } else if (event.key === "i" && event.ctrlKey) {
                 await openChatUI();
-                await appWindow.close();
+                await appWindow.hide();
             }
         };
 
