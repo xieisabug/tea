@@ -30,6 +30,7 @@ hex = "0.4.3"
 anyhow = "1.0"
 base64 = "0.13.0"
 mime_guess = "2.0"
+open = "3.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 macos-accessibility-client = "0.0.1"

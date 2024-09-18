@@ -16,7 +16,8 @@ interface ConfigField {
     | "checkbox"
     | "radio"
     | "static"
-    | "custom";
+    | "custom"
+    | "button"; // 添加 "button" 类型
   label: string;
   options?: { value: string; label: string; tooltip?: string }[];
   value: string | boolean;
@@ -24,6 +25,7 @@ interface ConfigField {
   onChange?: (value: string | boolean) => void;
   onBlur?: (value: string | boolean) => void;
   customRender?: () => React.ReactNode;
+  onClick?: () => void; // 为按钮添加 onClick 处理函数
 }
 
 interface ConfigFormProps {
@@ -171,6 +173,12 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
         return <span>{field.value}</span>;
       case "custom":
         return field.customRender ? field.customRender() : null;
+      case "button":
+        return (
+          <RoundButton primary text={field.value as string} onClick={() => {
+            field.onClick && field.onClick();
+          }} />
+        );
       default:
         return null;
     }

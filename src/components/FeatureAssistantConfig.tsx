@@ -164,6 +164,32 @@ const FeatureAssistantConfig: React.FC = () => {
         },
     };
 
+    const handleOpenDataFolder = () => {
+        invoke("open_data_folder");
+    };
+
+    const handleSyncData = () => {
+        emit('config-window-alert-dialog', {
+            text: '暂未实现，敬请期待',
+            type: 'info'
+        });
+    };
+
+    const dataFolderConfig = {
+        openDataFolder: {
+            type: "button" as const,
+            label: "数据文件夹",
+            value: "打开",
+            onClick: handleOpenDataFolder,
+        },
+        syncData: {
+            type: "button" as const,
+            label: "远程数据",
+            value: "同步",
+            onClick: handleSyncData,
+        },
+    };
+
     return (
         <div className="feature-assistant-editor">
             <ConfigForm
@@ -185,6 +211,15 @@ const FeatureAssistantConfig: React.FC = () => {
                 layout="default"
                 classNames="bottom-space"
                 onSave={() => handleSave("preview")}
+            />
+
+            <ConfigForm
+                title="数据目录"
+                description="管理和同步数据文件夹"
+                enableExpand={true}
+                config={dataFolderConfig}
+                layout="default"
+                classNames="bottom-space"
             />
         </div>
     );

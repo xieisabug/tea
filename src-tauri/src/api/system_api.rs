@@ -49,3 +49,13 @@ pub async fn save_feature_config(app_handle: tauri::AppHandle, state: State<'_, 
     }
     Ok(())
 }
+
+#[tauri::command]
+pub async fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
+    let app_dir = app.path_resolver().app_data_dir().unwrap();
+    let db_path = app_dir.join("db");
+    if let Err(e) = open::that(db_path) {
+        return Err(format!("无法打开数据文件夹: {}", e));
+    }
+    Ok(())
+}

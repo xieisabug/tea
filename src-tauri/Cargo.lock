@@ -15,6 +15,7 @@ dependencies = [
  "hex",
  "macos-accessibility-client",
  "mime_guess",
+ "open",
  "regex",
  "reqwest",
  "rusqlite",

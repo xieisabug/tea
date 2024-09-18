@@ -29,7 +29,7 @@ use crate::api::llm_api::{
     get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select,
     update_llm_provider, update_llm_provider_config,
 };
-use crate::api::system_api::{get_all_feature_config, save_feature_config};
+use crate::api::system_api::{get_all_feature_config, save_feature_config, open_data_folder};
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::SystemDatabase;
@@ -201,6 +201,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_config,
             get_all_feature_config,
             save_feature_config,
+            open_data_folder,
             get_llm_providers,
             update_llm_provider,
             add_llm_provider,
