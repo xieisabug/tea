@@ -11,6 +11,7 @@ pub mod assistant_db;
 pub mod conversation_db;
 pub mod llm_db;
 pub mod system_db;
+pub mod plugin_db;
 
 const CURRENT_VERSION: &str = "0.0.2";
 
