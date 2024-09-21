@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use chrono::Local; // 需要在Cargo.toml中添加 `chrono` 依赖
 use regex::Regex; // 需要在Cargo.toml中添加 `regex` 依赖
+use reqwest; // 需要在 Cargo.toml 中添加 `reqwest` 依赖
+use htmd; // 需要在 Cargo.toml 中添加 `html2md` 依赖
 
 // 定义命令处理函数类型
 type CommandFn = fn(&TemplateEngine, &str, &HashMap<String, String>) -> String;
@@ -36,6 +38,43 @@ fn selected_text(_: &TemplateEngine, _: &str, context: &HashMap<String, String>)
     context.get("selected_text").unwrap_or(&String::default()).to_string()
 }
 
+// 新增获取屏幕截图的函数（这里只是一个占位符，实际实现需要平台特定的代码）
+fn screen(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> String {
+    // 实际实现需要调用系统API或第三方库来获取屏幕截图
+    "Screenshot functionality not implemented yet".to_string()
+}
+
+// 新增获取网页内容的函数
+fn web(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -> String {
+    // 移除url中前后的括号
+    let url = url.trim_start_matches('(').trim_end_matches(')');
+
+    let client = reqwest::blocking::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
+    match client.get(url).send() {
+        Ok(response) => response.text().unwrap_or_else(|_| "Failed to get web content".to_string()),
+        Err(err) => err.to_string()
+    }
+}
+
+// 新增获取网页内容并转换为 Markdown 的函数
+fn web_to_markdown(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -> String {
+    // 移除url中前后的括号
+    let url = url.trim_start_matches('(').trim_end_matches(')');
+
+    let client = reqwest::blocking::Client::new();
+    match client.get(url).send() {
+        Ok(response) => {
+            let html = response.text().unwrap_or_default();
+            htmd::convert(&html).unwrap()
+        },
+        Err(_) => "".to_string(),
+    }
+}
+
 // 模板解析器结构体
 pub struct TemplateEngine {
     commands: HashMap<String, CommandFn>,
@@ -56,6 +95,15 @@ impl TemplateEngine {
         commands.insert("selected_text".to_string(), selected_text as CommandFn);
         commands.insert("s".to_string(), selected_text as CommandFn);
 
+        commands.insert("screen".to_string(), screen as CommandFn);
+        commands.insert("sc".to_string(), screen as CommandFn);
+
+        commands.insert("web".to_string(), web as CommandFn);
+        commands.insert("w".to_string(), web as CommandFn);
+
+        commands.insert("web_to_markdown".to_string(), web_to_markdown as CommandFn);
+        commands.insert("wm".to_string(), web_to_markdown as CommandFn);
+
         TemplateEngine { commands }
     }
 
@@ -68,6 +116,7 @@ impl TemplateEngine {
     pub fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
         // !@\s*(\w+)(\([^)]*\))?@!
         let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
+        // let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         let mut result = template.to_string();
 
         for cap in re.captures_iter(template) {
