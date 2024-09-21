@@ -1,7 +1,6 @@
+![][image-banner]
+
 # Tea
-
-![Tea Logo](logo_url_here)
-
 Tea是一个AI时代 对话/日常工具/生产力 的 客户端/平台。
 
 ## 写在前面
@@ -45,3 +44,5 @@ Tea是一个AI时代 对话/日常工具/生产力 的 客户端/平台。
 本项目采用[APACHE许可证](LICENSE)。
 
 [![Star History Chart](https://api.star-history.com/svg?repos=xieisabug/tea&type=Date)](https://star-history.com/#xieisabug/tea&Date)
+
+[image-banner]: https://xieisabug.github.io/tea/tea-logo-with-background.png
