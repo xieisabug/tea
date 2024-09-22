@@ -29,7 +29,9 @@ use crate::api::llm_api::{
     get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select,
     update_llm_provider, update_llm_provider_config,
 };
-use crate::api::system_api::{get_all_feature_config, open_data_folder, save_feature_config};
+use crate::api::system_api::{
+    get_all_feature_config, get_bang_list, open_data_folder, save_feature_config,
+};
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::SystemDatabase;
@@ -228,7 +230,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_conversation_with_messages,
             delete_conversation,
             update_conversation,
-            run_artifacts
+            run_artifacts,
+            get_bang_list
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");

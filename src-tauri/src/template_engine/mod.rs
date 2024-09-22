@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use chrono::Local; // 需要在Cargo.toml中添加 `chrono` 依赖
 use regex::Regex; // 需要在Cargo.toml中添加 `regex` 依赖
 use reqwest; // 需要在 Cargo.toml 中添加 `reqwest` 依赖
-use htmd; // 需要在 Cargo.toml 中添加 `html2md` 依赖
+use htmd; // 需要在 Cargo.toml 中添加 `htmd` 依赖
+use screenshots::Screen; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
 
 // 定义命令处理函数类型
 type CommandFn = fn(&TemplateEngine, &str, &HashMap<String, String>) -> String;
@@ -38,10 +39,13 @@ fn selected_text(_: &TemplateEngine, _: &str, context: &HashMap<String, String>)
     context.get("selected_text").unwrap_or(&String::default()).to_string()
 }
 
-// 新增获取屏幕截图的函数（这里只是一个占位符，实际实现需要平台特定的代码）
+// 新增获取屏幕截图的函数
 fn screen(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> String {
-    // 实际实现需要调用系统API或第三方库来获取屏幕截图
-    "Screenshot functionality not implemented yet".to_string()
+    let screens = Screen::all().unwrap();
+    let screen = &screens[0];
+    let image = screen.capture().unwrap();
+    let buffer = image.to_png().unwrap();
+    format!("data:image/png;base64,{}", base64::encode(buffer))
 }
 
 // 新增获取网页内容的函数
@@ -69,7 +73,7 @@ fn web_to_markdown(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -
     match client.get(url).send() {
         Ok(response) => {
             let html = response.text().unwrap_or_default();
-            htmd::convert(&html).unwrap()
+            htmd::parse(&html)
         },
         Err(_) => "".to_string(),
     }
@@ -115,7 +119,7 @@ impl TemplateEngine {
     // 解析并替换模板字符串
     pub fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
         // !@\s*(\w+)(\([^)]*\))?@!
-        let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
+        let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         // let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         let mut result = template.to_string();
 
@@ -140,4 +144,4 @@ impl TemplateEngine {
 }
 
 #[cfg(test)]
-mod tests;
+mod tests

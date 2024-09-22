@@ -7,6 +7,7 @@ import Delete from "../../assets/delete.svg?react";
 import Text from "../../assets/text.svg?react";
 import { AttachmentType, FileInfo } from "../../data/Conversation";
 import IconButton from "../IconButton";
+import { invoke } from "@tauri-apps/api/tauri";
 
 const InputArea: React.FC<{
     inputText: string;
@@ -21,6 +22,8 @@ const InputArea: React.FC<{
 }> = React.memo(({ inputText, setInputText, handleKeyDown, fileInfoList, handleChooseFile, handlePaste, handleDeleteFile, handleSend, aiIsResponsing }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [initialHeight, setInitialHeight] = useState<number | null>(null);
+    const [bangListVisible, setBangListVisible] = useState<boolean>(false);
+    const [bangList, setBangList] = useState<string[]>([]);
 
     useEffect(() => {
         if (textareaRef.current && !initialHeight) {
@@ -28,6 +31,12 @@ const InputArea: React.FC<{
         }
         adjustTextareaHeight();
     }, [inputText, initialHeight]);
+
+    useEffect(() => {
+        invoke<string[]>("get_bang_list").then((bangList) => {
+            setBangList(bangList);
+        });
+    }, []);
 
     const adjustTextareaHeight = () => {
         const textarea = textareaRef.current;
@@ -42,6 +51,15 @@ const InputArea: React.FC<{
 
     const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInputText(e.target.value);
+    };
+
+    const handleKeyDownWithBang = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        handleKeyDown(e);
+        if (e.key === "!") {
+            setBangListVisible(true);
+        } else {
+            setBangListVisible(false);
+        }
     };
 
     return (
@@ -80,13 +98,24 @@ const InputArea: React.FC<{
                     rows={1}
                     value={inputText}
                     onChange={handleTextareaChange}
-                    onKeyDown={handleKeyDown}
+                    onKeyDown={handleKeyDownWithBang}
                     onPaste={handlePaste}
                 />
             </div>
             
             <CircleButton onClick={handleChooseFile} icon={<Add fill="black" />} className="input-area-add-button" />
             <CircleButton size="large" onClick={handleSend} icon={aiIsResponsing ? <Stop width={20} height={20} fill="white" /> : <UpArrow width={20} height={20} fill="white" />} primary className="input-area-send-button" />
+
+            {bangListVisible && (
+                <div className="bang-list">
+                    {bangList.map((bang) => (
+                        <div className="bang-container" key={bang}>
+                            <span className="bang-tag">{bang}</span>
+                            <span>插入{bang}命令</span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 });

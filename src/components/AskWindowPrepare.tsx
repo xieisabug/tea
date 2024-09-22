@@ -16,6 +16,18 @@ const AskWindowPrepare: React.FC = () => {
             <span className="bang-tag">!ct</span>
             <span data-tauri-drag-region>插入当前时间文字</span>
         </div>
+        <div className="bang-container" data-tauri-drag-region>
+            <span className="bang-tag">!sc</span>
+            <span data-tauri-drag-region>插入屏幕截图</span>
+        </div>
+        <div className="bang-container" data-tauri-drag-region>
+            <span className="bang-tag">!w(url)</span>
+            <span data-tauri-drag-region>插入网页内容</span>
+        </div>
+        <div className="bang-container" data-tauri-drag-region>
+            <span className="bang-tag">!wm(url)</span>
+            <span data-tauri-drag-region>插入网页内容并转换为Markdown</span>
+        </div>
     </div>
 </div>
 }
