@@ -13,6 +13,7 @@ mod template_engine;
 mod window;
 
 use std::collections::HashMap;
+use std::io::Cursor;
 use std::sync::Arc;
 
 use crate::api::ai_api::{ask_ai, cancel_ai, regenerate_ai};
@@ -47,9 +48,12 @@ use tauri::{
     SystemTrayMenu,
 };
 use tokio::sync::Mutex as TokioMutex;
+use screenshots::{image::ImageOutputFormat, Screen}; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
+use base64::{Engine as _, engine::general_purpose};
 
 struct AppState {
     selected_text: TokioMutex<String>,
+    screenshots: TokioMutex<String>
 }
 
 #[derive(Clone)]
@@ -107,6 +111,26 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
     Ok(Config {
         selected_text: selected_text.clone(),
     })
+}
+
+fn get_screenshot() -> Result<String, String> {
+    let screens = Screen::all().unwrap();
+    if let Some(screen) = screens.get(0) {
+        // 捕获整个屏幕
+        let image = screen.capture().unwrap();
+
+        // 将图像转换为PNG格式
+        let mut png_data = Vec::new();
+        let _ = image.write_to(&mut Cursor::new(&mut png_data), ImageOutputFormat::Png).unwrap();
+
+        // 将PNG数据转换为base64
+        let base64_image = general_purpose::STANDARD.encode(&png_data);
+
+        // 添加适当的data URI前缀
+        Ok(format!("data:image/png;base64,{}", base64_image))
+    } else {
+        Err("未获取到屏幕数据".to_string())
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -188,6 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .manage(AppState {
             selected_text: TokioMutex::new(String::new()),
+            screenshots: TokioMutex::new(String::new()),
         })
         .manage(MessageTokenManager::new())
         .invoke_handler(tauri::generate_handler![
@@ -254,8 +279,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &Local::now().to_string()
                     );
 
+                    let screenshots_data = get_screenshot().unwrap();
+
                     let app_state = app_handle.state::<AppState>();
                     *app_state.selected_text.blocking_lock() = text;
+                    *app_state.screenshots.blocking_lock() = screenshots_data;
 
                     let ask_window = app_handle.get_window("ask");
                     let chat_ui_window = app_handle.get_window("chat_ui");
