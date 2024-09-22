@@ -59,3 +59,16 @@ pub async fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_bang_list() -> Result<Vec<String>, String> {
+    let bang_list = vec![
+        "!s".to_string(),
+        "!cd".to_string(),
+        "!ct".to_string(),
+        "!sc".to_string(),
+        "!w".to_string(),
+        "!wm".to_string(),
+    ];
+    Ok(bang_list)
+}

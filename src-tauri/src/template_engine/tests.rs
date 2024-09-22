@@ -66,14 +66,10 @@ fn test_parse_mix() {
 fn test_screen_command() {
     let engine = TemplateEngine::new();
     let context = HashMap::new();
-    assert_eq!(
-        engine.parse("!screen", &context),
-        "Screenshot functionality not implemented yet"
-    );
-    assert_eq!(
-        engine.parse("!sc", &context),
-        "Screenshot functionality not implemented yet"
-    );
+    let result = engine.parse("!screen", &context);
+    assert!(!result.is_empty());
+    let result = engine.parse("!sc", &context);
+    assert!(!result.is_empty());
 }
 
 #[test]

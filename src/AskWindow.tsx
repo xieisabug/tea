@@ -36,6 +36,8 @@ function AskWindow() {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const [aiIsResponsing, setAiIsResponsing] = useState<boolean>(false);
     const [copySuccess, setCopySuccess] = useState<boolean>(false);
+    const [bangListVisible, setBangListVisible] = useState<boolean>(false);
+    const [bangList, setBangList] = useState<string[]>([]);
 
     let unsubscribe: Promise<() => void> | null = null;
 
@@ -49,6 +51,8 @@ function AskWindow() {
                 e.preventDefault();
                 handleSubmit();
             }
+        } else if (e.key === "!") {
+            setBangListVisible(true);
         }
     };
 
@@ -144,6 +148,12 @@ function AskWindow() {
     const handleArtifact = useCallback((lang: string, inputStr: string) => {
         invoke("run_artifacts", { lang, inputStr }).then((res) => {
             console.log(res);
+        });
+    }, []);
+
+    useEffect(() => {
+        invoke<string[]>("get_bang_list").then((bangList) => {
+            setBangList(bangList);
         });
     }, []);
 
@@ -264,6 +274,16 @@ function AskWindow() {
                         onClick={openConfig}
                     />
                 </div>
+                {bangListVisible && (
+                    <div className="bang-list">
+                        {bangList.map((bang) => (
+                            <div className="bang-container" key={bang}>
+                                <span className="bang-tag">{bang}</span>
+                                <span>插入{bang}命令</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
