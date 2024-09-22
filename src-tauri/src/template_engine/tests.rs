@@ -67,6 +67,7 @@ fn test_screen_command() {
     let engine = TemplateEngine::new();
     let context = HashMap::new();
     let result = engine.parse("!screen", &context);
+    println!("result |{}|", result);
     assert!(!result.is_empty());
     let result = engine.parse("!sc", &context);
     assert!(!result.is_empty());
