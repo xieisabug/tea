@@ -39,6 +39,12 @@ function AskWindow() {
     const [bangListVisible, setBangListVisible] = useState<boolean>(false);
     const [bangList, setBangList] = useState<string[]>([]);
 
+    const [cursorPosition, setCursorPosition] = useState<{
+        top: number;
+        left: number;
+    }>({ top: 0, left: 0 });
+    const [selectedBangIndex, setSelectedBangIndex] = useState<number>(0);
+
     let unsubscribe: Promise<() => void> | null = null;
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -46,15 +52,116 @@ function AskWindow() {
             if (e.shiftKey) {
                 // Shift + Enter for new line
                 return;
+            } else if (bangListVisible) {
+                // Select bang
+                e.preventDefault();
+                const selectedBang = bangList[selectedBangIndex];
+                setQuery((prevQuery) =>
+                    prevQuery.replace(/![^!]*$/, `!${selectedBang} `),
+                );
+                setBangListVisible(false);
             } else {
                 // Enter for submit
                 e.preventDefault();
                 handleSubmit();
             }
+        } else if (e.key === "ArrowUp" && bangListVisible) {
+            e.preventDefault();
+            setSelectedBangIndex((prevIndex) =>
+                prevIndex > 0 ? prevIndex - 1 : bangList.length - 1,
+            );
+        } else if (e.key === "ArrowDown" && bangListVisible) {
+            e.preventDefault();
+            setSelectedBangIndex((prevIndex) =>
+                prevIndex < bangList.length - 1 ? prevIndex + 1 : 0,
+            );
         } else if (e.key === "!") {
+            const textarea = e.currentTarget as HTMLTextAreaElement;
+            const cursorPosition = textarea.selectionStart;
+            console.log("cursorPosition", cursorPosition);
+            // 获取光标位置的坐标
+            const cursorCoords = getCaretCoordinates(textarea, cursorPosition);
+            console.log("cursorCoords", cursorCoords);
+
+            // 获取文本区域的位置信息
+            const rect = e.currentTarget.getBoundingClientRect();
+            // 计算bang列表的位置
+            const left = rect.left + cursorCoords.left + cursorCoords.width;
+            const top = rect.top + cursorCoords.top + cursorCoords.height;
+
+            setCursorPosition({ top, left });
             setBangListVisible(true);
+            setSelectedBangIndex(0);
+        } else if (!e.key.match(/[a-zA-Z0-9]/)) {
+            setBangListVisible(false);
         }
     };
+
+    // 辅助函数：获取光标坐标
+    function getCaretCoordinates(
+        element: HTMLTextAreaElement,
+        position: number,
+    ) {
+        const div = document.createElement("div");
+        const style = div.style;
+        const computed = window.getComputedStyle(element);
+
+        style.whiteSpace = "pre-wrap";
+        style.wordWrap = "break-word";
+        style.position = "absolute";
+        style.visibility = "hidden";
+
+        // 复制文本区域的样式
+        for (const prop of [
+            "direction",
+            "boxSizing",
+            "width",
+            "height",
+            "overflowX",
+            "overflowY",
+            "borderTopWidth",
+            "borderRightWidth",
+            "borderBottomWidth",
+            "borderLeftWidth",
+            "paddingTop",
+            "paddingRight",
+            "paddingBottom",
+            "paddingLeft",
+            "fontStyle",
+            "fontVariant",
+            "fontWeight",
+            "fontStretch",
+            "fontSize",
+            "fontSizeAdjust",
+            "lineHeight",
+            "fontFamily",
+            "textAlign",
+            "textTransform",
+            "textIndent",
+            "textDecoration",
+            "letterSpacing",
+            "wordSpacing",
+        ]) {
+            style[prop as any] = computed[prop as any];
+        }
+
+        // 计算光标位置
+        const text = element.value.substring(0, position);
+        const span = document.createElement("span");
+        span.textContent = text;
+        div.appendChild(span);
+
+        document.body.appendChild(div);
+        const coordinates = {
+            left: span.offsetLeft,
+            top: span.offsetTop,
+            height: span.offsetHeight,
+            width: span.offsetWidth,
+        };
+        document.body.removeChild(div);
+
+        return coordinates;
+    }
 
     const handleSubmit = () => {
         if (aiIsResponsing) {
@@ -136,6 +243,12 @@ function AskWindow() {
             }
         };
     }, []);
+
+    useEffect(() => {
+        if (!query.endsWith("!")) {
+            setBangListVisible(false);
+        }
+    }, [query]);
 
     const openConfig = async () => {
         await invoke("open_config_window");
@@ -275,9 +388,27 @@ function AskWindow() {
                     />
                 </div>
                 {bangListVisible && (
-                    <div className="bang-list">
-                        {bangList.map((bang) => (
-                            <div className="bang-container" key={bang}>
+                    <div
+                        className="completion-bang-list"
+                        style={{
+                            top: cursorPosition.top,
+                            left: cursorPosition.left,
+                        }}
+                    >
+                        {bangList.map((bang, index) => (
+                            <div
+                                className={`completion-bang-container ${index === selectedBangIndex ? "selected" : ""}`}
+                                key={bang}
+                                onClick={() => {
+                                    setQuery((prevQuery) =>
+                                        prevQuery.replace(
+                                            /![^!]*$/,
+                                            `!${bang} `,
+                                        ),
+                                    );
+                                    setBangListVisible(false);
+                                }}
+                            >
                                 <span className="bang-tag">{bang}</span>
                                 <span>插入{bang}命令</span>
                             </div>
