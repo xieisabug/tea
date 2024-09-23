@@ -57,7 +57,7 @@ function AskWindow() {
                 e.preventDefault();
                 const selectedBang = bangList[selectedBangIndex];
                 setQuery((prevQuery) =>
-                    prevQuery.replace(/![^!]*$/, `!${selectedBang} `),
+                    prevQuery.replace(/![^!]*$/, `${selectedBang[0]} `),
                 );
                 setBangListVisible(false);
             } else {
@@ -65,6 +65,14 @@ function AskWindow() {
                 e.preventDefault();
                 handleSubmit();
             }
+        } else if (e.key === "Tab" && bangListVisible) {
+            // Select bang
+            e.preventDefault();
+            const selectedBang = bangList[selectedBangIndex];
+            setQuery((prevQuery) =>
+                prevQuery.replace(/![^!]*$/, `${selectedBang[0]} `),
+            );
+            setBangListVisible(false);
         } else if (e.key === "ArrowUp" && bangListVisible) {
             e.preventDefault();
             setSelectedBangIndex((prevIndex) =>
@@ -78,10 +86,8 @@ function AskWindow() {
         } else if (e.key === "!") {
             const textarea = e.currentTarget as HTMLTextAreaElement;
             const cursorPosition = textarea.selectionStart;
-            console.log("cursorPosition", cursorPosition);
             // 获取光标位置的坐标
             const cursorCoords = getCaretCoordinates(textarea, cursorPosition);
-            console.log("cursorCoords", cursorCoords);
 
             // 获取文本区域的位置信息
             const rect = e.currentTarget.getBoundingClientRect();
@@ -395,7 +401,7 @@ function AskWindow() {
                             left: cursorPosition.left,
                         }}
                     >
-                        {bangList.map((bang, index) => (
+                        {bangList.map(([bang, desc], index) => (
                             <div
                                 className={`completion-bang-container ${index === selectedBangIndex ? "selected" : ""}`}
                                 key={bang}
@@ -403,14 +409,14 @@ function AskWindow() {
                                     setQuery((prevQuery) =>
                                         prevQuery.replace(
                                             /![^!]*$/,
-                                            `!${bang} `,
+                                            `${bang} `,
                                         ),
                                     );
                                     setBangListVisible(false);
                                 }}
                             >
                                 <span className="bang-tag">{bang}</span>
-                                <span>插入{bang}命令</span>
+                                <span>{desc}</span>
                             </div>
                         ))}
                     </div>

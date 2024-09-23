@@ -6,13 +6,20 @@ use crate::FeatureConfigState;
 use crate::db::system_db::{FeatureConfig, SystemDatabase};
 
 #[tauri::command]
-pub async fn get_all_feature_config(state: State<'_, FeatureConfigState>) -> Result<Vec<FeatureConfig>, String> {
+pub async fn get_all_feature_config(
+    state: State<'_, FeatureConfigState>,
+) -> Result<Vec<FeatureConfig>, String> {
     let configs = state.configs.lock().await;
     Ok(configs.clone())
 }
 
 #[tauri::command]
-pub async fn save_feature_config(app_handle: tauri::AppHandle, state: State<'_, FeatureConfigState>, feature_code: String, config: HashMap<String, String>) -> Result<(), String> {
+pub async fn save_feature_config(
+    app_handle: tauri::AppHandle,
+    state: State<'_, FeatureConfigState>,
+    feature_code: String,
+    config: HashMap<String, String>,
+) -> Result<(), String> {
     let db = SystemDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let _ = db.delete_feature_config_by_feature_code(feature_code.as_str());
     for (key, value) in config.iter() {
@@ -23,7 +30,8 @@ pub async fn save_feature_config(app_handle: tauri::AppHandle, state: State<'_, 
             value: value.clone(),
             data_type: "string".to_string(),
             description: Some("".to_string()),
-        }).map_err(|e| e.to_string())?;
+        })
+        .map_err(|e| e.to_string())?;
     }
 
     // 更新内存状态
@@ -45,7 +53,10 @@ pub async fn save_feature_config(app_handle: tauri::AppHandle, state: State<'_, 
             description: Some("".to_string()),
         };
         configs.push(new_config.clone());
-        config_feature_map.entry(feature_code.clone()).or_insert(HashMap::new()).insert(key.clone(), new_config);
+        config_feature_map
+            .entry(feature_code.clone())
+            .or_insert(HashMap::new())
+            .insert(key.clone(), new_config);
     }
     Ok(())
 }
@@ -61,14 +72,17 @@ pub async fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_bang_list() -> Result<Vec<String>, String> {
+pub async fn get_bang_list() -> Result<Vec<(String, String)>, String> {
     let bang_list = vec![
-        "!s".to_string(),
-        "!cd".to_string(),
-        "!ct".to_string(),
-        "!sc".to_string(),
-        "!w".to_string(),
-        "!wm".to_string(),
+        ("!s".to_string(), "插入选择的文字".to_string()),
+        ("!cd".to_string(), "插入当前日期文本".to_string()),
+        ("!ct".to_string(), "插入当前时间文字".to_string()),
+        ("!sc".to_string(), "插入屏幕截图".to_string()),
+        ("!w".to_string(), "插入网页内容".to_string()),
+        (
+            "!wm".to_string(),
+            "插入网页内容并转换为Markdown".to_string(),
+        ),
     ];
     Ok(bang_list)
 }
