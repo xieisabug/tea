@@ -30,17 +30,21 @@ use crate::api::llm_api::{
     get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select,
     update_llm_provider, update_llm_provider_config,
 };
-use crate::api::system_api::{get_all_feature_config, save_feature_config, open_data_folder, get_bang_list};
+use crate::api::system_api::{
+    get_all_feature_config, get_bang_list, open_data_folder, save_feature_config,
+};
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::SystemDatabase;
 use crate::window::{create_ask_window, open_chat_ui_window, open_config_window};
+use base64::{engine::general_purpose, Engine as _};
 use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::plugin_db::PluginDatabase;
 use db::system_db::FeatureConfig;
 use get_selected_text::get_selected_text;
+use screenshots::{image::ImageOutputFormat, Screen}; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
 use serde::{Deserialize, Serialize};
 use state::message_token::MessageTokenManager;
 use tauri::{
@@ -48,12 +52,10 @@ use tauri::{
     SystemTrayMenu,
 };
 use tokio::sync::Mutex as TokioMutex;
-use screenshots::{image::ImageOutputFormat, Screen}; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
-use base64::{Engine as _, engine::general_purpose};
 
 struct AppState {
     selected_text: TokioMutex<String>,
-    screenshots: TokioMutex<String>
+    screenshots: TokioMutex<String>,
 }
 
 #[derive(Clone)]
@@ -121,7 +123,9 @@ fn get_screenshot() -> Result<String, String> {
 
         // 将图像转换为PNG格式
         let mut png_data = Vec::new();
-        let _ = image.write_to(&mut Cursor::new(&mut png_data), ImageOutputFormat::Png).unwrap();
+        let _ = image
+            .write_to(&mut Cursor::new(&mut png_data), ImageOutputFormat::Png)
+            .unwrap();
 
         // 将PNG数据转换为base64
         let base64_image = general_purpose::STANDARD.encode(&png_data);
@@ -272,18 +276,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &Local::now().to_string()
                     );
 
-                    let text = get_selected_text().unwrap_or_default();
-                    println!(
-                        "Selected text: {}, at time: {}",
-                        text,
-                        &Local::now().to_string()
-                    );
+                    match get_selected_text() {
+                        Ok(selected_text) => {
+                            let app_state = app_handle.state::<AppState>();
+                            *app_state.selected_text.blocking_lock() = selected_text;
+                        }
+                        Err(e) => {
+                            println!("Error getting selected text: {}", e);
+                        }
+                    }
+                    // let text = get_selected_text().unwrap_or_default();
+                    // println!(
+                    //     "Selected text: {}, at time: {}",
+                    //     text,
+                    //     &Local::now().to_string()
+                    // );
 
-                    let screenshots_data = get_screenshot().unwrap();
+                    // let screenshots_data = get_screenshot().unwrap();
 
-                    let app_state = app_handle.state::<AppState>();
-                    *app_state.selected_text.blocking_lock() = text;
-                    *app_state.screenshots.blocking_lock() = screenshots_data;
+                    // let app_state = app_handle.state::<AppState>();
+                    // *app_state.selected_text.blocking_lock() = text;
+                    // *app_state.screenshots.blocking_lock() = screenshots_data;
 
                     let ask_window = app_handle.get_window("ask");
                     let chat_ui_window = app_handle.get_window("chat_ui");

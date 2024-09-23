@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use chrono::Local; // 需要在Cargo.toml中添加 `chrono` 依赖
+use htmd;
 use regex::Regex; // 需要在Cargo.toml中添加 `regex` 依赖
 use reqwest; // 需要在 Cargo.toml 中添加 `reqwest` 依赖
-use htmd; // 需要在 Cargo.toml 中添加 `htmd` 依赖
+use std::collections::HashMap; // 需要在 Cargo.toml 中添加 `htmd` 依赖
 
 // 定义命令处理函数类型
 type CommandFn = fn(&TemplateEngine, &str, &HashMap<String, String>) -> String;
@@ -27,20 +27,26 @@ fn sub_start(engine: &TemplateEngine, input: &str, context: &HashMap<String, Str
         let num = &cap[2];
 
         let text = engine.parse(text_origin.trim(), context);
-        if let Ok(count) = num.trim().parse::<usize>() { 
+        if let Ok(count) = num.trim().parse::<usize>() {
             return text.chars().take(count).collect();
-        }    
+        }
     }
     String::new()
 }
 
 fn selected_text(_: &TemplateEngine, _: &str, context: &HashMap<String, String>) -> String {
-    context.get("selected_text").unwrap_or(&String::default()).to_string()
+    context
+        .get("selected_text")
+        .unwrap_or(&String::default())
+        .to_string()
 }
 
 // 新增获取屏幕截图的函数
 fn screen(_: &TemplateEngine, _: &str, context: &HashMap<String, String>) -> String {
-    context.get("screen").unwrap_or(&String::default()).to_string()
+    context
+        .get("screen")
+        .unwrap_or(&String::default())
+        .to_string()
 }
 
 // 新增获取网页内容的函数
@@ -54,8 +60,10 @@ fn web(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -> String {
         .unwrap();
 
     match client.get(url).send() {
-        Ok(response) => response.text().unwrap_or_else(|_| "Failed to get web content".to_string()),
-        Err(err) => err.to_string()
+        Ok(response) => response
+            .text()
+            .unwrap_or_else(|_| "Failed to get web content".to_string()),
+        Err(err) => err.to_string(),
     }
 }
 
@@ -69,7 +77,7 @@ fn web_to_markdown(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -
         Ok(response) => {
             let html = response.text().unwrap_or_default();
             htmd::convert(&html).unwrap()
-        },
+        }
         Err(_) => "".to_string(),
     }
 }
@@ -114,7 +122,7 @@ impl TemplateEngine {
     // 解析并替换模板字符串
     pub fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
         // !@\s*(\w+)(\([^)]*\))?@!
-        let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
+        let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         // let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         let mut result = template.to_string();
 
