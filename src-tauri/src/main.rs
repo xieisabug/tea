@@ -159,23 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     app.exit(0);
                 }
                 "show" => {
-                    let ask_window = app.get_window("ask");
-                    let chat_ui_window = app.get_window("chat_ui");
-
-                    match (ask_window, chat_ui_window) {
-                        (None, _) => {
-                            println!("Creating ask window");
-                            create_ask_window(&app);
-                        }
-                        (Some(window), _) => {
-                            println!("Focusing ask window");
-                            if window.is_minimized().unwrap_or(false) {
-                                window.unminimize().unwrap();
-                            }
-                            window.show().unwrap();
-                            window.set_focus().unwrap();
-                        }
-                    }
+                    handle_open_ask_window(&app);
                 }
                 _ => {}
             },
@@ -265,13 +249,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     app.run(|app_handle, e| match e {
         RunEvent::Ready => {
-            let app_handle = app_handle.clone();
+            let app_handle_clone = app_handle.clone();
             // Register global shortcut
             // 快捷键的逻辑要理一下：
             // 什么都没有的时候，快捷打开ask窗口
             // ask窗口打开的时候，快捷打开chat_ui窗口（这一步现在是在js里做的）
             // chat_ui窗口打开的时候，不会再打开任何窗口了
-            app_handle
+            app_handle_clone
                 .global_shortcut_manager()
                 .register("CmdOrCtrl+Shift+I", move || {
                     println!(
@@ -294,7 +278,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 &Local::now().to_string()
                             );
 
-                            let app_state = app_handle.state::<AppState>();
+                            let app_state = app_handle_clone.state::<AppState>();
                             *app_state.selected_text.blocking_lock() = selected_text;
                         }
                         Err(e) => {
@@ -302,35 +286,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
 
-                    // let screenshots_data = get_screenshot().unwrap();
+                    handle_open_ask_window(&app_handle_clone);
+                })
+                .expect("Failed to register global shortcut");
 
-                    // let app_state = app_handle.state::<AppState>();
-                    // *app_state.selected_text.blocking_lock() = text;
-                    // *app_state.screenshots.blocking_lock() = screenshots_data;
+            let app_handle_clone = app_handle.clone();
+            app_handle_clone
+                .global_shortcut_manager()
+                .register("CmdOrCtrl+Shift+O", move || {
+                    println!(
+                        "CmdOrCtrl+Shift+O pressed at time : {}",
+                        &Local::now().to_string()
+                    );
 
-                    let ask_window = app_handle.get_window("ask");
-                    let chat_ui_window = app_handle.get_window("chat_ui");
+                    handle_open_ask_window(&app_handle_clone);
+                })
+                .expect("Failed to register global shortcut");
 
-                    match (ask_window, chat_ui_window) {
-                        (None, _) => {
-                            println!(
-                                "Creating ask window, at time: {}",
-                                &Local::now().to_string()
-                            );
-                            create_ask_window(&app_handle);
-                        }
-                        (Some(window), _) => {
-                            println!(
-                                "Focusing ask window, at time: {}",
-                                &Local::now().to_string()
-                            );
-                            if window.is_minimized().unwrap_or(false) {
-                                window.unminimize().unwrap();
-                            }
-                            window.show().unwrap();
-                            window.set_focus().unwrap();
-                        }
-                    }
+            let app_handle_clone = app_handle.clone();
+            app_handle_clone
+                .global_shortcut_manager()
+                .register("CmdOrCtrl+Shift+P", move || {
+                    println!(
+                        "CmdOrCtrl+Shift+P pressed at time : {}",
+                        &Local::now().to_string()
+                    );
+
+                    let screenshots_data = get_screenshot().unwrap();
+
+                    let app_state = app_handle_clone.state::<AppState>();
+                    *app_state.screenshots.blocking_lock() = screenshots_data;
+
+                    handle_open_ask_window(&app_handle_clone);
                 })
                 .expect("Failed to register global shortcut");
         }
@@ -341,6 +328,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     Ok(())
+}
+
+fn handle_open_ask_window(app_handle: &tauri::AppHandle) {
+    let ask_window = app_handle.get_window("ask");
+    let chat_ui_window = app_handle.get_window("chat_ui");
+
+    match (ask_window, chat_ui_window) {
+        (None, _) => {
+            println!(
+                "Creating ask window, at time: {}",
+                &Local::now().to_string()
+            );
+            create_ask_window(app_handle);
+        }
+        (Some(window), _) => {
+            println!(
+                "Focusing ask window, at time: {}",
+                &Local::now().to_string()
+            );
+            if window.is_minimized().unwrap_or(false) {
+                window.unminimize().unwrap();
+            }
+            window.show().unwrap();
+            window.set_focus().unwrap();
+        }
+    }
 }
 
 fn initialize_state(app_handle: &tauri::AppHandle) -> FeatureConfigState {
