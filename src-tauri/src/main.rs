@@ -276,8 +276,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &Local::now().to_string()
                     );
 
+                    let trusted = macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
+                    if trusted {
+                        println!("Application is totally trusted!");
+                    } else {
+                        println!("Application isn't trusted :(");
+                    }
+
                     match get_selected_text() {
                         Ok(selected_text) => {
+                            println!(
+                                "Selected text: {}, at time: {}",
+                                selected_text.clone(),
+                                &Local::now().to_string()
+                            );
+
                             let app_state = app_handle.state::<AppState>();
                             *app_state.selected_text.blocking_lock() = selected_text;
                         }
@@ -285,12 +298,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("Error getting selected text: {}", e);
                         }
                     }
-                    // let text = get_selected_text().unwrap_or_default();
-                    // println!(
-                    //     "Selected text: {}, at time: {}",
-                    //     text,
-                    //     &Local::now().to_string()
-                    // );
 
                     // let screenshots_data = get_screenshot().unwrap();
 

@@ -1,88 +1,131 @@
-use chrono::Local; // 需要在Cargo.toml中添加 `chrono` 依赖
+use chrono::Local;
+use futures::future::BoxFuture;
+use futures::FutureExt;
 use htmd;
-use regex::Regex; // 需要在Cargo.toml中添加 `regex` 依赖
-use reqwest; // 需要在 Cargo.toml 中添加 `reqwest` 依赖
-use std::collections::HashMap; // 需要在 Cargo.toml 中添加 `htmd` 依赖
+use regex::Regex;
+use reqwest;
+use std::collections::HashMap;
 
 // 定义命令处理函数类型
-type CommandFn = fn(&TemplateEngine, &str, &HashMap<String, String>) -> String;
+type CommandFn = fn(TemplateEngine, String, HashMap<String, String>) -> BoxFuture<'static, String>;
 
 // 获取当前日期的命令处理函数
-fn current_date(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> String {
-    Local::now().format("%Y-%m-%d").to_string()
+fn current_date(
+    _: TemplateEngine,
+    _: String,
+    _: HashMap<String, String>,
+) -> BoxFuture<'static, String> {
+    async { Local::now().format("%Y-%m-%d").to_string() }.boxed()
 }
 
 // 获取当前时间的命令处理函数
-fn current_time(_: &TemplateEngine, _: &str, _: &HashMap<String, String>) -> String {
-    Local::now().format("%H:%M:%S").to_string()
+fn current_time(
+    _: TemplateEngine,
+    _: String,
+    _: HashMap<String, String>,
+) -> BoxFuture<'static, String> {
+    async { Local::now().format("%H:%M:%S").to_string() }.boxed()
 }
 
 // 截取指定长度字符的命令处理函数
-fn sub_start(engine: &TemplateEngine, input: &str, context: &HashMap<String, String>) -> String {
-    println!("input : {}", input);
-    let re = Regex::new(r"\((.*),(\d+)\)").unwrap();
-    for cap in re.captures_iter(input) {
-        println!("cap : {:?}", &cap);
-        let text_origin = &cap[1];
-        let num = &cap[2];
+fn sub_start(
+    engine: TemplateEngine,
+    input: String,
+    context: HashMap<String, String>,
+) -> BoxFuture<'static, String> {
+    async move {
+        println!("input : {}", input);
+        let re = Regex::new(r"\((.*),(\d+)\)").unwrap();
+        for cap in re.captures_iter(&input) {
+            println!("cap : {:?}", &cap);
+            let text_origin = &cap[1];
+            let num = &cap[2];
 
-        let text = engine.parse(text_origin.trim(), context);
-        if let Ok(count) = num.trim().parse::<usize>() {
-            return text.chars().take(count).collect();
+            let text = engine.parse(text_origin.trim(), &context).await;
+            if let Ok(count) = num.trim().parse::<usize>() {
+                return text.chars().take(count).collect();
+            }
         }
+        String::new()
     }
-    String::new()
+    .boxed()
 }
 
-fn selected_text(_: &TemplateEngine, _: &str, context: &HashMap<String, String>) -> String {
-    context
-        .get("selected_text")
-        .unwrap_or(&String::default())
-        .to_string()
+fn selected_text(
+    _: TemplateEngine,
+    _: String,
+    context: HashMap<String, String>,
+) -> BoxFuture<'static, String> {
+    async move {
+        context
+            .get("selected_text")
+            .unwrap_or(&String::default())
+            .to_string()
+    }
+    .boxed()
 }
 
 // 新增获取屏幕截图的函数
-fn screen(_: &TemplateEngine, _: &str, context: &HashMap<String, String>) -> String {
-    context
-        .get("screen")
-        .unwrap_or(&String::default())
-        .to_string()
+fn screen(
+    _: TemplateEngine,
+    _: String,
+    context: HashMap<String, String>,
+) -> BoxFuture<'static, String> {
+    async move {
+        context
+            .get("screen")
+            .unwrap_or(&String::default())
+            .to_string()
+    }
+    .boxed()
 }
 
 // 新增获取网页内容的函数
-fn web(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -> String {
-    // 移除url中前后的括号
-    let url = url.trim_start_matches('(').trim_end_matches(')');
+fn web(_: TemplateEngine, url: String, _: HashMap<String, String>) -> BoxFuture<'static, String> {
+    async move {
+        // 移除url中前后的括号
+        let url = url.trim_start_matches('(').trim_end_matches(')');
 
-    let client = reqwest::blocking::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+        let client = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .unwrap();
 
-    match client.get(url).send() {
-        Ok(response) => response
-            .text()
-            .unwrap_or_else(|_| "Failed to get web content".to_string()),
-        Err(err) => err.to_string(),
+        match client.get(url).send().await {
+            Ok(response) => response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Failed to get web content".to_string()),
+            Err(err) => err.to_string(),
+        }
     }
+    .boxed()
 }
 
 // 新增获取网页内容并转换为 Markdown 的函数
-fn web_to_markdown(_: &TemplateEngine, url: &str, _: &HashMap<String, String>) -> String {
-    // 移除url中前后的括号
-    let url = url.trim_start_matches('(').trim_end_matches(')');
+fn web_to_markdown(
+    _: TemplateEngine,
+    url: String,
+    _: HashMap<String, String>,
+) -> BoxFuture<'static, String> {
+    async move {
+        // 移除url中前后的括号
+        let url = url.trim_start_matches('(').trim_end_matches(')');
 
-    let client = reqwest::blocking::Client::new();
-    match client.get(url).send() {
-        Ok(response) => {
-            let html = response.text().unwrap_or_default();
-            htmd::convert(&html).unwrap()
+        let client = reqwest::Client::new();
+        match client.get(url).send().await {
+            Ok(response) => {
+                let html = response.text().await.unwrap_or_default();
+                htmd::convert(&html).unwrap()
+            }
+            Err(_) => "".to_string(),
         }
-        Err(_) => "".to_string(),
     }
+    .boxed()
 }
 
 // 模板解析器结构体
+#[derive(Clone)]
 pub struct TemplateEngine {
     commands: HashMap<String, CommandFn>,
 }
@@ -120,10 +163,8 @@ impl TemplateEngine {
     }
 
     // 解析并替换模板字符串
-    pub fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
-        // !@\s*(\w+)(\([^)]*\))?@!
+    pub async fn parse(&self, template: &str, context: &HashMap<String, String>) -> String {
         let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
-        // let re = Regex::new(r"[!！](\w+)(\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))*\))*\))*\))*\))*\))*\))*\))?").unwrap();
         let mut result = template.to_string();
 
         for cap in re.captures_iter(template) {
@@ -131,7 +172,7 @@ impl TemplateEngine {
             let command = &cap[1];
             let args = cap.get(2).map_or("", |m| m.as_str());
             if let Some(handler) = self.commands.get(command) {
-                let replacement = handler(self, args, context);
+                let replacement = handler(self.clone(), args.to_string(), context.clone()).await;
                 result = result.replace(&cap[0], &replacement);
             }
         }
