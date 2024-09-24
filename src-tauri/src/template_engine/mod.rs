@@ -92,10 +92,13 @@ fn web(_: TemplateEngine, url: String, _: HashMap<String, String>) -> BoxFuture<
             .unwrap();
 
         match client.get(url).send().await {
-            Ok(response) => response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Failed to get web content".to_string()),
+            Ok(response) => {
+                let html = response
+                    .text()
+                    .await
+                    .unwrap_or_else(|_| "Failed to get web content".to_string());
+                format!("\n<bangweb url=\"{}\">\n{}\n</bangweb>", url, html)
+            }
             Err(err) => err.to_string(),
         }
     }
@@ -116,7 +119,11 @@ fn web_to_markdown(
         match client.get(url).send().await {
             Ok(response) => {
                 let html = response.text().await.unwrap_or_default();
-                htmd::convert(&html).unwrap()
+                format!(
+                    "\n<bangwebtomarkdown url=\"{}\">\n{}\n</bangwebtomarkdown>",
+                    url,
+                    htmd::convert(&html).unwrap()
+                )
             }
             Err(_) => "".to_string(),
         }

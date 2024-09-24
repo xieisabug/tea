@@ -411,7 +411,8 @@
     display: inline-block;
     cursor: pointer;
 }
-.message-file-attachment {
+.message-file-attachment,
+.message-web-content {
     padding: 10px 20px;
     background-color: white;
     color: var(--main-color);
