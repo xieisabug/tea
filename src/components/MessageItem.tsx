@@ -11,10 +11,13 @@ import Ok from "../assets/ok.svg?react";
 import Refresh from "../assets/refresh.svg?react";
 import CodeBlock from "./CodeBlock";
 import MessageFileAttachment from "./MessageFileAttachment";
+import MessageWebContent from "./conversation/MessageWebContent";
 
 interface CustomComponents extends Components {
     thinking: React.ElementType;
     fileattachment: React.ElementType;
+    bangwebtomarkdown: React.ElementType;
+    bangweb: React.ElementType;
 }
 
 const MessageItem = React.memo(
@@ -95,19 +98,35 @@ const MessageItem = React.memo(
             [currentMessageIndex, message.regenerate],
         );
 
-        // 自定义解析器来处理 fileattachment 标签
-        const customParser = (markdown: string) => {
-            const regex =
-                /<fileattachment([^>]*)>([\s\S]*?)<\/fileattachment>/g;
+        // 自定义解析器来处理自定义标签
+        const customParser = (
+            markdown: string,
+            customTags: { [key: string]: (match: RegExpExecArray) => string },
+        ) => {
             let result = markdown;
 
-            let match;
-            while ((match = regex.exec(markdown)) !== null) {
-                const replacement = `\n<fileattachment ${match[1]}></fileattachment>\n`;
-                result = result.replace(match[0], replacement);
-            }
+            Object.keys(customTags).forEach((tag) => {
+                const regex = new RegExp(
+                    `<${tag}([^>]*)>([\\s\\S]*?)<\/${tag}>`,
+                    "g",
+                );
+                let match;
+                while ((match = regex.exec(markdown)) !== null) {
+                    const replacement = customTags[tag](match);
+                    result = result.replace(match[0], replacement);
+                }
+            });
 
             return result;
+        };
+
+        const customTags = {
+            fileattachment: (match: RegExpExecArray) =>
+                `\n<fileattachment ${match[1]}></fileattachment>\n`,
+            bangwebtomarkdown: (match: RegExpExecArray) =>
+                `\n<bangwebtomarkdown ${match[1]}></bangwebtomarkdown>\n`,
+            bangweb: (match: RegExpExecArray) =>
+                `\n<bangweb ${match[1]}></bangweb>\n`,
         };
 
         return (
@@ -149,7 +168,7 @@ const MessageItem = React.memo(
                 ) : null}
 
                 <ReactMarkdown
-                    children={customParser(currentMessageContent)}
+                    children={customParser(currentMessageContent, customTags)}
                     remarkPlugins={[remarkMath, remarkBreaks]}
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                     components={
@@ -190,6 +209,8 @@ const MessageItem = React.memo(
                                 );
                             },
                             fileattachment: MessageFileAttachment,
+                            bangwebtomarkdown: MessageWebContent,
+                            bangweb: MessageWebContent,
                         } as CustomComponents
                     }
                 />
