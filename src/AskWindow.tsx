@@ -29,6 +29,14 @@ interface CustomComponents extends Components {
     antthinking: React.ElementType;
 }
 
+interface AiResponse {
+    conversation_id: number;
+    add_message_id: number;
+}
+interface CustomComponents extends Components {
+    antthinking: React.ElementType;
+}
+
 function AskWindow() {
     const [query, setQuery] = useState<string>("");
     const [response, setResponse] = useState<string>("");
@@ -38,6 +46,7 @@ function AskWindow() {
     const [copySuccess, setCopySuccess] = useState<boolean>(false);
     const [bangListVisible, setBangListVisible] = useState<boolean>(false);
     const [bangList, setBangList] = useState<string[]>([]);
+    const [selectedText, setSelectedText] = useState<string>("");
 
     const [cursorPosition, setCursorPosition] = useState<{
         top: number;
@@ -46,6 +55,18 @@ function AskWindow() {
     const [selectedBangIndex, setSelectedBangIndex] = useState<number>(0);
 
     let unsubscribe: Promise<() => void> | null = null;
+
+    useEffect(() => {
+        invoke<string>("get_selected_text_api").then((text) => {
+            console.log("get_selected_text_api", text);
+            setSelectedText(text);
+        });
+
+        listen<string>("get_selected_text_event", (event) => {
+            console.log("get_selected_text_event", event.payload);
+            setSelectedText(event.payload);
+        });
+    }, []);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -361,7 +382,7 @@ function AskWindow() {
                             />
                         )
                     ) : (
-                        <AskWindowPrepare />
+                        <AskWindowPrepare selectedText={selectedText} />
                     )}
                 </div>
                 <div className="tools" data-tauri-drag-region>
