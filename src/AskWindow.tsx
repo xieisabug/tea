@@ -78,7 +78,10 @@ function AskWindow() {
                 e.preventDefault();
                 const selectedBang = bangList[selectedBangIndex];
                 setQuery((prevQuery) =>
-                    prevQuery.replace(/![^!]*$/, `${selectedBang[0]} `),
+                    prevQuery.replace(
+                        /([!！])[^!！]*$/,
+                        `$1${selectedBang[0]} `,
+                    ),
                 );
                 setBangListVisible(false);
             } else {
@@ -91,7 +94,7 @@ function AskWindow() {
             e.preventDefault();
             const selectedBang = bangList[selectedBangIndex];
             setQuery((prevQuery) =>
-                prevQuery.replace(/![^!]*$/, `${selectedBang[0]} `),
+                prevQuery.replace(/([!！])[^!！]*$/, `$1${selectedBang[0]} `),
             );
             setBangListVisible(false);
         } else if (e.key === "ArrowUp" && bangListVisible) {
@@ -104,7 +107,7 @@ function AskWindow() {
             setSelectedBangIndex((prevIndex) =>
                 prevIndex < bangList.length - 1 ? prevIndex + 1 : 0,
             );
-        } else if (e.key === "!") {
+        } else if (e.key === "!" || e.key === "！") {
             const textarea = e.currentTarget as HTMLTextAreaElement;
             const cursorPosition = textarea.selectionStart;
             // 获取光标位置的坐标
@@ -429,8 +432,8 @@ function AskWindow() {
                                 onClick={() => {
                                     setQuery((prevQuery) =>
                                         prevQuery.replace(
-                                            /![^!]*$/,
-                                            `${bang} `,
+                                            /([!！])[^!！]*$/,
+                                            `$1${bang} `,
                                         ),
                                     );
                                     setBangListVisible(false);
