@@ -117,7 +117,7 @@ function AskWindow() {
             const rect = e.currentTarget.getBoundingClientRect();
             // 计算bang列表的位置
             const left = rect.left + cursorCoords.left + cursorCoords.width;
-            const top = rect.top + cursorCoords.top + cursorCoords.height;
+            const top = rect.top + rect.height - 10;
 
             setCursorPosition({ top, left });
             setBangListVisible(true);
@@ -192,6 +192,32 @@ function AskWindow() {
 
         return coordinates;
     }
+
+    function scrollToSelectedBang() {
+        const selectedBangElement = document.querySelector(
+            ".completion-bang-container.selected",
+        );
+        if (selectedBangElement) {
+            const parentElement = selectedBangElement.parentElement;
+            if (parentElement) {
+                const parentRect = parentElement.getBoundingClientRect();
+                const selectedRect =
+                    selectedBangElement.getBoundingClientRect();
+
+                if (selectedRect.top < parentRect.top) {
+                    parentElement.scrollTop -=
+                        parentRect.top - selectedRect.top;
+                } else if (selectedRect.bottom > parentRect.bottom) {
+                    parentElement.scrollTop +=
+                        selectedRect.bottom - parentRect.bottom;
+                }
+            }
+        }
+    }
+
+    useEffect(() => {
+        scrollToSelectedBang();
+    }, [selectedBangIndex]);
 
     const handleSubmit = () => {
         if (aiIsResponsing) {
@@ -437,6 +463,8 @@ function AskWindow() {
                                         ),
                                     );
                                     setBangListVisible(false);
+                                    // 再次聚焦到textarea输入框
+                                    inputRef.current?.focus();
                                 }}
                             >
                                 <span className="bang-tag">{bang}</span>
