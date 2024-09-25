@@ -4,6 +4,7 @@ use futures::FutureExt;
 use htmd;
 use regex::Regex;
 use reqwest;
+use serde::Serialize;
 use std::collections::HashMap;
 
 // 定义命令处理函数类型
@@ -134,39 +135,167 @@ fn web_to_markdown(
 // 模板解析器结构体
 #[derive(Clone)]
 pub struct TemplateEngine {
-    commands: HashMap<String, CommandFn>,
+    commands: HashMap<String, Bang>,
+}
+
+#[derive(Clone)]
+pub struct Bang {
+    pub name: String,
+    pub description: String,
+    pub bang_type: BangType,
+    pub command: CommandFn,
+}
+
+#[derive(Clone, Serialize)]
+pub enum BangType {
+    Text,
+    Image,
+    Audio,
 }
 
 impl TemplateEngine {
     // 初始化模板解析器
     pub fn new() -> Self {
         let mut commands = HashMap::new();
-        commands.insert("current_date".to_string(), current_date as CommandFn);
-        commands.insert("cd".to_string(), current_date as CommandFn);
 
-        commands.insert("current_time".to_string(), current_time as CommandFn);
-        commands.insert("ct".to_string(), current_time as CommandFn);
+        commands.insert(
+            "current_date".to_string(),
+            Bang {
+                name: "current_date".to_string(),
+                description: "获取当前日期".to_string(),
+                bang_type: BangType::Text,
+                command: current_date as CommandFn,
+            },
+        );
+        commands.insert(
+            "cd".to_string(),
+            Bang {
+                name: "cd".to_string(),
+                description: "获取当前日期".to_string(),
+                bang_type: BangType::Text,
+                command: current_date as CommandFn,
+            },
+        );
 
-        commands.insert("sub_start".to_string(), sub_start as CommandFn);
+        commands.insert(
+            "current_time".to_string(),
+            Bang {
+                name: "current_time".to_string(),
+                description: "获取当前时间".to_string(),
+                bang_type: BangType::Text,
+                command: current_time as CommandFn,
+            },
+        );
+        commands.insert(
+            "ct".to_string(),
+            Bang {
+                name: "ct".to_string(),
+                description: "获取当前时间".to_string(),
+                bang_type: BangType::Text,
+                command: current_time as CommandFn,
+            },
+        );
 
-        commands.insert("selected_text".to_string(), selected_text as CommandFn);
-        commands.insert("s".to_string(), selected_text as CommandFn);
+        commands.insert(
+            "sub_start".to_string(),
+            Bang {
+                name: "sub_start".to_string(),
+                description: "截取文本的前多少个字符".to_string(),
+                bang_type: BangType::Text,
+                command: sub_start as CommandFn,
+            },
+        );
 
-        commands.insert("screen".to_string(), screen as CommandFn);
-        commands.insert("sc".to_string(), screen as CommandFn);
+        commands.insert(
+            "selected_text".to_string(),
+            Bang {
+                name: "selected_text".to_string(),
+                description: "获取当前选中的文本".to_string(),
+                bang_type: BangType::Text,
+                command: selected_text as CommandFn,
+            },
+        );
+        commands.insert(
+            "s".to_string(),
+            Bang {
+                name: "s".to_string(),
+                description: "获取当前选中的文本".to_string(),
+                bang_type: BangType::Text,
+                command: selected_text as CommandFn,
+            },
+        );
 
-        commands.insert("web".to_string(), web as CommandFn);
-        commands.insert("w".to_string(), web as CommandFn);
+        commands.insert(
+            "screen".to_string(),
+            Bang {
+                name: "screen".to_string(),
+                description: "获取当前桌面的截图".to_string(),
+                bang_type: BangType::Image,
+                command: screen as CommandFn,
+            },
+        );
+        commands.insert(
+            "sc".to_string(),
+            Bang {
+                name: "sc".to_string(),
+                description: "获取当前桌面的截图".to_string(),
+                bang_type: BangType::Image,
+                command: screen as CommandFn,
+            },
+        );
 
-        commands.insert("web_to_markdown".to_string(), web_to_markdown as CommandFn);
-        commands.insert("wm".to_string(), web_to_markdown as CommandFn);
+        commands.insert(
+            "web".to_string(),
+            Bang {
+                name: "web".to_string(),
+                description: "通过网络获取URL的网页信息".to_string(),
+                bang_type: BangType::Text,
+                command: web as CommandFn,
+            },
+        );
+        commands.insert(
+            "w".to_string(),
+            Bang {
+                name: "w".to_string(),
+                description: "通过网络获取URL的网页信息".to_string(),
+                bang_type: BangType::Text,
+                command: web as CommandFn,
+            },
+        );
+
+        commands.insert(
+            "web_to_markdown".to_string(),
+            Bang {
+                name: "web_to_markdown".to_string(),
+                description: "通过网络获取URL的网页信息并且转换为markdown格式".to_string(),
+                bang_type: BangType::Text,
+                command: web_to_markdown as CommandFn,
+            },
+        );
+        commands.insert(
+            "wm".to_string(),
+            Bang {
+                name: "wm".to_string(),
+                description: "通过网络获取URL的网页信息并且转换为markdown格式".to_string(),
+                bang_type: BangType::Text,
+                command: web_to_markdown as CommandFn,
+            },
+        );
 
         TemplateEngine { commands }
     }
 
     // 注册命令
     pub fn register_command(&mut self, name: &str, handler: CommandFn) {
-        self.commands.insert(name.to_string(), handler);
+        self.commands.insert(
+            name.to_string(),
+            Bang {
+                name: name.to_string(),
+                description: "Custom command".to_string(),
+                bang_type: BangType::Text,
+                command: handler,
+            },
+        );
     }
 
     // 解析并替换模板字符串
@@ -178,8 +307,9 @@ impl TemplateEngine {
             println!("cap : {:?}", &cap);
             let command = &cap[1];
             let args = cap.get(2).map_or("", |m| m.as_str());
-            if let Some(handler) = self.commands.get(command) {
-                let replacement = handler(self.clone(), args.to_string(), context.clone()).await;
+            if let Some(bang) = self.commands.get(command) {
+                let replacement =
+                    (bang.command)(self.clone(), args.to_string(), context.clone()).await;
                 result = result.replace(&cap[0], &replacement);
             }
         }
@@ -191,6 +321,10 @@ impl TemplateEngine {
         }
 
         result
+    }
+
+    pub fn get_commands(&self) -> Vec<Bang> {
+        self.commands.values().cloned().collect()
     }
 }
 
