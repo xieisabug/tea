@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use tauri::State;
 
+use crate::template_engine::{BangType, TemplateEngine};
 use crate::FeatureConfigState;
 
 use crate::db::system_db::{FeatureConfig, SystemDatabase};
@@ -72,17 +73,15 @@ pub async fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_bang_list() -> Result<Vec<(String, String)>, String> {
-    let bang_list = vec![
-        ("!s".to_string(), "插入选择的文字".to_string()),
-        ("!cd".to_string(), "插入当前日期文本".to_string()),
-        ("!ct".to_string(), "插入当前时间文字".to_string()),
-        ("!sc".to_string(), "插入屏幕截图".to_string()),
-        ("!w".to_string(), "插入网页内容".to_string()),
-        (
-            "!wm".to_string(),
-            "插入网页内容并转换为Markdown".to_string(),
-        ),
-    ];
-    Ok(bang_list)
+pub async fn get_bang_list() -> Result<Vec<(String, String, BangType)>, String> {
+    let engine = TemplateEngine::new();
+    let mut list = vec![];
+    for bang in engine.get_commands().iter() {
+        list.push((
+            bang.name.clone(),
+            bang.description.clone(),
+            bang.bang_type.clone(),
+        ));
+    }
+    Ok(list)
 }
