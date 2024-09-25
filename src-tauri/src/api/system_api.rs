@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use tauri::State;
 
 use crate::template_engine::{BangType, TemplateEngine};
+use crate::AppState;
 use crate::FeatureConfigState;
 
 use crate::db::system_db::{FeatureConfig, SystemDatabase};
@@ -84,4 +85,9 @@ pub async fn get_bang_list() -> Result<Vec<(String, String, BangType)>, String> 
         ));
     }
     Ok(list)
+}
+#[tauri::command]
+pub async fn get_selected_text_api(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let selected_text = state.selected_text.lock().await;
+    Ok(selected_text.clone())
 }

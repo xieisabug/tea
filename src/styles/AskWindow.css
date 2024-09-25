@@ -127,3 +127,15 @@
 .completion-bang-container.selected {
     background-color: #f0f0f0;
 }
+
+.preview {
+    margin-left: 10px;
+    background-color: #f0f0f0;
+    color: #888;
+    padding: 2px 5px;
+    border-radius: 4px;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

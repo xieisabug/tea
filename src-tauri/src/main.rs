@@ -31,7 +31,8 @@ use crate::api::llm_api::{
     update_llm_provider, update_llm_provider_config,
 };
 use crate::api::system_api::{
-    get_all_feature_config, get_bang_list, open_data_folder, save_feature_config,
+    get_all_feature_config, get_bang_list, get_selected_text_api, open_data_folder,
+    save_feature_config,
 };
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
@@ -239,7 +240,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             delete_conversation,
             update_conversation,
             run_artifacts,
-            get_bang_list
+            get_bang_list,
+            get_selected_text_api
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -274,6 +276,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 selected_text.clone(),
                                 &Local::now().to_string()
                             );
+
+                            app_handle_clone.emit_all("get_selected_text_event", selected_text.clone()).unwrap();
 
                             let app_state = app_handle_clone.state::<AppState>();
                             *app_state.selected_text.blocking_lock() = selected_text;
