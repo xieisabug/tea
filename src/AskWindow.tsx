@@ -14,6 +14,7 @@ import Copy from "./assets/copy.svg?react";
 import Ok from "./assets/ok.svg?react";
 import OpenFullUI from "./assets/open-fullui.svg?react";
 import Setting from "./assets/setting.svg?react";
+import Add from "./assets/add.svg?react";
 import AskWindowPrepare from "./components/AskWindowPrepare";
 import AskAIHint from "./components/AskAIHint";
 import IconButton from "./components/IconButton";
@@ -326,6 +327,13 @@ function AskWindow() {
         });
     }, []);
 
+    const startNewConversation = () => {
+        setQuery("");
+        setResponse("");
+        setMessageId(-1);
+        setAiIsResponsing(false);
+    };
+
     return (
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
@@ -415,6 +423,12 @@ function AskWindow() {
                     )}
                 </div>
                 <div className="tools" data-tauri-drag-region>
+                    {messageId !== -1 && !aiIsResponsing && (
+                        <IconButton
+                            icon={<Add fill="black" />}
+                            onClick={startNewConversation}
+                        />
+                    )}
                     {messageId !== -1 && !aiIsResponsing ? (
                         <IconButton
                             icon={
