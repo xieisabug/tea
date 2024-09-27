@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::cmp::Ord;
 use tauri::State;
 
 use crate::template_engine::{BangType, TemplateEngine};
@@ -84,6 +85,7 @@ pub async fn get_bang_list() -> Result<Vec<(String, String, BangType)>, String> 
             bang.bang_type.clone(),
         ));
     }
+    list.sort_by(|a, b| a.0.cmp(&b.0));
     Ok(list)
 }
 #[tauri::command]
