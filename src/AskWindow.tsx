@@ -129,8 +129,6 @@ function AskWindow() {
         }
     };
 
-    // 辅助函数：获取光标坐标
-
     function scrollToSelectedBang() {
         const selectedBangElement = document.querySelector(
             ".completion-bang-container.selected",
