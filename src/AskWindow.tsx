@@ -21,6 +21,7 @@ import IconButton from "./components/IconButton";
 import { throttle } from "lodash";
 import { writeText } from "@tauri-apps/api/clipboard";
 import CodeBlock from "./components/CodeBlock";
+import { getCaretCoordinates } from "./utils/caretCoordinates";
 
 interface AiResponse {
     conversation_id: number;
@@ -129,70 +130,6 @@ function AskWindow() {
     };
 
     // 辅助函数：获取光标坐标
-    function getCaretCoordinates(
-        element: HTMLTextAreaElement,
-        position: number,
-    ) {
-        const div = document.createElement("div");
-        const style = div.style;
-        const computed = window.getComputedStyle(element);
-
-        style.whiteSpace = "pre-wrap";
-        style.wordWrap = "break-word";
-        style.position = "absolute";
-        style.visibility = "hidden";
-
-        // 复制文本区域的样式
-        for (const prop of [
-            "direction",
-            "boxSizing",
-            "width",
-            "height",
-            "overflowX",
-            "overflowY",
-            "borderTopWidth",
-            "borderRightWidth",
-            "borderBottomWidth",
-            "borderLeftWidth",
-            "paddingTop",
-            "paddingRight",
-            "paddingBottom",
-            "paddingLeft",
-            "fontStyle",
-            "fontVariant",
-            "fontWeight",
-            "fontStretch",
-            "fontSize",
-            "fontSizeAdjust",
-            "lineHeight",
-            "fontFamily",
-            "textAlign",
-            "textTransform",
-            "textIndent",
-            "textDecoration",
-            "letterSpacing",
-            "wordSpacing",
-        ]) {
-            style[prop as any] = computed[prop as any];
-        }
-
-        // 计算光标位置
-        const text = element.value.substring(0, position);
-        const span = document.createElement("span");
-        span.textContent = text;
-        div.appendChild(span);
-
-        document.body.appendChild(div);
-        const coordinates = {
-            left: span.offsetLeft,
-            top: span.offsetTop,
-            height: span.offsetHeight,
-            width: span.offsetWidth,
-        };
-        document.body.removeChild(div);
-
-        return coordinates;
-    }
 
     function scrollToSelectedBang() {
         const selectedBangElement = document.querySelector(
