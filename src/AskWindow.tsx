@@ -509,15 +509,27 @@ function AskWindow() {
                                 className={`completion-bang-container ${index === selectedBangIndex ? "selected" : ""}`}
                                 key={bang}
                                 onClick={() => {
-                                    setQuery((prevQuery) =>
-                                        prevQuery.replace(
-                                            /([!！])[^!！]*$/,
-                                            `$1${bang} `,
-                                        ),
-                                    );
-                                    setBangListVisible(false);
-                                    // 再次聚焦到textarea输入框
-                                    inputRef.current?.focus();
+                                    const textarea = inputRef.current;
+                                    if (textarea) {
+                                        const cursorPosition = textarea.selectionStart;
+                                        const bangIndex = Math.max(
+                                            textarea.value.lastIndexOf("!", cursorPosition - 1),
+                                            textarea.value.lastIndexOf("！", cursorPosition - 1)
+                                        );
+
+                                        if (bangIndex !== -1) {
+                                            const newValue =
+                                                textarea.value.substring(0, bangIndex + 1) +
+                                                bang +
+                                                " " +
+                                                textarea.value.substring(cursorPosition);
+                                            setQuery(newValue);
+                                            setBangListVisible(false);
+                                            // 再次聚焦到textarea输入框并设置光标位置
+                                            textarea.focus();
+                                            textarea.setSelectionRange(bangIndex + bang.length + 2, bangIndex + bang.length + 2);
+                                        }
+                                    }
                                 }}
                             >
                                 <span className="bang-tag">{bang}</span>
