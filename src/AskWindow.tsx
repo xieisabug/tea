@@ -77,10 +77,10 @@ function AskWindow() {
         setQuery(newValue);
 
         // Check for bang input
-        const bangIndex =
-            newValue.lastIndexOf("!", cursorPosition - 1) === -1
-                ? newValue.lastIndexOf("！", cursorPosition - 1)
-                : newValue.lastIndexOf("!", cursorPosition - 1);
+        const bangIndex = Math.max(
+            newValue.lastIndexOf("!", cursorPosition - 1),
+            newValue.lastIndexOf("！", cursorPosition - 1)
+        );
 
         if (bangIndex !== -1 && bangIndex < cursorPosition) {
             const bangInput = newValue
@@ -126,10 +126,10 @@ function AskWindow() {
 
                 const textarea = e.currentTarget as HTMLTextAreaElement;
                 const cursorPosition = textarea.selectionStart;
-                const bangIndex =
-                    textarea.value.lastIndexOf("!", cursorPosition - 1) === -1
-                        ? textarea.value.lastIndexOf("！", cursorPosition - 1)
-                        : textarea.value.lastIndexOf("!", cursorPosition - 1);
+                const bangIndex = Math.max(
+                    textarea.value.lastIndexOf("!", cursorPosition - 1),
+                    textarea.value.lastIndexOf("！", cursorPosition - 1)
+                );
 
                 if (bangIndex !== -1) {
                     const beforeBang = textarea.value.substring(0, bangIndex);
@@ -157,10 +157,10 @@ function AskWindow() {
             const selectedBang = bangList[selectedBangIndex];
             const textarea = e.currentTarget as HTMLTextAreaElement;
             const cursorPosition = textarea.selectionStart;
-            const bangIndex =
-                textarea.value.lastIndexOf("!", cursorPosition - 1) === -1
-                    ? textarea.value.lastIndexOf("！", cursorPosition - 1)
-                    : textarea.value.lastIndexOf("!", cursorPosition - 1);
+            const bangIndex = Math.max(
+                textarea.value.lastIndexOf("!", cursorPosition - 1),
+                textarea.value.lastIndexOf("！", cursorPosition - 1)
+            );
 
             if (bangIndex !== -1) {
                 const beforeBang = textarea.value.substring(0, bangIndex);
@@ -222,8 +222,10 @@ function AskWindow() {
             if (inputRef.current) {
                 const cursorPosition = inputRef.current.selectionStart;
                 const value = inputRef.current.value;
-                const bangIndex = value.lastIndexOf("!", cursorPosition - 1);
-
+                const bangIndex = Math.max(
+                    value.lastIndexOf("!", cursorPosition - 1),
+                    value.lastIndexOf("！", cursorPosition - 1)
+                );
                 if (bangIndex !== -1 && bangIndex < cursorPosition) {
                     const bangInput = value
                         .substring(bangIndex + 1, cursorPosition)

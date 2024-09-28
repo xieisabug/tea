@@ -687,7 +687,6 @@ function ConversationUI({
             <InputArea
                 inputText={inputText}
                 setInputText={setInputText}
-                handleKeyDown={handleKeyDown}
                 fileInfoList={fileInfoList}
                 handleChooseFile={handleChooseFile}
                 handleDeleteFile={handleDeleteFile}

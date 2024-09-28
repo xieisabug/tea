@@ -262,13 +262,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &Local::now().to_string()
                     );
 
-                    let trusted = macos_accessibility_client::accessibility::application_is_trusted_with_prompt();
-                    if trusted {
-                        println!("Application is totally trusted!");
-                    } else {
-                        println!("Application isn't trusted :(");
-                    }
-
                     match get_selected_text() {
                         Ok(selected_text) => {
                             println!(

@@ -13,7 +13,6 @@ import { getCaretCoordinates } from "../../utils/caretCoordinates";
 const InputArea: React.FC<{
     inputText: string;
     setInputText: React.Dispatch<React.SetStateAction<string>>;
-    handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     fileInfoList: FileInfo[] | null;
     handleChooseFile: () => void;
     handlePaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
@@ -24,7 +23,6 @@ const InputArea: React.FC<{
     ({
         inputText,
         setInputText,
-        handleKeyDown,
         fileInfoList,
         handleChooseFile,
         handlePaste,
@@ -62,10 +60,10 @@ const InputArea: React.FC<{
                 if (textareaRef.current) {
                     const cursorPosition = textareaRef.current.selectionStart;
                     const value = textareaRef.current.value;
-                    const bangIndex =
-                        value.lastIndexOf("!", cursorPosition - 1) === -1
-                            ? value.lastIndexOf("！", cursorPosition - 1)
-                            : value.lastIndexOf("!", cursorPosition - 1);
+                    const bangIndex = Math.max(
+                        value.lastIndexOf("!", cursorPosition - 1),
+                        value.lastIndexOf("！", cursorPosition - 1)
+                    );
 
                     if (bangIndex !== -1 && bangIndex < cursorPosition) {
                         const bangInput = value
@@ -136,10 +134,12 @@ const InputArea: React.FC<{
             setInputText(newValue);
 
             // Check for bang input
-            const bangIndex =
-                newValue.lastIndexOf("!", cursorPosition - 1) === -1
-                    ? newValue.lastIndexOf("！", cursorPosition - 1)
-                    : newValue.lastIndexOf("!", cursorPosition - 1);
+            const bangIndex = Math.max(
+                newValue.lastIndexOf("!", cursorPosition - 1),
+                newValue.lastIndexOf("！", cursorPosition - 1)
+            );
+
+            console.log("bangIndex and cursorPosition", bangIndex, cursorPosition);
 
             if (bangIndex !== -1 && bangIndex < cursorPosition) {
                 const bangInput = newValue
@@ -190,17 +190,10 @@ const InputArea: React.FC<{
                     const selectedBang = bangList[selectedBangIndex];
                     const textarea = e.currentTarget as HTMLTextAreaElement;
                     const cursorPosition = textarea.selectionStart;
-                    const bangIndex =
-                        textarea.value.lastIndexOf("!", cursorPosition - 1) ===
-                        -1
-                            ? textarea.value.lastIndexOf(
-                                  "！",
-                                  cursorPosition - 1,
-                              )
-                            : textarea.value.lastIndexOf(
-                                  "!",
-                                  cursorPosition - 1,
-                              );
+                    const bangIndex = Math.max(
+                        textarea.value.lastIndexOf("!", cursorPosition - 1),
+                        textarea.value.lastIndexOf("！", cursorPosition - 1)
+                    );
 
                     if (bangIndex !== -1) {
                         const beforeBang = textarea.value.substring(
@@ -239,10 +232,10 @@ const InputArea: React.FC<{
                 const selectedBang = bangList[selectedBangIndex];
                 const textarea = e.currentTarget as HTMLTextAreaElement;
                 const cursorPosition = textarea.selectionStart;
-                const bangIndex =
-                    textarea.value.lastIndexOf("!", cursorPosition - 1) === -1
-                        ? textarea.value.lastIndexOf("！", cursorPosition - 1)
-                        : textarea.value.lastIndexOf("!", cursorPosition - 1);
+                const bangIndex = Math.max(
+                    textarea.value.lastIndexOf("!", cursorPosition - 1),
+                    textarea.value.lastIndexOf("！", cursorPosition - 1)
+                );
 
                 if (bangIndex !== -1) {
                     const beforeBang = textarea.value.substring(0, bangIndex);
