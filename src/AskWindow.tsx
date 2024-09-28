@@ -103,8 +103,15 @@ function AskWindow() {
                     cursorPosition,
                 );
                 const rect = textarea.getBoundingClientRect();
-                const left = rect.left + cursorCoords.left;
-                const top = rect.top + cursorCoords.top + cursorCoords.height;
+                const style = window.getComputedStyle(textarea);
+                const paddingTop = parseFloat(style.paddingTop);
+                const paddingBottom = parseFloat(style.paddingBottom);
+                const textareaHeight = parseFloat(style.height);
+
+                console.log(rect, paddingTop, paddingBottom, textareaHeight)
+                // 计算bang列表的位置
+                const left = rect.left + cursorCoords.cursorLeft;
+                const top = rect.top + rect.height + Math.min(textareaHeight, cursorCoords.cursorTop) - paddingTop - paddingBottom;
                 setCursorPosition({ top, left });
             } else {
                 setBangListVisible(false);
@@ -244,9 +251,14 @@ function AskWindow() {
                             bangIndex + 1,
                         );
                         const rect = inputRef.current.getBoundingClientRect();
-                        const left = rect.left + cursorCoords.left;
-                        const top =
-                            rect.top + cursorCoords.top + cursorCoords.height;
+                        const style = window.getComputedStyle(inputRef.current);
+                        const paddingTop = parseFloat(style.paddingTop);
+                        const paddingBottom = parseFloat(style.paddingBottom);
+                        const textareaHeight = parseFloat(style.height);
+
+                        // 计算bang列表的位置
+                        const left = rect.left + cursorCoords.cursorLeft;
+                        const top = rect.top + rect.height + Math.min(textareaHeight, cursorCoords.cursorTop) - paddingTop - paddingBottom;
                         setCursorPosition({ top, left });
                     } else {
                         setBangListVisible(false);

@@ -89,10 +89,8 @@ const InputArea: React.FC<{
                                 .querySelector(".input-area")!
                                 .getBoundingClientRect();
                             const left =
-                                rect.left -
-                                inputAreaRect.left +
-                                cursorCoords.width;
-                            const bottom = inputAreaRect.top - rect.top + 10;
+                                rect.left - inputAreaRect.left + cursorCoords.cursorLeft;
+                            const bottom = inputAreaRect.top - rect.top - cursorCoords.cursorTop + 10 + (textareaRef.current.scrollHeight - textareaRef.current.clientHeight);
                             setCursorPosition({ bottom, left });
                         } else {
                             setBangListVisible(false);
@@ -163,9 +161,11 @@ const InputArea: React.FC<{
                     const inputAreaRect = document
                         .querySelector(".input-area")!
                         .getBoundingClientRect();
+
+                    console.log("cursorCoords", cursorCoords, "rect", rect, "inputAreaRect", inputAreaRect);
                     const left =
-                        rect.left - inputAreaRect.left + cursorCoords.width;
-                    const bottom = inputAreaRect.top - rect.top + 10;
+                        rect.left - inputAreaRect.left + cursorCoords.cursorLeft;
+                    const bottom = inputAreaRect.top - rect.top - cursorCoords.cursorTop + 10 + (textarea.scrollHeight - textarea.clientHeight);
                     setCursorPosition({ bottom, left });
                 } else {
                     setBangListVisible(false);
