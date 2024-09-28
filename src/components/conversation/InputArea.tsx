@@ -36,6 +36,7 @@ const InputArea: React.FC<{
         const [initialHeight, setInitialHeight] = useState<number | null>(null);
         const [bangListVisible, setBangListVisible] = useState<boolean>(false);
         const [bangList, setBangList] = useState<string[]>([]);
+        const [originalBangList, setOriginalBangList] = useState<string[]>([]);
         const [cursorPosition, setCursorPosition] = useState<{
             bottom: number;
             left: number;
@@ -52,8 +53,66 @@ const InputArea: React.FC<{
         useEffect(() => {
             invoke<string[]>("get_bang_list").then((bangList) => {
                 setBangList(bangList);
+                setOriginalBangList(bangList);
             });
         }, []);
+
+        useEffect(() => {
+            const handleSelectionChange = () => {
+                if (textareaRef.current) {
+                    const cursorPosition = textareaRef.current.selectionStart;
+                    const value = textareaRef.current.value;
+                    const bangIndex =
+                        value.lastIndexOf("!", cursorPosition - 1) === -1
+                            ? value.lastIndexOf("！", cursorPosition - 1)
+                            : value.lastIndexOf("!", cursorPosition - 1);
+
+                    if (bangIndex !== -1 && bangIndex < cursorPosition) {
+                        const bangInput = value
+                            .substring(bangIndex + 1, cursorPosition)
+                            .toLowerCase();
+                        const filteredBangs = originalBangList.filter(
+                            ([bang]) =>
+                                bang.toLowerCase().startsWith(bangInput),
+                        );
+
+                        if (filteredBangs.length > 0) {
+                            setBangList(filteredBangs);
+                            setSelectedBangIndex(0);
+                            setBangListVisible(true);
+
+                            const cursorCoords = getCaretCoordinates(
+                                textareaRef.current,
+                                bangIndex + 1,
+                            );
+                            const rect =
+                                textareaRef.current.getBoundingClientRect();
+                            const inputAreaRect = document
+                                .querySelector(".input-area")!
+                                .getBoundingClientRect();
+                            const left =
+                                rect.left -
+                                inputAreaRect.left +
+                                cursorCoords.width;
+                            const bottom = inputAreaRect.top - rect.top + 10;
+                            setCursorPosition({ bottom, left });
+                        } else {
+                            setBangListVisible(false);
+                        }
+                    } else {
+                        setBangListVisible(false);
+                    }
+                }
+            };
+
+            document.addEventListener("selectionchange", handleSelectionChange);
+            return () => {
+                document.removeEventListener(
+                    "selectionchange",
+                    handleSelectionChange,
+                );
+            };
+        }, [originalBangList]);
 
         const adjustTextareaHeight = () => {
             const textarea = textareaRef.current;
@@ -72,45 +131,105 @@ const InputArea: React.FC<{
         const handleTextareaChange = (
             e: React.ChangeEvent<HTMLTextAreaElement>,
         ) => {
-            setInputText(e.target.value);
+            const newValue = e.target.value;
+            const cursorPosition = e.target.selectionStart;
+            setInputText(newValue);
+
+            // Check for bang input
+            const bangIndex =
+                newValue.lastIndexOf("!", cursorPosition - 1) === -1
+                    ? newValue.lastIndexOf("！", cursorPosition - 1)
+                    : newValue.lastIndexOf("!", cursorPosition - 1);
+
+            if (bangIndex !== -1 && bangIndex < cursorPosition) {
+                const bangInput = newValue
+                    .substring(bangIndex + 1, cursorPosition)
+                    .toLowerCase();
+                const filteredBangs = originalBangList.filter(([bang]) =>
+                    bang.toLowerCase().startsWith(bangInput),
+                );
+
+                if (filteredBangs.length > 0) {
+                    setBangList(filteredBangs);
+                    setSelectedBangIndex(0);
+                    setBangListVisible(true);
+
+                    // Update cursor position
+                    const textarea = e.target;
+                    const cursorPosition = textarea.selectionStart;
+                    const cursorCoords = getCaretCoordinates(
+                        textarea,
+                        cursorPosition,
+                    );
+                    const rect = textarea.getBoundingClientRect();
+                    const inputAreaRect = document
+                        .querySelector(".input-area")!
+                        .getBoundingClientRect();
+                    const left =
+                        rect.left - inputAreaRect.left + cursorCoords.width;
+                    const bottom = inputAreaRect.top - rect.top + 10;
+                    setCursorPosition({ bottom, left });
+                } else {
+                    setBangListVisible(false);
+                }
+            } else {
+                setBangListVisible(false);
+            }
         };
 
         const handleKeyDownWithBang = (
             e: React.KeyboardEvent<HTMLTextAreaElement>,
         ) => {
-            if (e.key === "!" || e.key === "！") {
-                const textarea = e.currentTarget as HTMLTextAreaElement;
-                const cursorPosition = textarea.selectionStart;
-                const cursorCoords = getCaretCoordinates(
-                    textarea,
-                    cursorPosition,
-                );
-                const rect = e.currentTarget.getBoundingClientRect();
-                const inputAreaRect = document
-                    .querySelector(".input-area")!
-                    .getBoundingClientRect();
-
-                const left =
-                    rect.left - inputAreaRect.left + cursorCoords.width;
-                const bottom = inputAreaRect.top - rect.top + 10;
-                setCursorPosition({ bottom, left });
-                setBangListVisible(true);
-                setSelectedBangIndex(0);
-            } else if (e.key === "Enter") {
+            if (e.key === "Enter") {
                 if (e.shiftKey) {
                     // Shift + Enter for new line
                     return;
                 } else if (bangListVisible) {
+                    // Select bang
                     e.preventDefault();
                     const selectedBang = bangList[selectedBangIndex];
-                    setInputText((prevText: string) =>
-                        prevText.replace(
-                            /([!！])[^!！]*$/,
-                            `$1${selectedBang[0]} `,
-                        ),
-                    );
+                    const textarea = e.currentTarget as HTMLTextAreaElement;
+                    const cursorPosition = textarea.selectionStart;
+                    const bangIndex =
+                        textarea.value.lastIndexOf("!", cursorPosition - 1) ===
+                        -1
+                            ? textarea.value.lastIndexOf(
+                                  "！",
+                                  cursorPosition - 1,
+                              )
+                            : textarea.value.lastIndexOf(
+                                  "!",
+                                  cursorPosition - 1,
+                              );
+
+                    if (bangIndex !== -1) {
+                        const beforeBang = textarea.value.substring(
+                            0,
+                            bangIndex,
+                        );
+                        const afterBang =
+                            textarea.value.substring(cursorPosition);
+                        setInputText(
+                            beforeBang +
+                                "!" +
+                                selectedBang[0] +
+                                " " +
+                                afterBang,
+                        );
+
+                        // 设置光标位置
+                        setTimeout(() => {
+                            const newPosition =
+                                bangIndex + selectedBang[0].length + 2;
+                            textarea.setSelectionRange(
+                                newPosition,
+                                newPosition,
+                            );
+                        }, 0);
+                    }
                     setBangListVisible(false);
                 } else {
+                    // Enter for submit
                     e.preventDefault();
                     handleSend();
                 }
@@ -118,12 +237,27 @@ const InputArea: React.FC<{
                 // Select bang
                 e.preventDefault();
                 const selectedBang = bangList[selectedBangIndex];
-                setInputText((prevText) =>
-                    prevText.replace(
-                        /([!！])[^!！]*$/,
-                        `$1${selectedBang[0]} `,
-                    ),
-                );
+                const textarea = e.currentTarget as HTMLTextAreaElement;
+                const cursorPosition = textarea.selectionStart;
+                const bangIndex =
+                    textarea.value.lastIndexOf("!", cursorPosition - 1) === -1
+                        ? textarea.value.lastIndexOf("！", cursorPosition - 1)
+                        : textarea.value.lastIndexOf("!", cursorPosition - 1);
+
+                if (bangIndex !== -1) {
+                    const beforeBang = textarea.value.substring(0, bangIndex);
+                    const afterBang = textarea.value.substring(cursorPosition);
+                    setInputText(
+                        beforeBang + "!" + selectedBang[0] + " " + afterBang,
+                    );
+
+                    // 设置光标位置
+                    setTimeout(() => {
+                        const newPosition =
+                            bangIndex + selectedBang[0].length + 2;
+                        textarea.setSelectionRange(newPosition, newPosition);
+                    }, 0);
+                }
                 setBangListVisible(false);
             } else if (e.key === "ArrowUp" && bangListVisible) {
                 e.preventDefault();
@@ -135,7 +269,8 @@ const InputArea: React.FC<{
                 setSelectedBangIndex((prevIndex) =>
                     prevIndex < bangList.length - 1 ? prevIndex + 1 : 0,
                 );
-            } else if (!e.key.match(/[a-zA-Z0-9]/)) {
+            } else if (e.key === "Escape") {
+                e.preventDefault();
                 setBangListVisible(false);
             }
         };
