@@ -139,8 +139,6 @@ const InputArea: React.FC<{
                 newValue.lastIndexOf("！", cursorPosition - 1)
             );
 
-            console.log("bangIndex and cursorPosition", bangIndex, cursorPosition);
-
             if (bangIndex !== -1 && bangIndex < cursorPosition) {
                 const bangInput = newValue
                     .substring(bangIndex + 1, cursorPosition)
@@ -408,14 +406,28 @@ const InputArea: React.FC<{
                                 className={`completion-bang-container ${index === selectedBangIndex ? "selected" : ""}`}
                                 key={bang}
                                 onClick={() => {
-                                    setInputText((prevText: string) =>
-                                        prevText.replace(
-                                            /([!！])[^!！]*$/,
-                                            `$1${bang} `,
-                                        ),
-                                    );
-                                    setBangListVisible(false);
-                                    textareaRef.current?.focus();
+                                    const textarea = textareaRef.current;
+                                    if (textarea) {
+                                        const cursorPosition = textarea.selectionStart;
+                                        const bangIndex = Math.max(
+                                            textarea.value.lastIndexOf("!", cursorPosition - 1),
+                                            textarea.value.lastIndexOf("！", cursorPosition - 1)
+                                        );
+
+                                        if (bangIndex !== -1) {
+                                            const beforeBang = textarea.value.substring(0, bangIndex);
+                                            const afterBang = textarea.value.substring(cursorPosition);
+                                            setInputText(beforeBang + "!" + bang + " " + afterBang);
+
+                                            // 设置光标位置
+                                            setTimeout(() => {
+                                                const newPosition = bangIndex + bang.length + 2;
+                                                textarea.setSelectionRange(newPosition, newPosition);
+                                            }, 0);
+                                        }
+                                        setBangListVisible(false);
+                                        textarea.focus();
+                                    }
                                 }}
                             >
                                 <span className="bang-tag">{bang}</span>
