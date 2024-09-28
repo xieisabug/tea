@@ -48,6 +48,7 @@ function AskWindow() {
     const [copySuccess, setCopySuccess] = useState<boolean>(false);
     const [bangListVisible, setBangListVisible] = useState<boolean>(false);
     const [bangList, setBangList] = useState<string[]>([]);
+    const [originalBangList, setOriginalBangList] = useState<string[]>([]);
     const [selectedText, setSelectedText] = useState<string>("");
 
     const [cursorPosition, setCursorPosition] = useState<{
@@ -69,6 +70,46 @@ function AskWindow() {
             setSelectedText(event.payload);
         });
     }, []);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value;
+        setQuery(newValue);
+
+        // Check for bang input
+        const bangIndex =
+            newValue.lastIndexOf("!") === -1
+                ? newValue.lastIndexOf("！")
+                : newValue.lastIndexOf("!");
+
+        if (bangIndex !== -1) {
+            const bangInput = newValue.substring(bangIndex + 1).toLowerCase();
+            const filteredBangs = originalBangList.filter(([bang]) =>
+                bang.toLowerCase().startsWith(bangInput),
+            );
+
+            if (filteredBangs.length > 0) {
+                setBangList(filteredBangs);
+                setSelectedBangIndex(0);
+                setBangListVisible(true);
+
+                // Update cursor position
+                const textarea = e.target;
+                const cursorPosition = textarea.selectionStart;
+                const cursorCoords = getCaretCoordinates(
+                    textarea,
+                    cursorPosition,
+                );
+                const rect = textarea.getBoundingClientRect();
+                const left = rect.left + cursorCoords.left;
+                const top = rect.top + cursorCoords.top + cursorCoords.height;
+                setCursorPosition({ top, left });
+            } else {
+                setBangListVisible(false);
+            }
+        } else {
+            setBangListVisible(false);
+        }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -109,22 +150,8 @@ function AskWindow() {
             setSelectedBangIndex((prevIndex) =>
                 prevIndex < bangList.length - 1 ? prevIndex + 1 : 0,
             );
-        } else if (e.key === "!" || e.key === "！") {
-            const textarea = e.currentTarget as HTMLTextAreaElement;
-            const cursorPosition = textarea.selectionStart;
-            // 获取光标位置的坐标
-            const cursorCoords = getCaretCoordinates(textarea, cursorPosition);
-
-            // 获取文本区域的位置信息
-            const rect = e.currentTarget.getBoundingClientRect();
-            // 计算bang列表的位置
-            const left = rect.left + cursorCoords.left + cursorCoords.width;
-            const top = rect.top + rect.height - 10;
-
-            setCursorPosition({ top, left });
-            setBangListVisible(true);
-            setSelectedBangIndex(0);
-        } else if (!e.key.match(/[a-zA-Z0-9]/)) {
+        } else if (e.key === "Escape") {
+            e.preventDefault();
             setBangListVisible(false);
         }
     };
@@ -236,12 +263,6 @@ function AskWindow() {
         };
     }, []);
 
-    useEffect(() => {
-        if (!query.endsWith("!")) {
-            setBangListVisible(false);
-        }
-    }, [query]);
-
     const openConfig = async () => {
         await invoke("open_config_window");
     };
@@ -259,6 +280,7 @@ function AskWindow() {
     useEffect(() => {
         invoke<string[]>("get_bang_list").then((bangList) => {
             setBangList(bangList);
+            setOriginalBangList(bangList);
         });
     }, []);
 
@@ -278,9 +300,7 @@ function AskWindow() {
                         ref={inputRef}
                         value={query}
                         onKeyDown={handleKeyDown}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                            setQuery(e.target.value)
-                        }
+                        onChange={handleInputChange}
                         placeholder="Ask AI..."
                     ></textarea>
                     <button
