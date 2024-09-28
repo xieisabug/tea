@@ -46,12 +46,18 @@ export function getCaretCoordinates(element: HTMLTextAreaElement, position: numb
     span.textContent = text;
     div.appendChild(span);
 
+    const cursorSpan = document.createElement("span");
+    cursorSpan.textContent = "|";
+    div.appendChild(cursorSpan);
+
     document.body.appendChild(div);
     const coordinates = {
         left: span.offsetLeft,
         top: span.offsetTop,
         height: span.offsetHeight,
         width: span.offsetWidth,
+        cursorLeft: cursorSpan.offsetLeft,
+        cursorTop: cursorSpan.offsetTop
     };
     document.body.removeChild(div);
 
