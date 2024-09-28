@@ -73,16 +73,19 @@ function AskWindow() {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newValue = e.target.value;
+        const cursorPosition = e.target.selectionStart;
         setQuery(newValue);
 
         // Check for bang input
         const bangIndex =
-            newValue.lastIndexOf("!") === -1
-                ? newValue.lastIndexOf("！")
-                : newValue.lastIndexOf("!");
+            newValue.lastIndexOf("!", cursorPosition - 1) === -1
+                ? newValue.lastIndexOf("！", cursorPosition - 1)
+                : newValue.lastIndexOf("!", cursorPosition - 1);
 
-        if (bangIndex !== -1) {
-            const bangInput = newValue.substring(bangIndex + 1).toLowerCase();
+        if (bangIndex !== -1 && bangIndex < cursorPosition) {
+            const bangInput = newValue
+                .substring(bangIndex + 1, cursorPosition)
+                .toLowerCase();
             const filteredBangs = originalBangList.filter(([bang]) =>
                 bang.toLowerCase().startsWith(bangInput),
             );
@@ -120,12 +123,28 @@ function AskWindow() {
                 // Select bang
                 e.preventDefault();
                 const selectedBang = bangList[selectedBangIndex];
-                setQuery((prevQuery) =>
-                    prevQuery.replace(
-                        /([!！])[^!！]*$/,
-                        `$1${selectedBang[0]} `,
-                    ),
-                );
+
+                const textarea = e.currentTarget as HTMLTextAreaElement;
+                const cursorPosition = textarea.selectionStart;
+                const bangIndex =
+                    textarea.value.lastIndexOf("!", cursorPosition - 1) === -1
+                        ? textarea.value.lastIndexOf("！", cursorPosition - 1)
+                        : textarea.value.lastIndexOf("!", cursorPosition - 1);
+
+                if (bangIndex !== -1) {
+                    const beforeBang = textarea.value.substring(0, bangIndex);
+                    const afterBang = textarea.value.substring(cursorPosition);
+                    setQuery(
+                        beforeBang + "!" + selectedBang[0] + " " + afterBang,
+                    );
+
+                    // 设置光标位置
+                    setTimeout(() => {
+                        const newPosition =
+                            bangIndex + selectedBang[0].length + 2;
+                        textarea.setSelectionRange(newPosition, newPosition);
+                    }, 0);
+                }
                 setBangListVisible(false);
             } else {
                 // Enter for submit
@@ -136,9 +155,25 @@ function AskWindow() {
             // Select bang
             e.preventDefault();
             const selectedBang = bangList[selectedBangIndex];
-            setQuery((prevQuery) =>
-                prevQuery.replace(/([!！])[^!！]*$/, `$1${selectedBang[0]} `),
-            );
+            const textarea = e.currentTarget as HTMLTextAreaElement;
+            const cursorPosition = textarea.selectionStart;
+            const bangIndex =
+                textarea.value.lastIndexOf("!", cursorPosition - 1) === -1
+                    ? textarea.value.lastIndexOf("！", cursorPosition - 1)
+                    : textarea.value.lastIndexOf("!", cursorPosition - 1);
+
+            if (bangIndex !== -1) {
+                const beforeBang = textarea.value.substring(0, bangIndex);
+                const afterBang = textarea.value.substring(cursorPosition);
+                setQuery(beforeBang + "!" + selectedBang[0] + " " + afterBang);
+
+                // 设置光标位置
+                setTimeout(() => {
+                    const newPosition = bangIndex + selectedBang[0].length + 2;
+                    textarea.setSelectionRange(newPosition, newPosition);
+                }, 0);
+            }
+
             setBangListVisible(false);
         } else if (e.key === "ArrowUp" && bangListVisible) {
             e.preventDefault();
@@ -181,6 +216,53 @@ function AskWindow() {
     useEffect(() => {
         scrollToSelectedBang();
     }, [selectedBangIndex]);
+
+    useEffect(() => {
+        const handleSelectionChange = () => {
+            if (inputRef.current) {
+                const cursorPosition = inputRef.current.selectionStart;
+                const value = inputRef.current.value;
+                const bangIndex = value.lastIndexOf("!", cursorPosition - 1);
+
+                if (bangIndex !== -1 && bangIndex < cursorPosition) {
+                    const bangInput = value
+                        .substring(bangIndex + 1, cursorPosition)
+                        .toLowerCase();
+                    const filteredBangs = originalBangList.filter(([bang]) =>
+                        bang.toLowerCase().startsWith(bangInput),
+                    );
+
+                    if (filteredBangs.length > 0) {
+                        setBangList(filteredBangs);
+                        setSelectedBangIndex(0);
+                        setBangListVisible(true);
+
+                        const cursorCoords = getCaretCoordinates(
+                            inputRef.current,
+                            bangIndex + 1,
+                        );
+                        const rect = inputRef.current.getBoundingClientRect();
+                        const left = rect.left + cursorCoords.left;
+                        const top =
+                            rect.top + cursorCoords.top + cursorCoords.height;
+                        setCursorPosition({ top, left });
+                    } else {
+                        setBangListVisible(false);
+                    }
+                } else {
+                    setBangListVisible(false);
+                }
+            }
+        };
+
+        document.addEventListener("selectionchange", handleSelectionChange);
+        return () => {
+            document.removeEventListener(
+                "selectionchange",
+                handleSelectionChange,
+            );
+        };
+    }, [originalBangList]);
 
     const handleSubmit = () => {
         if (aiIsResponsing) {
