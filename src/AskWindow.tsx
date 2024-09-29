@@ -79,7 +79,7 @@ function AskWindow() {
         // Check for bang input
         const bangIndex = Math.max(
             newValue.lastIndexOf("!", cursorPosition - 1),
-            newValue.lastIndexOf("！", cursorPosition - 1)
+            newValue.lastIndexOf("！", cursorPosition - 1),
         );
 
         if (bangIndex !== -1 && bangIndex < cursorPosition) {
@@ -108,10 +108,14 @@ function AskWindow() {
                 const paddingBottom = parseFloat(style.paddingBottom);
                 const textareaHeight = parseFloat(style.height);
 
-                console.log(rect, paddingTop, paddingBottom, textareaHeight)
                 // 计算bang列表的位置
                 const left = rect.left + cursorCoords.cursorLeft;
-                const top = rect.top + rect.height + Math.min(textareaHeight, cursorCoords.cursorTop) - paddingTop - paddingBottom;
+                const top =
+                    rect.top +
+                    rect.height +
+                    Math.min(textareaHeight, cursorCoords.cursorTop) -
+                    paddingTop -
+                    paddingBottom;
                 setCursorPosition({ top, left });
             } else {
                 setBangListVisible(false);
@@ -130,28 +134,39 @@ function AskWindow() {
                 // Select bang
                 e.preventDefault();
                 const selectedBang = bangList[selectedBangIndex];
-
+                let complete = selectedBang[1];
                 const textarea = e.currentTarget as HTMLTextAreaElement;
                 const cursorPosition = textarea.selectionStart;
                 const bangIndex = Math.max(
                     textarea.value.lastIndexOf("!", cursorPosition - 1),
-                    textarea.value.lastIndexOf("！", cursorPosition - 1)
+                    textarea.value.lastIndexOf("！", cursorPosition - 1),
                 );
 
                 if (bangIndex !== -1) {
+                    // 找到complete中的|的位置
+                    const cursorIndex = complete.indexOf("|");
+                    // 如果有|，则将光标移动到|的位置，并且移除|
+                    if (cursorIndex !== -1) {
+                        complete =
+                            complete.substring(0, cursorIndex) +
+                            complete.substring(cursorIndex + 1);
+                    }
+
                     const beforeBang = textarea.value.substring(0, bangIndex);
                     const afterBang = textarea.value.substring(cursorPosition);
-                    setQuery(
-                        beforeBang + "!" + selectedBang[0] + " " + afterBang,
-                    );
+                    setQuery(beforeBang + "!" + complete + " " + afterBang);
 
                     // 设置光标位置
                     setTimeout(() => {
                         const newPosition =
-                            bangIndex + selectedBang[0].length + 2;
+                            bangIndex +
+                            (cursorIndex === -1
+                                ? selectedBang[0].length + 2
+                                : cursorIndex + 1);
                         textarea.setSelectionRange(newPosition, newPosition);
                     }, 0);
                 }
+
                 setBangListVisible(false);
             } else {
                 // Enter for submit
@@ -162,21 +177,35 @@ function AskWindow() {
             // Select bang
             e.preventDefault();
             const selectedBang = bangList[selectedBangIndex];
+            let complete = selectedBang[1];
             const textarea = e.currentTarget as HTMLTextAreaElement;
             const cursorPosition = textarea.selectionStart;
             const bangIndex = Math.max(
                 textarea.value.lastIndexOf("!", cursorPosition - 1),
-                textarea.value.lastIndexOf("！", cursorPosition - 1)
+                textarea.value.lastIndexOf("！", cursorPosition - 1),
             );
 
             if (bangIndex !== -1) {
+                // 找到complete中的|的位置
+                const cursorIndex = complete.indexOf("|");
+                // 如果有|，则将光标移动到|的位置，并且移除|
+                if (cursorIndex !== -1) {
+                    complete =
+                        complete.substring(0, cursorIndex) +
+                        complete.substring(cursorIndex + 1);
+                }
+
                 const beforeBang = textarea.value.substring(0, bangIndex);
                 const afterBang = textarea.value.substring(cursorPosition);
-                setQuery(beforeBang + "!" + selectedBang[0] + " " + afterBang);
+                setQuery(beforeBang + "!" + complete + " " + afterBang);
 
                 // 设置光标位置
                 setTimeout(() => {
-                    const newPosition = bangIndex + selectedBang[0].length + 2;
+                    const newPosition =
+                        bangIndex +
+                        (cursorIndex === -1
+                            ? selectedBang[0].length + 2
+                            : cursorIndex + 1);
                     textarea.setSelectionRange(newPosition, newPosition);
                 }, 0);
             }
@@ -231,7 +260,7 @@ function AskWindow() {
                 const value = inputRef.current.value;
                 const bangIndex = Math.max(
                     value.lastIndexOf("!", cursorPosition - 1),
-                    value.lastIndexOf("！", cursorPosition - 1)
+                    value.lastIndexOf("！", cursorPosition - 1),
                 );
                 if (bangIndex !== -1 && bangIndex < cursorPosition) {
                     const bangInput = value
@@ -258,7 +287,12 @@ function AskWindow() {
 
                         // 计算bang列表的位置
                         const left = rect.left + cursorCoords.cursorLeft;
-                        const top = rect.top + rect.height + Math.min(textareaHeight, cursorCoords.cursorTop) - paddingTop - paddingBottom;
+                        const top =
+                            rect.top +
+                            rect.height +
+                            Math.min(textareaHeight, cursorCoords.cursorTop) -
+                            paddingTop -
+                            paddingBottom;
                         setCursorPosition({ top, left });
                     } else {
                         setBangListVisible(false);
@@ -516,30 +550,68 @@ function AskWindow() {
                             left: cursorPosition.left,
                         }}
                     >
-                        {bangList.map(([bang, desc], index) => (
+                        {bangList.map(([bang, complete, desc], index) => (
                             <div
                                 className={`completion-bang-container ${index === selectedBangIndex ? "selected" : ""}`}
                                 key={bang}
                                 onClick={() => {
                                     const textarea = inputRef.current;
                                     if (textarea) {
-                                        const cursorPosition = textarea.selectionStart;
+                                        const cursorPosition =
+                                            textarea.selectionStart;
                                         const bangIndex = Math.max(
-                                            textarea.value.lastIndexOf("!", cursorPosition - 1),
-                                            textarea.value.lastIndexOf("！", cursorPosition - 1)
+                                            textarea.value.lastIndexOf(
+                                                "!",
+                                                cursorPosition - 1,
+                                            ),
+                                            textarea.value.lastIndexOf(
+                                                "！",
+                                                cursorPosition - 1,
+                                            ),
                                         );
 
                                         if (bangIndex !== -1) {
+                                            // 找到complete中的|的位置
+                                            const cursorIndex =
+                                                complete.indexOf("|");
+                                            // 如果有|，则将光标移动到|的位置，并且移除|
+                                            if (cursorIndex !== -1) {
+                                                complete =
+                                                    complete.substring(
+                                                        0,
+                                                        cursorIndex,
+                                                    ) +
+                                                    complete.substring(
+                                                        cursorIndex + 1,
+                                                    );
+                                            }
+
                                             const newValue =
-                                                textarea.value.substring(0, bangIndex + 1) +
-                                                bang +
+                                                textarea.value.substring(
+                                                    0,
+                                                    bangIndex + 1,
+                                                ) +
+                                                complete +
                                                 " " +
-                                                textarea.value.substring(cursorPosition);
+                                                textarea.value.substring(
+                                                    cursorPosition,
+                                                );
                                             setQuery(newValue);
                                             setBangListVisible(false);
                                             // 再次聚焦到textarea输入框并设置光标位置
-                                            textarea.focus();
-                                            textarea.setSelectionRange(bangIndex + bang.length + 2, bangIndex + bang.length + 2);
+                                            setTimeout(() => {
+                                                textarea.focus();
+                                                textarea.setSelectionRange(
+                                                    bangIndex +
+                                                        (cursorIndex === -1
+                                                            ? bang.length + 2
+                                                            : cursorIndex + 1),
+                                                    bangIndex +
+                                                        (cursorIndex === -1
+                                                            ? bang.length + 2
+                                                            : cursorIndex + 1),
+                                                );
+                                            });
                                         }
                                     }
                                 }}
