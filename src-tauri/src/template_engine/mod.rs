@@ -141,6 +141,7 @@ pub struct TemplateEngine {
 #[derive(Clone)]
 pub struct Bang {
     pub name: String,
+    pub complete: String,
     pub description: String,
     pub bang_type: BangType,
     pub command: CommandFn,
@@ -162,6 +163,7 @@ impl TemplateEngine {
             "current_date".to_string(),
             Bang {
                 name: "current_date".to_string(),
+                complete: "current_date".to_string(),
                 description: "获取当前日期".to_string(),
                 bang_type: BangType::Text,
                 command: current_date as CommandFn,
@@ -171,6 +173,7 @@ impl TemplateEngine {
             "cd".to_string(),
             Bang {
                 name: "cd".to_string(),
+                complete: "cd".to_string(),
                 description: "获取当前日期".to_string(),
                 bang_type: BangType::Text,
                 command: current_date as CommandFn,
@@ -181,6 +184,7 @@ impl TemplateEngine {
             "current_time".to_string(),
             Bang {
                 name: "current_time".to_string(),
+                complete: "current_time".to_string(),
                 description: "获取当前时间".to_string(),
                 bang_type: BangType::Text,
                 command: current_time as CommandFn,
@@ -190,6 +194,7 @@ impl TemplateEngine {
             "ct".to_string(),
             Bang {
                 name: "ct".to_string(),
+                complete: "ct".to_string(),
                 description: "获取当前时间".to_string(),
                 bang_type: BangType::Text,
                 command: current_time as CommandFn,
@@ -200,6 +205,7 @@ impl TemplateEngine {
             "sub_start".to_string(),
             Bang {
                 name: "sub_start".to_string(),
+                complete: "sub_start(|)".to_string(),
                 description: "截取文本的前多少个字符".to_string(),
                 bang_type: BangType::Text,
                 command: sub_start as CommandFn,
@@ -210,6 +216,7 @@ impl TemplateEngine {
             "selected_text".to_string(),
             Bang {
                 name: "selected_text".to_string(),
+                complete: "selected_text".to_string(),
                 description: "获取当前选中的文本".to_string(),
                 bang_type: BangType::Text,
                 command: selected_text as CommandFn,
@@ -219,6 +226,7 @@ impl TemplateEngine {
             "s".to_string(),
             Bang {
                 name: "s".to_string(),
+                complete: "s".to_string(),
                 description: "获取当前选中的文本".to_string(),
                 bang_type: BangType::Text,
                 command: selected_text as CommandFn,
@@ -229,6 +237,7 @@ impl TemplateEngine {
             "screen".to_string(),
             Bang {
                 name: "screen".to_string(),
+                complete: "screen".to_string(),
                 description: "获取当前桌面的截图".to_string(),
                 bang_type: BangType::Image,
                 command: screen as CommandFn,
@@ -238,6 +247,7 @@ impl TemplateEngine {
             "sc".to_string(),
             Bang {
                 name: "sc".to_string(),
+                complete: "sc".to_string(),
                 description: "获取当前桌面的截图".to_string(),
                 bang_type: BangType::Image,
                 command: screen as CommandFn,
@@ -248,6 +258,7 @@ impl TemplateEngine {
             "web".to_string(),
             Bang {
                 name: "web".to_string(),
+                complete: "web(|)".to_string(),
                 description: "通过网络获取URL的网页信息".to_string(),
                 bang_type: BangType::Text,
                 command: web as CommandFn,
@@ -257,6 +268,7 @@ impl TemplateEngine {
             "w".to_string(),
             Bang {
                 name: "w".to_string(),
+                complete: "w(|)".to_string(),
                 description: "通过网络获取URL的网页信息".to_string(),
                 bang_type: BangType::Text,
                 command: web as CommandFn,
@@ -267,6 +279,7 @@ impl TemplateEngine {
             "web_to_markdown".to_string(),
             Bang {
                 name: "web_to_markdown".to_string(),
+                complete: "web_to_markdown(|)".to_string(),
                 description: "通过网络获取URL的网页信息并且转换为markdown格式".to_string(),
                 bang_type: BangType::Text,
                 command: web_to_markdown as CommandFn,
@@ -276,6 +289,7 @@ impl TemplateEngine {
             "wm".to_string(),
             Bang {
                 name: "wm".to_string(),
+                complete: "wm(|)".to_string(),
                 description: "通过网络获取URL的网页信息并且转换为markdown格式".to_string(),
                 bang_type: BangType::Text,
                 command: web_to_markdown as CommandFn,
@@ -291,6 +305,7 @@ impl TemplateEngine {
             name.to_string(),
             Bang {
                 name: name.to_string(),
+                complete: name.to_string(),
                 description: "Custom command".to_string(),
                 bang_type: BangType::Text,
                 command: handler,

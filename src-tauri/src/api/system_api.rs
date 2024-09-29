@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::cmp::Ord;
+use std::collections::HashMap;
 use tauri::State;
 
 use crate::template_engine::{BangType, TemplateEngine};
@@ -75,12 +75,13 @@ pub async fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_bang_list() -> Result<Vec<(String, String, BangType)>, String> {
+pub async fn get_bang_list() -> Result<Vec<(String, String, String, BangType)>, String> {
     let engine = TemplateEngine::new();
     let mut list = vec![];
     for bang in engine.get_commands().iter() {
         list.push((
             bang.name.clone(),
+            bang.complete.clone(),
             bang.description.clone(),
             bang.bang_type.clone(),
         ));
