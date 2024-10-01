@@ -79,6 +79,31 @@ pub fn create_chat_ui_window(app: &AppHandle) {
     }
 }
 
+pub fn create_plugin_window(app: &AppHandle) {
+    let window_builder = WindowBuilder::new(app, "plugin", WindowUrl::App("index.html".into()))
+        .title("Tea")
+        .inner_size(1000.0, 800.0)
+        .fullscreen(false)
+        .resizable(true)
+        .decorations(true)
+        .center();
+
+    #[cfg(not(target_os = "macos"))]
+    let window_builder = window_builder.transparent(false);
+
+    match window_builder.build() {
+        Ok(window) => {
+            let window_clone = window.clone();
+            window.on_window_event(move |event| {
+                if let WindowEvent::CloseRequested { .. } = event {
+                    window_clone.hide().unwrap();
+                }
+            });
+        }
+        Err(e) => eprintln!("Failed to build window: {}", e),
+    }
+}
+
 #[tauri::command]
 pub async fn open_config_window(app_handle: AppHandle) -> Result<(), String> {
     if app_handle.get_window("config").is_none() {
@@ -111,6 +136,23 @@ pub async fn open_chat_ui_window(app_handle: AppHandle) -> Result<(), String> {
         window.show().unwrap();
         window.set_focus().unwrap();
         app_handle.get_window("ask").unwrap().hide().unwrap();
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn open_plugin_window(app_handle: AppHandle) -> Result<(), String> {
+    if app_handle.get_window("plugin").is_none() {
+        println!("Creating window");
+
+        create_plugin_window(&app_handle);
+    } else if let Some(window) = app_handle.get_window("plugin") {
+        println!("Showing window");
+        if window.is_minimized().unwrap_or(false) {
+            window.unminimize().unwrap();
+        }
+        window.show().unwrap();
+        window.set_focus().unwrap();
     }
     Ok(())
 }

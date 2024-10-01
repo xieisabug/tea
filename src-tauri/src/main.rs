@@ -29,11 +29,13 @@ use crate::api::llm_api::{
     get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select,
     update_llm_provider, update_llm_provider_config,
 };
-use crate::api::system_api::{get_all_feature_config, save_feature_config, open_data_folder};
+use crate::api::system_api::{get_all_feature_config, open_data_folder, save_feature_config};
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::SystemDatabase;
-use crate::window::{create_ask_window, open_chat_ui_window, open_config_window};
+use crate::window::{
+    create_ask_window, open_chat_ui_window, open_config_window, open_plugin_window,
+};
 use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
@@ -197,6 +199,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_selected,
             open_config_window,
             open_chat_ui_window,
+            open_plugin_window,
             save_config,
             get_config,
             get_all_feature_config,
