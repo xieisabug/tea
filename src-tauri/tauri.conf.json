@@ -46,14 +46,28 @@
         "removeDir": false,
         "removeFile": false,
         "renameFile": true,
-        "exists": true
+        "exists": true,
+        "scope": [
+          "**"
+        ]
+      },
+      "protocol": {
+        "asset": true,
+        "assetScope": [
+          "**"
+        ]
+      },
+      "path": {
+        "all": true
       }
     },
     "security": {
       "dangerousRemoteDomainIpcAccess": [
         {
           "domain": "preview.teafakedomain.com",
-          "windows": ["preview_react"]
+          "windows": [
+            "preview_react"
+          ]
         }
       ],
       "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; connect-src 'self' http://localhost:8097"
