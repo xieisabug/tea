@@ -84,6 +84,20 @@ function ConversationUI({
         };
     }, []);
 
+    // 处理选中文字展示的部分
+    const [selectedText, setSelectedText] = useState<string>("");
+    useEffect(() => {
+        invoke<string>("get_selected_text_api").then((text) => {
+            console.log("get_selected_text_api", text);
+            setSelectedText(text);
+        });
+
+        listen<string>("get_selected_text_event", (event) => {
+            console.log("get_selected_text_event", event.payload);
+            setSelectedText(event.payload);
+        });
+    }, []);
+
     const unsubscribeRef = useRef<Promise<() => void> | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -349,14 +363,19 @@ function ConversationUI({
     }, []);
 
     const filteredMessages = useMemo(
-        () => messages.filter((m) => m.message_type !== "system").map((message) => (
-            <MessageItem
-                key={message.id} // 使用唯一的 id 作为 key，而不是索引
-                message={message}
-                onCodeRun={handleArtifact}
-                onMessageRegenerate={() => handleMessageRegenerate(message.id)}
-            />
-        )),
+        () =>
+            messages
+                .filter((m) => m.message_type !== "system")
+                .map((message) => (
+                    <MessageItem
+                        key={message.id} // 使用唯一的 id 作为 key，而不是索引
+                        message={message}
+                        onCodeRun={handleArtifact}
+                        onMessageRegenerate={() =>
+                            handleMessageRegenerate(message.id)
+                        }
+                    />
+                )),
         [messages],
     );
 
@@ -669,6 +688,7 @@ function ConversationUI({
                     filteredMessages
                 ) : (
                     <NewChatComponent
+                        selectedText={selectedText}
                         selectedAssistant={selectedAssistant}
                         assistants={assistants}
                         setSelectedAssistant={setSelectedAssistant}
@@ -687,7 +707,6 @@ function ConversationUI({
             <InputArea
                 inputText={inputText}
                 setInputText={setInputText}
-                handleKeyDown={handleKeyDown}
                 fileInfoList={fileInfoList}
                 handleChooseFile={handleChooseFile}
                 handleDeleteFile={handleDeleteFile}

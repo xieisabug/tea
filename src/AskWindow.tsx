@@ -14,12 +14,22 @@ import Copy from "./assets/copy.svg?react";
 import Ok from "./assets/ok.svg?react";
 import OpenFullUI from "./assets/open-fullui.svg?react";
 import Setting from "./assets/setting.svg?react";
+import Add from "./assets/add.svg?react";
 import AskWindowPrepare from "./components/AskWindowPrepare";
 import AskAIHint from "./components/AskAIHint";
 import IconButton from "./components/IconButton";
 import { throttle } from "lodash";
 import { writeText } from "@tauri-apps/api/clipboard";
 import CodeBlock from "./components/CodeBlock";
+import { getCaretCoordinates } from "./utils/caretCoordinates";
+
+interface AiResponse {
+    conversation_id: number;
+    add_message_id: number;
+}
+interface CustomComponents extends Components {
+    antthinking: React.ElementType;
+}
 
 interface AiResponse {
     conversation_id: number;
@@ -36,21 +46,271 @@ function AskWindow() {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const [aiIsResponsing, setAiIsResponsing] = useState<boolean>(false);
     const [copySuccess, setCopySuccess] = useState<boolean>(false);
+    const [bangListVisible, setBangListVisible] = useState<boolean>(false);
+    const [bangList, setBangList] = useState<string[]>([]);
+    const [originalBangList, setOriginalBangList] = useState<string[]>([]);
+    const [selectedText, setSelectedText] = useState<string>("");
+
+    const [cursorPosition, setCursorPosition] = useState<{
+        top: number;
+        left: number;
+    }>({ top: 0, left: 0 });
+    const [selectedBangIndex, setSelectedBangIndex] = useState<number>(0);
 
     let unsubscribe: Promise<() => void> | null = null;
+
+    useEffect(() => {
+        invoke<string>("get_selected_text_api").then((text) => {
+            console.log("get_selected_text_api", text);
+            setSelectedText(text);
+        });
+
+        listen<string>("get_selected_text_event", (event) => {
+            console.log("get_selected_text_event", event.payload);
+            setSelectedText(event.payload);
+        });
+    }, []);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newValue = e.target.value;
+        const cursorPosition = e.target.selectionStart;
+        setQuery(newValue);
+
+        // Check for bang input
+        const bangIndex = Math.max(
+            newValue.lastIndexOf("!", cursorPosition - 1),
+            newValue.lastIndexOf("！", cursorPosition - 1),
+        );
+
+        if (bangIndex !== -1 && bangIndex < cursorPosition) {
+            const bangInput = newValue
+                .substring(bangIndex + 1, cursorPosition)
+                .toLowerCase();
+            const filteredBangs = originalBangList.filter(([bang]) =>
+                bang.toLowerCase().startsWith(bangInput),
+            );
+
+            if (filteredBangs.length > 0) {
+                setBangList(filteredBangs);
+                setSelectedBangIndex(0);
+                setBangListVisible(true);
+
+                // Update cursor position
+                const textarea = e.target;
+                const cursorPosition = textarea.selectionStart;
+                const cursorCoords = getCaretCoordinates(
+                    textarea,
+                    cursorPosition,
+                );
+                const rect = textarea.getBoundingClientRect();
+                const style = window.getComputedStyle(textarea);
+                const paddingTop = parseFloat(style.paddingTop);
+                const paddingBottom = parseFloat(style.paddingBottom);
+                const textareaHeight = parseFloat(style.height);
+
+                // 计算bang列表的位置
+                const left = rect.left + cursorCoords.cursorLeft;
+                const top =
+                    rect.top +
+                    rect.height +
+                    Math.min(textareaHeight, cursorCoords.cursorTop) -
+                    paddingTop -
+                    paddingBottom;
+                setCursorPosition({ top, left });
+            } else {
+                setBangListVisible(false);
+            }
+        } else {
+            setBangListVisible(false);
+        }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
             if (e.shiftKey) {
                 // Shift + Enter for new line
                 return;
+            } else if (bangListVisible) {
+                // Select bang
+                e.preventDefault();
+                const selectedBang = bangList[selectedBangIndex];
+                let complete = selectedBang[1];
+                const textarea = e.currentTarget as HTMLTextAreaElement;
+                const cursorPosition = textarea.selectionStart;
+                const bangIndex = Math.max(
+                    textarea.value.lastIndexOf("!", cursorPosition - 1),
+                    textarea.value.lastIndexOf("！", cursorPosition - 1),
+                );
+
+                if (bangIndex !== -1) {
+                    // 找到complete中的|的位置
+                    const cursorIndex = complete.indexOf("|");
+                    // 如果有|，则将光标移动到|的位置，并且移除|
+                    if (cursorIndex !== -1) {
+                        complete =
+                            complete.substring(0, cursorIndex) +
+                            complete.substring(cursorIndex + 1);
+                    }
+
+                    const beforeBang = textarea.value.substring(0, bangIndex);
+                    const afterBang = textarea.value.substring(cursorPosition);
+                    setQuery(beforeBang + "!" + complete + " " + afterBang);
+
+                    // 设置光标位置
+                    setTimeout(() => {
+                        const newPosition =
+                            bangIndex +
+                            (cursorIndex === -1
+                                ? selectedBang[0].length + 2
+                                : cursorIndex + 1);
+                        textarea.setSelectionRange(newPosition, newPosition);
+                    }, 0);
+                }
+
+                setBangListVisible(false);
             } else {
                 // Enter for submit
                 e.preventDefault();
                 handleSubmit();
             }
+        } else if (e.key === "Tab" && bangListVisible) {
+            // Select bang
+            e.preventDefault();
+            const selectedBang = bangList[selectedBangIndex];
+            let complete = selectedBang[1];
+            const textarea = e.currentTarget as HTMLTextAreaElement;
+            const cursorPosition = textarea.selectionStart;
+            const bangIndex = Math.max(
+                textarea.value.lastIndexOf("!", cursorPosition - 1),
+                textarea.value.lastIndexOf("！", cursorPosition - 1),
+            );
+
+            if (bangIndex !== -1) {
+                // 找到complete中的|的位置
+                const cursorIndex = complete.indexOf("|");
+                // 如果有|，则将光标移动到|的位置，并且移除|
+                if (cursorIndex !== -1) {
+                    complete =
+                        complete.substring(0, cursorIndex) +
+                        complete.substring(cursorIndex + 1);
+                }
+
+                const beforeBang = textarea.value.substring(0, bangIndex);
+                const afterBang = textarea.value.substring(cursorPosition);
+                setQuery(beforeBang + "!" + complete + " " + afterBang);
+
+                // 设置光标位置
+                setTimeout(() => {
+                    const newPosition =
+                        bangIndex +
+                        (cursorIndex === -1
+                            ? selectedBang[0].length + 2
+                            : cursorIndex + 1);
+                    textarea.setSelectionRange(newPosition, newPosition);
+                }, 0);
+            }
+
+            setBangListVisible(false);
+        } else if (e.key === "ArrowUp" && bangListVisible) {
+            e.preventDefault();
+            setSelectedBangIndex((prevIndex) =>
+                prevIndex > 0 ? prevIndex - 1 : bangList.length - 1,
+            );
+        } else if (e.key === "ArrowDown" && bangListVisible) {
+            e.preventDefault();
+            setSelectedBangIndex((prevIndex) =>
+                prevIndex < bangList.length - 1 ? prevIndex + 1 : 0,
+            );
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            setBangListVisible(false);
         }
     };
+
+    function scrollToSelectedBang() {
+        const selectedBangElement = document.querySelector(
+            ".completion-bang-container.selected",
+        );
+        if (selectedBangElement) {
+            const parentElement = selectedBangElement.parentElement;
+            if (parentElement) {
+                const parentRect = parentElement.getBoundingClientRect();
+                const selectedRect =
+                    selectedBangElement.getBoundingClientRect();
+
+                if (selectedRect.top < parentRect.top) {
+                    parentElement.scrollTop -=
+                        parentRect.top - selectedRect.top;
+                } else if (selectedRect.bottom > parentRect.bottom) {
+                    parentElement.scrollTop +=
+                        selectedRect.bottom - parentRect.bottom;
+                }
+            }
+        }
+    }
+
+    useEffect(() => {
+        scrollToSelectedBang();
+    }, [selectedBangIndex]);
+
+    useEffect(() => {
+        const handleSelectionChange = () => {
+            if (inputRef.current) {
+                const cursorPosition = inputRef.current.selectionStart;
+                const value = inputRef.current.value;
+                const bangIndex = Math.max(
+                    value.lastIndexOf("!", cursorPosition - 1),
+                    value.lastIndexOf("！", cursorPosition - 1),
+                );
+                if (bangIndex !== -1 && bangIndex < cursorPosition) {
+                    const bangInput = value
+                        .substring(bangIndex + 1, cursorPosition)
+                        .toLowerCase();
+                    const filteredBangs = originalBangList.filter(([bang]) =>
+                        bang.toLowerCase().startsWith(bangInput),
+                    );
+
+                    if (filteredBangs.length > 0) {
+                        setBangList(filteredBangs);
+                        setSelectedBangIndex(0);
+                        setBangListVisible(true);
+
+                        const cursorCoords = getCaretCoordinates(
+                            inputRef.current,
+                            bangIndex + 1,
+                        );
+                        const rect = inputRef.current.getBoundingClientRect();
+                        const style = window.getComputedStyle(inputRef.current);
+                        const paddingTop = parseFloat(style.paddingTop);
+                        const paddingBottom = parseFloat(style.paddingBottom);
+                        const textareaHeight = parseFloat(style.height);
+
+                        // 计算bang列表的位置
+                        const left = rect.left + cursorCoords.cursorLeft;
+                        const top =
+                            rect.top +
+                            rect.height +
+                            Math.min(textareaHeight, cursorCoords.cursorTop) -
+                            paddingTop -
+                            paddingBottom;
+                        setCursorPosition({ top, left });
+                    } else {
+                        setBangListVisible(false);
+                    }
+                } else {
+                    setBangListVisible(false);
+                }
+            }
+        };
+
+        document.addEventListener("selectionchange", handleSelectionChange);
+        return () => {
+            document.removeEventListener(
+                "selectionchange",
+                handleSelectionChange,
+            );
+        };
+    }, [originalBangList]);
 
     const handleSubmit = () => {
         if (aiIsResponsing) {
@@ -147,6 +407,20 @@ function AskWindow() {
         });
     }, []);
 
+    useEffect(() => {
+        invoke<string[]>("get_bang_list").then((bangList) => {
+            setBangList(bangList);
+            setOriginalBangList(bangList);
+        });
+    }, []);
+
+    const startNewConversation = () => {
+        setQuery("");
+        setResponse("");
+        setMessageId(-1);
+        setAiIsResponsing(false);
+    };
+
     return (
         <div className="ask-window">
             <div className="chat-container" data-tauri-drag-region>
@@ -156,9 +430,7 @@ function AskWindow() {
                         ref={inputRef}
                         value={query}
                         onKeyDown={handleKeyDown}
-                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                            setQuery(e.target.value)
-                        }
+                        onChange={handleInputChange}
                         placeholder="Ask AI..."
                     ></textarea>
                     <button
@@ -232,10 +504,16 @@ function AskWindow() {
                             />
                         )
                     ) : (
-                        <AskWindowPrepare />
+                        <AskWindowPrepare selectedText={selectedText} />
                     )}
                 </div>
                 <div className="tools" data-tauri-drag-region>
+                    {messageId !== -1 && !aiIsResponsing && (
+                        <IconButton
+                            icon={<Add fill="black" />}
+                            onClick={startNewConversation}
+                        />
+                    )}
                     {messageId !== -1 && !aiIsResponsing ? (
                         <IconButton
                             icon={
@@ -264,6 +542,86 @@ function AskWindow() {
                         onClick={openConfig}
                     />
                 </div>
+                {bangListVisible && (
+                    <div
+                        className="completion-bang-list"
+                        style={{
+                            top: cursorPosition.top,
+                            left: cursorPosition.left,
+                        }}
+                    >
+                        {bangList.map(([bang, complete, desc], index) => (
+                            <div
+                                className={`completion-bang-container ${index === selectedBangIndex ? "selected" : ""}`}
+                                key={bang}
+                                onClick={() => {
+                                    const textarea = inputRef.current;
+                                    if (textarea) {
+                                        const cursorPosition =
+                                            textarea.selectionStart;
+                                        const bangIndex = Math.max(
+                                            textarea.value.lastIndexOf(
+                                                "!",
+                                                cursorPosition - 1,
+                                            ),
+                                            textarea.value.lastIndexOf(
+                                                "！",
+                                                cursorPosition - 1,
+                                            ),
+                                        );
+
+                                        if (bangIndex !== -1) {
+                                            // 找到complete中的|的位置
+                                            const cursorIndex =
+                                                complete.indexOf("|");
+                                            // 如果有|，则将光标移动到|的位置，并且移除|
+                                            if (cursorIndex !== -1) {
+                                                complete =
+                                                    complete.substring(
+                                                        0,
+                                                        cursorIndex,
+                                                    ) +
+                                                    complete.substring(
+                                                        cursorIndex + 1,
+                                                    );
+                                            }
+
+                                            const newValue =
+                                                textarea.value.substring(
+                                                    0,
+                                                    bangIndex + 1,
+                                                ) +
+                                                complete +
+                                                " " +
+                                                textarea.value.substring(
+                                                    cursorPosition,
+                                                );
+                                            setQuery(newValue);
+                                            setBangListVisible(false);
+                                            // 再次聚焦到textarea输入框并设置光标位置
+                                            setTimeout(() => {
+                                                textarea.focus();
+                                                textarea.setSelectionRange(
+                                                    bangIndex +
+                                                        (cursorIndex === -1
+                                                            ? bang.length + 2
+                                                            : cursorIndex + 1),
+                                                    bangIndex +
+                                                        (cursorIndex === -1
+                                                            ? bang.length + 2
+                                                            : cursorIndex + 1),
+                                                );
+                                            });
+                                        }
+                                    }
+                                }}
+                            >
+                                <span className="bang-tag">{bang}</span>
+                                <span>{desc}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

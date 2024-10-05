@@ -13,6 +13,7 @@ mod template_engine;
 mod window;
 
 use std::collections::HashMap;
+use std::io::Cursor;
 use std::sync::Arc;
 
 use crate::api::ai_api::{ask_ai, cancel_ai, regenerate_ai};
@@ -29,17 +30,22 @@ use crate::api::llm_api::{
     get_llm_models, get_llm_provider_config, get_llm_providers, get_models_for_select,
     update_llm_provider, update_llm_provider_config,
 };
-use crate::api::system_api::{get_all_feature_config, save_feature_config, open_data_folder};
+use crate::api::system_api::{
+    get_all_feature_config, get_bang_list, get_selected_text_api, open_data_folder,
+    save_feature_config,
+};
 use crate::db::assistant_db::AssistantDatabase;
 use crate::db::llm_db::LLMDatabase;
 use crate::db::system_db::SystemDatabase;
 use crate::window::{create_ask_window, open_chat_ui_window, open_config_window};
+use base64::{engine::general_purpose, Engine as _};
 use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::plugin_db::PluginDatabase;
 use db::system_db::FeatureConfig;
 use get_selected_text::get_selected_text;
+use screenshots::{image::ImageOutputFormat, Screen}; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
 use serde::{Deserialize, Serialize};
 use state::message_token::MessageTokenManager;
 use tauri::{
@@ -109,6 +115,28 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
     })
 }
 
+fn get_screenshot() -> Result<String, String> {
+    let screens = Screen::all().unwrap();
+    if let Some(screen) = screens.get(0) {
+        // 捕获整个屏幕
+        let image = screen.capture().unwrap();
+
+        // 将图像转换为PNG格式
+        let mut png_data = Vec::new();
+        let _ = image
+            .write_to(&mut Cursor::new(&mut png_data), ImageOutputFormat::Png)
+            .unwrap();
+
+        // 将PNG数据转换为base64
+        let base64_image = general_purpose::STANDARD.encode(&png_data);
+
+        // 添加适当的data URI前缀
+        Ok(format!("data:image/png;base64,{}", base64_image))
+    } else {
+        Err("未获取到屏幕数据".to_string())
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
     let show = CustomMenuItem::new("show".to_string(), "Show");
@@ -129,23 +157,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     app.exit(0);
                 }
                 "show" => {
-                    let ask_window = app.get_window("ask");
-                    let chat_ui_window = app.get_window("chat_ui");
-
-                    match (ask_window, chat_ui_window) {
-                        (None, _) => {
-                            println!("Creating ask window");
-                            create_ask_window(&app);
-                        }
-                        (Some(window), _) => {
-                            println!("Focusing ask window");
-                            if window.is_minimized().unwrap_or(false) {
-                                window.unminimize().unwrap();
-                            }
-                            window.show().unwrap();
-                            window.set_focus().unwrap();
-                        }
-                    }
+                    handle_open_ask_window(&app);
                 }
                 _ => {}
             },
@@ -225,20 +237,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_conversation_with_messages,
             delete_conversation,
             update_conversation,
-            run_artifacts
+            run_artifacts,
+            get_bang_list,
+            get_selected_text_api
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
     app.run(|app_handle, e| match e {
         RunEvent::Ready => {
-            let app_handle = app_handle.clone();
+            let app_handle_clone = app_handle.clone();
             // Register global shortcut
             // 快捷键的逻辑要理一下：
             // 什么都没有的时候，快捷打开ask窗口
             // ask窗口打开的时候，快捷打开chat_ui窗口（这一步现在是在js里做的）
             // chat_ui窗口打开的时候，不会再打开任何窗口了
-            app_handle
+            app_handle_clone
                 .global_shortcut_manager()
                 .register("CmdOrCtrl+Shift+I", move || {
                     println!(
@@ -246,39 +260,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         &Local::now().to_string()
                     );
 
-                    let text = get_selected_text().unwrap_or_default();
+                    match get_selected_text() {
+                        Ok(selected_text) => {
+                            println!(
+                                "Selected text: {}, at time: {}",
+                                selected_text.clone(),
+                                &Local::now().to_string()
+                            );
+
+                            app_handle_clone
+                                .emit_all("get_selected_text_event", selected_text.clone())
+                                .unwrap();
+
+                            let app_state = app_handle_clone.state::<AppState>();
+                            *app_state.selected_text.blocking_lock() = selected_text;
+                        }
+                        Err(e) => {
+                            println!("Error getting selected text: {}", e);
+                        }
+                    }
+
+                    handle_open_ask_window(&app_handle_clone);
+                })
+                .expect("Failed to register global shortcut");
+
+            let app_handle_clone = app_handle.clone();
+            app_handle_clone
+                .global_shortcut_manager()
+                .register("CmdOrCtrl+Shift+O", move || {
                     println!(
-                        "Selected text: {}, at time: {}",
-                        text,
+                        "CmdOrCtrl+Shift+O pressed at time : {}",
                         &Local::now().to_string()
                     );
 
-                    let app_state = app_handle.state::<AppState>();
-                    *app_state.selected_text.blocking_lock() = text;
-
-                    let ask_window = app_handle.get_window("ask");
-                    let chat_ui_window = app_handle.get_window("chat_ui");
-
-                    match (ask_window, chat_ui_window) {
-                        (None, _) => {
-                            println!(
-                                "Creating ask window, at time: {}",
-                                &Local::now().to_string()
-                            );
-                            create_ask_window(&app_handle);
-                        }
-                        (Some(window), _) => {
-                            println!(
-                                "Focusing ask window, at time: {}",
-                                &Local::now().to_string()
-                            );
-                            if window.is_minimized().unwrap_or(false) {
-                                window.unminimize().unwrap();
-                            }
-                            window.show().unwrap();
-                            window.set_focus().unwrap();
-                        }
-                    }
+                    handle_open_ask_window(&app_handle_clone);
                 })
                 .expect("Failed to register global shortcut");
         }
@@ -289,6 +304,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     Ok(())
+}
+
+fn handle_open_ask_window(app_handle: &tauri::AppHandle) {
+    let ask_window = app_handle.get_window("ask");
+    let chat_ui_window = app_handle.get_window("chat_ui");
+
+    match (ask_window, chat_ui_window) {
+        (None, _) => {
+            println!(
+                "Creating ask window, at time: {}",
+                &Local::now().to_string()
+            );
+            create_ask_window(app_handle);
+        }
+        (Some(window), _) => {
+            println!(
+                "Focusing ask window, at time: {}",
+                &Local::now().to_string()
+            );
+            if window.is_minimized().unwrap_or(false) {
+                window.unminimize().unwrap();
+            }
+            window.show().unwrap();
+            window.set_focus().unwrap();
+        }
+    }
 }
 
 fn initialize_state(app_handle: &tauri::AppHandle) -> FeatureConfigState {

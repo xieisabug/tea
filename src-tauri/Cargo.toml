@@ -11,10 +11,11 @@ edition = "2021"
 tauri-build = { version = "1", features = [] }
 
 [dependencies]
-tauri = { version = "1", features = [ "fs-all", "dialog-all", "clipboard-all", "window-maximize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-minimize", "window-start-dragging", "system-tray", "shell-open", "global-shortcut-all"] }
+tauri = { version = "1", features = [ "test", "fs-all", "dialog-all", "clipboard-all", "window-maximize", "window-hide", "window-unminimize", "window-unmaximize", "window-show", "window-close", "window-minimize", "window-start-dragging", "system-tray", "shell-open", "global-shortcut-all"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12.5", features = ["json", "stream"] }
+reqwest = { version = "0.12.5", features = ["json", "stream", "blocking"] }
+htmd = "0.1"
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7.11" }
 rusqlite = { version = "0.31.0", features = ["bundled", "chrono"] }
@@ -28,10 +29,12 @@ semver = "1.0"
 sha2 = "0.10.8"
 hex = "0.4.3"
 anyhow = "1.0"
-base64 = "0.13.0"
+base64 = "0.22"
 mime_guess = "2.0"
 open = "3.0"
-
+mockito = "0.31"
+screenshots = "0.8"
+image = "0.25"
 [target.'cfg(target_os = "macos")'.dependencies]
 macos-accessibility-client = "0.0.1"
 

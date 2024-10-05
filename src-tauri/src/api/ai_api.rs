@@ -60,8 +60,9 @@ pub async fn ask_ai(
     let app_handle_clone = app_handle.clone();
     let assistant_detail = get_assistant(app_handle_clone, request.assistant_id).unwrap();
     let assistant_prompt_origin = &assistant_detail.prompts[0].prompt;
-    let assistant_prompt_result =
-        template_engine.parse(&assistant_prompt_origin, &template_context);
+    let assistant_prompt_result = template_engine
+        .parse(&assistant_prompt_origin, &template_context)
+        .await;
     println!("assistant_prompt_result: {}", assistant_prompt_result);
 
     if assistant_detail.model.is_empty() {
@@ -69,7 +70,9 @@ pub async fn ask_ai(
     }
 
     let need_generate_title = request.conversation_id.is_empty();
-    let request_prompt_result = template_engine.parse(&request.prompt, &template_context);
+    let request_prompt_result = template_engine
+        .parse(&request.prompt, &template_context)
+        .await;
 
     let app_handle_clone = app_handle.clone();
     let (conversation_id, new_message_id, request_prompt_result_with_context, init_message_list) =
