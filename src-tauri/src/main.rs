@@ -58,7 +58,6 @@ use tokio::sync::Mutex as TokioMutex;
 
 struct AppState {
     selected_text: TokioMutex<String>,
-    screenshots: TokioMutex<String>,
 }
 
 #[derive(Clone)]
@@ -203,7 +202,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .manage(AppState {
             selected_text: TokioMutex::new(String::new()),
-            screenshots: TokioMutex::new(String::new()),
         })
         .manage(MessageTokenManager::new())
         .invoke_handler(tauri::generate_handler![
@@ -273,7 +271,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 &Local::now().to_string()
                             );
 
-                            app_handle_clone.emit_all("get_selected_text_event", selected_text.clone()).unwrap();
+                            app_handle_clone
+                                .emit_all("get_selected_text_event", selected_text.clone())
+                                .unwrap();
 
                             let app_state = app_handle_clone.state::<AppState>();
                             *app_state.selected_text.blocking_lock() = selected_text;
@@ -295,24 +295,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "CmdOrCtrl+Shift+O pressed at time : {}",
                         &Local::now().to_string()
                     );
-
-                    handle_open_ask_window(&app_handle_clone);
-                })
-                .expect("Failed to register global shortcut");
-
-            let app_handle_clone = app_handle.clone();
-            app_handle_clone
-                .global_shortcut_manager()
-                .register("CmdOrCtrl+Shift+P", move || {
-                    println!(
-                        "CmdOrCtrl+Shift+P pressed at time : {}",
-                        &Local::now().to_string()
-                    );
-
-                    let screenshots_data = get_screenshot().unwrap();
-
-                    let app_state = app_handle_clone.state::<AppState>();
-                    *app_state.screenshots.blocking_lock() = screenshots_data;
 
                     handle_open_ask_window(&app_handle_clone);
                 })
