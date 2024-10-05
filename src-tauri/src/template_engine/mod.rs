@@ -66,21 +66,6 @@ fn selected_text(
     .boxed()
 }
 
-// 新增获取屏幕截图的函数
-fn screen(
-    _: TemplateEngine,
-    _: String,
-    context: HashMap<String, String>,
-) -> BoxFuture<'static, String> {
-    async move {
-        context
-            .get("screen")
-            .unwrap_or(&String::default())
-            .to_string()
-    }
-    .boxed()
-}
-
 // 新增获取网页内容的函数
 fn web(_: TemplateEngine, url: String, _: HashMap<String, String>) -> BoxFuture<'static, String> {
     async move {
@@ -230,27 +215,6 @@ impl TemplateEngine {
                 description: "获取当前选中的文本".to_string(),
                 bang_type: BangType::Text,
                 command: selected_text as CommandFn,
-            },
-        );
-
-        commands.insert(
-            "screen".to_string(),
-            Bang {
-                name: "screen".to_string(),
-                complete: "screen".to_string(),
-                description: "获取当前桌面的截图".to_string(),
-                bang_type: BangType::Image,
-                command: screen as CommandFn,
-            },
-        );
-        commands.insert(
-            "sc".to_string(),
-            Bang {
-                name: "sc".to_string(),
-                complete: "sc".to_string(),
-                description: "获取当前桌面的截图".to_string(),
-                bang_type: BangType::Image,
-                command: screen as CommandFn,
             },
         );
 

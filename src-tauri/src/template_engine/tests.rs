@@ -1,7 +1,6 @@
 use super::*;
 use chrono::Local;
 use mockito::mock;
-use tokio::test;
 
 #[tokio::test]
 async fn test_parse_current_date() {
@@ -94,17 +93,6 @@ async fn test_parse_mix() {
         .await;
     println!("result3 : {}", result3);
     assert_eq!("test20test", result3);
-}
-
-#[tokio::test]
-async fn test_screen_command() {
-    let engine = TemplateEngine::new();
-    let context = HashMap::new();
-    let result = engine.parse("!screen", &context).await;
-    println!("result |{}|", result);
-    assert!(!result.is_empty());
-    let result = engine.parse("!sc", &context).await;
-    assert!(!result.is_empty());
 }
 
 #[tokio::test]
