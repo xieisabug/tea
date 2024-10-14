@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 import { Form } from "./ui/form";
 import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Input } from "./ui/input";
 
 interface ConfigField {
 	type:
@@ -62,7 +63,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 	config,
 	classNames,
 	enableExpand = false,
-	defaultExpanded = false,
+	defaultExpanded = true,
 	layout = "default",
 	onSave,
 	onCopy,
@@ -74,7 +75,9 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 	const contentRef = useRef<HTMLDivElement>(null);
 
 	const toggleExpand = () => {
-		setIsExpanded(!isExpanded);
+		if (enableExpand) {
+			setIsExpanded(!isExpanded);
+		}
 	};
 
 	useEffect(() => {
@@ -145,7 +148,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "input":
 			case "password":
 				return (
-					<input
+					<Input
 						className="form-input"
 						type={field.type}
 						value={field.value as string}
