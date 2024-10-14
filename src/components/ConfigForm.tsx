@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form"
-import CustomSelect from "./CustomSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import RoundButton from "./RoundButton";
 import IconButton from "./IconButton";
 import Copy from "../assets/copy.svg?react";
@@ -10,6 +10,8 @@ import "../styles/ConfigForm.css";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Form } from "./ui/form";
+import { Textarea } from "./ui/textarea";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 interface ConfigField {
 	type:
@@ -114,17 +116,27 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 		switch (field.type) {
 			case "select":
 				return (
-					<CustomSelect
-						options={field.options || []}
+					<Select
 						value={field.value as string}
-						onChange={(value: string) =>
+						onValueChange={(value: string) =>
 							field.onChange && field.onChange(value)
 						}
-					/>
+					>
+						<SelectTrigger>
+							<SelectValue placeholder={field.label} />
+						</SelectTrigger>
+						<SelectContent>
+							{field.options?.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				);
 			case "textarea":
 				return (
-					<textarea
+					<Textarea
 						className="form-textarea feature-assistant-prompt-textarea"
 						value={field.value as string}
 						onChange={(e) => field.onChange && field.onChange(e.target.value)}
@@ -151,27 +163,24 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 				);
 			case "radio":
 				return (
-					<div className="radio-group">
+					<RadioGroup
+						value={field.value as string}
+						onValueChange={(value: string) =>
+							field.onChange && field.onChange(value)
+						}
+					>
 						{field.options?.map((option) => (
-							<label key={option.value}>
-								<input
-									type="radio"
-									value={option.value}
-									checked={field.value === option.value}
-									onChange={() =>
-										field.onChange && field.onChange(option.value)
-									}
-								/>
-								{option.label}
-
+							<div key={option.value} className="flex items-center space-x-2">
+								<RadioGroupItem value={option.value} id={option.value} />
+								<label htmlFor={option.value}>{option.label}</label>
 								{option.tooltip && (
 									<span className="tooltip-trigger" title={field.tooltip}>
 										?
 									</span>
 								)}
-							</label>
+							</div>
 						))}
-					</div>
+					</RadioGroup>
 				);
 			case "static":
 				return <span>{field.value}</span>;
@@ -179,9 +188,9 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 				return field.customRender ? field.customRender() : null;
 			case "button":
 				return (
-					<RoundButton primary text={field.value as string} onClick={() => {
+					<Button onClick={() => {
 						field.onClick && field.onClick();
-					}} />
+					}}>{field.value as string}</Button>
 				);
 			default:
 				return null;
