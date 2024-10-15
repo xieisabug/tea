@@ -173,7 +173,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 						{field.options?.map((option) => (
 							<div key={option.value} className="flex items-center space-x-2">
 								<RadioGroupItem value={option.value} id={option.value} />
-								<label htmlFor={option.value}>{option.label}</label>
+								<Label htmlFor={option.value}>{option.label}</Label>
 								{option.tooltip && (
 									<span className="tooltip-trigger" title={field.tooltip}>
 										?
@@ -208,7 +208,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 								.filter((k) => k[0] !== "prompt")
 								.map(([key, field]) => (
 									<div className="form-group" key={key}>
-										<label>{field.label}</label>
+										<Label>{field.label}</Label>
 										{renderFormField(key, field)}
 									</div>
 								))}
@@ -227,7 +227,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 						<div className="provider-config-item-form-property-container">
 							{Object.entries(config).map(([key, field]) => (
 								<div className="form-group" key={key}>
-									<label>{field.label}</label>
+									<Label>{field.label}</Label>
 									{renderFormField(key, field)}
 								</div>
 							))}
@@ -244,7 +244,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 					<div>
 						{Object.entries(config).map(([key, field]) => (
 							<div className="form-group" key={key}>
-								<label>{field.label}</label>
+								<Label>{field.label}</Label>
 								{renderFormField(key, field)}
 							</div>
 						))}
