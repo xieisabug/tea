@@ -10,7 +10,7 @@
 }
 
 :root {
-    --main-color: #468585;
+    --main-color: hsl(180, 31%, 40%);
     --secondary-color: #edf3f3;
     --secondary-border-color: #d0d2d4;
 }

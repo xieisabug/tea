@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import RoundButton from "./RoundButton";
 import IconButton from "./IconButton";
 import Copy from "../assets/copy.svg?react";
 import Delete from "../assets/delete.svg?react";
@@ -13,6 +12,8 @@ import { Form } from "./ui/form";
 import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 
 interface ConfigField {
 	type:
@@ -140,7 +141,6 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "textarea":
 				return (
 					<Textarea
-						className="form-textarea feature-assistant-prompt-textarea"
 						value={field.value as string}
 						onChange={(e) => field.onChange && field.onChange(e.target.value)}
 					/>
@@ -149,7 +149,6 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "password":
 				return (
 					<Input
-						className="form-input"
 						type={field.type}
 						value={field.value as string}
 						onChange={(e) => field.onChange && field.onChange(e.target.value)}
@@ -158,10 +157,9 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 				);
 			case "checkbox":
 				return (
-					<input
-						type="checkbox"
+					<Checkbox
 						checked={field.value as boolean}
-						onChange={(e) => field.onChange && field.onChange(e.target.checked)}
+						onCheckedChange={(checked) => field.onChange && field.onChange(checked)}
 					/>
 				);
 			case "radio":
@@ -217,7 +215,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 						</div>
 						{config.prompt && (
 							<div className="assistant-config-prompts">
-								<div>Prompt</div>
+								<Label htmlFor="prompt">Prompt</Label>
 								{renderFormField("prompt", config.prompt)}
 							</div>
 						)}
