@@ -257,9 +257,17 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 
 	return (
 		<Card className={classNames ? classNames + " config-window-container" : "config-window-container"}>
-			<CardHeader onClick={toggleExpand} style={{ cursor: "pointer" }}>
-				<CardTitle>{title}</CardTitle>
-				<CardDescription>{description}</CardDescription>
+			<CardHeader onClick={toggleExpand} className="flex flex-row items-center cursor-pointer">
+				<div className="grid gap-2">
+					<CardTitle>{title}</CardTitle>
+					<CardDescription>{description}</CardDescription>
+				</div>
+				<div className="flex items-center ml-auto gap-1">
+					{onCopy && <IconButton icon={<Copy fill="black" />} onClick={onCopy} />}
+					{onDelete && <IconButton icon={<Delete fill="black" />} onClick={onDelete} />}
+					{onEdit && <IconButton icon={<Edit fill="black" />} onClick={onEdit} />}
+					{extraButtons}
+				</div>
 			</CardHeader>
 
 			<CardContent ref={contentRef} className={`config-window-content ${isExpanded ? "expanded" : ""}`}>
@@ -272,15 +280,6 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 					)}
 				</Form>
 			</CardContent>
-
-			{(onCopy || onDelete || onEdit || extraButtons) && (
-				<CardFooter>
-					{onCopy && <IconButton icon={<Copy fill="white" />} onClick={onCopy} />}
-					{onDelete && <IconButton icon={<Delete fill="white" />} onClick={onDelete} />}
-					{onEdit && <IconButton icon={<Edit fill="white" />} onClick={onEdit} />}
-					{extraButtons}
-				</CardFooter>
-			)}
 		</Card >
 	);
 };

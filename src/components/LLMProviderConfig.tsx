@@ -127,34 +127,18 @@ const LLMProviderConfig: React.FC = () => {
 
     return (
         <div className="model-config">
-            <Button onClick={openNewProviderDialog}>新增</Button>
             {
                 LLMProviders.map((provider, index) => {
-                    return [
-                        // <div className='config-window-container provider-config-window' key={index}>
-                        //     <div className='config-window-title'>
-                        //         <div className='config-window-title-text-container'>
-                        //             <span className='config-window-title-name'>{provider.name}</span>
-                        //         </div>
-
-                        //         <div className='config-window-icon-button-group'>
-                        //             {
-                        //                 provider.is_official ? null :
-                        //                     <IconButton icon={<Delete fill='white' />} onClick={() => openConfirmDialog(provider.id)} />
-                        //             }
-                        //             <label>
-                        //                 <Switch state={provider.is_enabled} onChange={() => handleToggle(index)} />
-                        //             </label>
-                        //         </div>
-
-                        //     </div>
-
-
-                        // </div>,
-                        <LLMProviderConfigForm id={provider.id} apiType={provider.api_type} name={provider.name} isOffical={provider.is_official} enabled={provider.is_enabled} />
-                    ]
-
-
+                    return <LLMProviderConfigForm
+                        id={provider.id}
+                        index={index}
+                        apiType={provider.api_type}
+                        name={provider.name}
+                        isOffical={provider.is_official}
+                        enabled={provider.is_enabled}
+                        onToggleEnabled={handleToggle}
+                        onDelete={openConfirmDialog}
+                    />
                 })
             }
             <FormDialog title='新增大模型提供商' isOpen={newProviderDialogOpen} onClose={closeNewProviderDialog} onSubmit={handleNewProviderSubmit}>

@@ -6,13 +6,17 @@ import TagInput from "./TagInput.tsx";
 import RoundButton from './RoundButton.tsx';
 import { emit } from '@tauri-apps/api/event';
 import ConfigForm from './ConfigForm.tsx';
+import { Switch } from './ui/switch.tsx';
 
 interface LLMProviderConfigFormProps {
+    index: number;
     id: string;
     apiType: string;
     name: string;
     isOffical: boolean;
     enabled: boolean;
+    onToggleEnabled: any;
+    onDelete: any;
 }
 
 interface LLMProviderConfig {
@@ -33,7 +37,7 @@ interface LLMModel {
     videoSupport: boolean;
 }
 
-const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiType, name, isOffical, enabled }) => {
+const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, index, apiType, name, isOffical, enabled, onDelete, onToggleEnabled }) => {
     const [config, setConfig] = useState<Record<string, string>>({
         endpoint: '',
         api_key: '',
@@ -104,19 +108,19 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
     const configFields = {
         apiType: {
             type: 'static' as const,
-            label: 'Api类型',
+            label: 'API类型',
             value: apiType,
         },
         endpoint: {
             type: 'input' as const,
             label: 'Endpoint',
-            value: config.endpoint,
+            value: config.endpoint || '',
             onChange: (value: string | boolean) => handleInputChange('endpoint', value as string),
         },
         api_key: {
             type: 'password' as const,
             label: 'API Key',
-            value: config.api_key,
+            value: config.api_key || '',
             onChange: (value: string | boolean) => handleInputChange('api_key', value as string),
         },
         fetchModelList: {
@@ -127,7 +131,7 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
         },
         tagInput: {
             type: 'custom' as const,
-            label: '',
+            label: '模型列表',
             value: '',
             customRender: () => (
                 <TagInput
@@ -146,42 +150,11 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
             title={name}
             config={configFields}
             classNames="bottom-space"
+            onDelete={isOffical ? undefined : () => onDelete(id)}
+            extraButtons={
+                <Switch checked={enabled} onCheckedChange={() => onToggleEnabled(index)} />
+            }
         />
-        // <div className="provider-config-item-form">
-        //     <div className='provider-config-item-form-property-container'>
-        //         <div className="form-group">
-        //             <label>Api类型</label>
-        //             <span>{apiType}</span>
-        //         </div>
-        //         <div className="form-group">
-        //             <label>Endpoint</label>
-        //             <input
-        //                 className='form-input'
-        //                 type="text"
-        //                 value={config.endpoint || ''}
-        //                 onChange={(e) => handleInputChange('endpoint', e.target.value)}
-        //             />
-        //         </div>
-        //         <div className="form-group">
-        //             <label>API Key</label>
-        //             <input
-        //                 className='form-input'
-        //                 type="password"
-        //                 value={config.api_key || ''}
-        //                 onChange={(e) => handleInputChange('api_key', e.target.value)}
-        //             />
-        //         </div>
-        //     </div>
-        //     <div className='provider-config-item-form-model-list-container'>
-        //         <RoundButton text='获取Model列表' onClick={fetchModelList} />
-        //         <TagInput
-        //             placeholder='输入自定义Model按回车确认'
-        //             tags={tags} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag}
-        //         />
-        //     </div>
-
-
-        // </div>
     );
 };
 
