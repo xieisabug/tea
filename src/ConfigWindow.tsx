@@ -1,4 +1,4 @@
-import React, {ReactNode, useEffect, useState} from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import SideMenu from "./components/SideMenu.tsx";
 import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
 import AssistantConfig from "./components/AssistantConfig.tsx";
@@ -24,10 +24,10 @@ const contentMap: Record<string, React.ReactElement> = {
 }
 
 function ConfigWindow() {
-    const menuList:Array<MenuItem> = [
-        {id: 'llm-provider-config', name: '大模型配置', icon: <Model fill="black"/>, iconSelected: <Model fill="white"/>},
-        {id: 'assistant-config', name: '个人助手配置', icon: <Assistant fill="black"/>, iconSelected: <Assistant fill="white"/>},
-        {id: 'feature-assistant-config', name: '程序助手配置', icon: <Program fill="black"/>, iconSelected: <Program fill="white"/>},
+    const menuList: Array<MenuItem> = [
+        { id: 'llm-provider-config', name: '大模型配置', icon: <Model fill="gray" />, iconSelected: <Model fill="black" /> },
+        { id: 'assistant-config', name: '个人助手配置', icon: <Assistant fill="gray" />, iconSelected: <Assistant fill="black" /> },
+        { id: 'feature-assistant-config', name: '程序助手配置', icon: <Program fill="gray" />, iconSelected: <Program fill="black" /> },
     ];
 
     const [selectedMenu, setSelectedMenu] = useState<string>('llm-provider-config');
@@ -35,7 +35,7 @@ function ConfigWindow() {
 
     useEffect(() => {
         console.log("listen config-window-success-notification");
-        
+
         listen('config-window-success-notification', () => {
             setShowNotification(true);
         });
@@ -53,9 +53,9 @@ function ConfigWindow() {
 
 
     return (
-        <div className="config-window">
+        <div className="mx-auto grid md:grid-cols-[210px_1fr] lg:grid-cols-[250px_1fr] bg-background">
             <SideMenu menu={menuList} selectedMenu={selectedMenu} setSelectedMenu={setSelectedMenu} />
-            <div className="config-content">
+            <div className="max-h-screen overflow-auto">
                 {contentMap[selectedMenu]}
             </div>
 

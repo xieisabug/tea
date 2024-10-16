@@ -16,20 +16,20 @@ interface MenuProps {
 
 const SideMenu: React.FC<MenuProps> = ({ menu, selectedMenu, setSelectedMenu }) => {
     return (
-        <div className="menu">
+        <nav className="menu grid gap-4 text-sm text-muted-foreground h-fit p-10">
             {
                 menu.map((item, index) => (
-                    <div
+                    <a
                         key={index}
-                        className={`menu-item ${selectedMenu === item.id ? 'selected' : ''}`}
+                        className={`cursor-pointer ${selectedMenu === item.id ? 'font-semibold text-primary' : 'hover:text-primary'}`}
                         onClick={() => setSelectedMenu(item.id)}
                     >
                         {selectedMenu === item.id ? item.iconSelected : item.icon}
-                        <span style={{marginLeft: '14px'}}>{item.name}</span>
-                    </div>
+                        <span style={{ marginLeft: '14px' }}>{item.name}</span>
+                    </a>
                 ))
             }
-        </div>
+        </nav>
     );
 }
 
