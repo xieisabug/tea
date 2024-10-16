@@ -1,6 +1,6 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/LLMProviderConfig.css';
-import {invoke} from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/tauri";
 import LLMProviderConfigForm from "./LLMProviderConfigForm.tsx";
 import RoundButton from './RoundButton.tsx';
 import Switch from './Switch.tsx';
@@ -10,6 +10,8 @@ import CustomSelect from './CustomSelect.tsx';
 import IconButton from './IconButton.tsx';
 import Delete from "../assets/delete.svg?react";
 import ConfirmDialog from './ConfirmDialog.tsx';
+import { Button } from './ui/button.tsx';
+import ConfigForm from './ConfigForm.tsx';
 
 interface LLMProvider {
     id: string;
@@ -39,13 +41,13 @@ const LLMProviderConfig: React.FC = () => {
 
     const getLLMProviderList = useCallback(() => {
         invoke<Array<LLMProvider>>('get_llm_providers')
-                .then(setLLMProviders)
-                .catch((e) => {
-                    emit('config-window-alert-dialog', {
-                        text: '获取大模型提供商失败: ' + e,
-                        type: 'error'
-                    });
+            .then(setLLMProviders)
+            .catch((e) => {
+                emit('config-window-alert-dialog', {
+                    text: '获取大模型提供商失败: ' + e,
+                    type: 'error'
                 });
+            });
     }, []);
     useEffect(() => {
         getLLMProviderList();
@@ -93,19 +95,19 @@ const LLMProviderConfig: React.FC = () => {
         if (!deleteLLMProviderId) {
             return;
         }
-        invoke('delete_llm_provider', {llmProviderId: deleteLLMProviderId}).then(() => {
+        invoke('delete_llm_provider', { llmProviderId: deleteLLMProviderId }).then(() => {
             emit('config-window-success-notification');
             getLLMProviderList();
         })
-        .catch(e => {
-            emit('config-window-alert-dialog', {
-                text: '删除失败: ' + e,
-                type: 'error'
-            });
-        })
-        .finally(() => {
-            closeConfirmDialog();
-        })
+            .catch(e => {
+                emit('config-window-alert-dialog', {
+                    text: '删除失败: ' + e,
+                    type: 'error'
+                });
+            })
+            .finally(() => {
+                closeConfirmDialog();
+            })
     }, [deleteLLMProviderId]);
     const openConfirmDialog = (LLMPRoviderId: string) => {
         setConfirmDialogIsOpen(true)
@@ -115,30 +117,44 @@ const LLMProviderConfig: React.FC = () => {
         setConfirmDialogIsOpen(false)
     }, []);
 
+    const summaryFormConfig = {
+        model: {
+            type: "static" as const,
+            label: "Model",
+            value: "test"
+        },
+    };
+
     return (
         <div className="model-config">
+            <Button onClick={openNewProviderDialog}>新增</Button>
             {
                 LLMProviders.map((provider, index) => {
-                    return <div className='config-window-container provider-config-window' key={index}>
-                        <div className='config-window-title'>
-                            <div className='config-window-title-text-container'>
-                                <span className='config-window-title-name'>{provider.name}</span>
-                            </div>
-                            
-                            <div className='config-window-icon-button-group'>
-                                {
-                                    provider.is_official ? null:
-                                        <IconButton icon={<Delete fill='white'/>} onClick={() => openConfirmDialog(provider.id)} />
-                                }
-                                <label>
-                                    <Switch state={provider.is_enabled} onChange={() => handleToggle(index)} />
-                                </label>
-                            </div>
-                            
-                        </div>
+                    return [
+                        // <div className='config-window-container provider-config-window' key={index}>
+                        //     <div className='config-window-title'>
+                        //         <div className='config-window-title-text-container'>
+                        //             <span className='config-window-title-name'>{provider.name}</span>
+                        //         </div>
 
-                        <LLMProviderConfigForm id={provider.id} apiType={provider.api_type}/>
-                    </div>
+                        //         <div className='config-window-icon-button-group'>
+                        //             {
+                        //                 provider.is_official ? null :
+                        //                     <IconButton icon={<Delete fill='white' />} onClick={() => openConfirmDialog(provider.id)} />
+                        //             }
+                        //             <label>
+                        //                 <Switch state={provider.is_enabled} onChange={() => handleToggle(index)} />
+                        //             </label>
+                        //         </div>
+
+                        //     </div>
+
+
+                        // </div>,
+                        <LLMProviderConfigForm id={provider.id} apiType={provider.api_type} name={provider.name} isOffical={provider.is_official} enabled={provider.is_enabled} />
+                    ]
+
+
                 })
             }
             <FormDialog title='新增大模型提供商' isOpen={newProviderDialogOpen} onClose={closeNewProviderDialog} onSubmit={handleNewProviderSubmit}>
@@ -154,7 +170,7 @@ const LLMProviderConfig: React.FC = () => {
                 </form>
             </FormDialog>
             <ConfirmDialog isOpen={confirmDialogIsOpen} title='请确认' confirmText='是否要删除该提供商？' onConfirm={onConfirmDeleteProvider} onCancel={closeConfirmDialog} />
-            <RoundButton text='新增' onClick={openNewProviderDialog} />
+            <Button onClick={openNewProviderDialog}>新增</Button>
         </div>
     );
 }

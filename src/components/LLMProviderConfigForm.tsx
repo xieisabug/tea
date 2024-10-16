@@ -5,10 +5,14 @@ import debounce from 'lodash/debounce';
 import TagInput from "./TagInput.tsx";
 import RoundButton from './RoundButton.tsx';
 import { emit } from '@tauri-apps/api/event';
+import ConfigForm from './ConfigForm.tsx';
 
 interface LLMProviderConfigFormProps {
     id: string;
     apiType: string;
+    name: string;
+    isOffical: boolean;
+    enabled: boolean;
 }
 
 interface LLMProviderConfig {
@@ -29,7 +33,7 @@ interface LLMModel {
     videoSupport: boolean;
 }
 
-const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiType }) => {
+const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiType, name, isOffical, enabled }) => {
     const [config, setConfig] = useState<Record<string, string>>({
         endpoint: '',
         api_key: '',
@@ -97,42 +101,87 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, apiTy
             });
     };
 
-    return (
-        <div className="provider-config-item-form">
-            <div className='provider-config-item-form-property-container'>
-                <div className="form-group">
-                    <label>Api类型</label>
-                    <span>{apiType}</span>
-                </div>
-                <div className="form-group">
-                    <label>Endpoint</label>
-                    <input
-                        className='form-input'
-                        type="text"
-                        value={config.endpoint || ''}
-                        onChange={(e) => handleInputChange('endpoint', e.target.value)}
-                    />
-                </div>
-                <div className="form-group">
-                    <label>API Key</label>
-                    <input
-                        className='form-input'
-                        type="password"
-                        value={config.api_key || ''}
-                        onChange={(e) => handleInputChange('api_key', e.target.value)}
-                    />
-                </div>
-            </div>
-            <div className='provider-config-item-form-model-list-container'>
-                <RoundButton text='获取Model列表' onClick={fetchModelList} />
+    const configFields = {
+        apiType: {
+            type: 'static' as const,
+            label: 'Api类型',
+            value: apiType,
+        },
+        endpoint: {
+            type: 'input' as const,
+            label: 'Endpoint',
+            value: config.endpoint,
+            onChange: (value: string | boolean) => handleInputChange('endpoint', value as string),
+        },
+        api_key: {
+            type: 'password' as const,
+            label: 'API Key',
+            value: config.api_key,
+            onChange: (value: string | boolean) => handleInputChange('api_key', value as string),
+        },
+        fetchModelList: {
+            type: 'button' as const,
+            label: '',
+            value: '获取Model列表',
+            customRender: () => <RoundButton text='获取Model列表' onClick={fetchModelList} />,
+        },
+        tagInput: {
+            type: 'custom' as const,
+            label: '',
+            value: '',
+            customRender: () => (
                 <TagInput
                     placeholder='输入自定义Model按回车确认'
-                    tags={tags} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag}
+                    tags={tags}
+                    onAddTag={handleAddTag}
+                    onRemoveTag={handleRemoveTag}
                 />
-            </div>
-            
-            
-        </div>
+            ),
+        },
+    };
+
+    return (
+        <ConfigForm
+            key={id}
+            title={name}
+            config={configFields}
+            classNames="bottom-space"
+        />
+        // <div className="provider-config-item-form">
+        //     <div className='provider-config-item-form-property-container'>
+        //         <div className="form-group">
+        //             <label>Api类型</label>
+        //             <span>{apiType}</span>
+        //         </div>
+        //         <div className="form-group">
+        //             <label>Endpoint</label>
+        //             <input
+        //                 className='form-input'
+        //                 type="text"
+        //                 value={config.endpoint || ''}
+        //                 onChange={(e) => handleInputChange('endpoint', e.target.value)}
+        //             />
+        //         </div>
+        //         <div className="form-group">
+        //             <label>API Key</label>
+        //             <input
+        //                 className='form-input'
+        //                 type="password"
+        //                 value={config.api_key || ''}
+        //                 onChange={(e) => handleInputChange('api_key', e.target.value)}
+        //             />
+        //         </div>
+        //     </div>
+        //     <div className='provider-config-item-form-model-list-container'>
+        //         <RoundButton text='获取Model列表' onClick={fetchModelList} />
+        //         <TagInput
+        //             placeholder='输入自定义Model按回车确认'
+        //             tags={tags} onAddTag={handleAddTag} onRemoveTag={handleRemoveTag}
+        //         />
+        //     </div>
+
+
+        // </div>
     );
 };
 
