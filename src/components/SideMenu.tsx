@@ -16,7 +16,7 @@ interface MenuProps {
 
 const SideMenu: React.FC<MenuProps> = ({ menu, selectedMenu, setSelectedMenu }) => {
     return (
-        <nav className="menu grid gap-4 text-sm text-muted-foreground h-fit p-10">
+        <nav className="menu grid gap-6 text-sm text-muted-foreground h-fit p-10">
             {
                 menu.map((item, index) => (
                     <a
