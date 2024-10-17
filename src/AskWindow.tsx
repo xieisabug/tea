@@ -434,7 +434,7 @@ function AskWindow() {
                         placeholder="Ask AI..."
                     ></textarea>
                     <button
-                        className="ask-window-submit-button"
+                        className="ask-window-submit-button bg-primary"
                         type="button"
                         onClick={onSend}
                     >
@@ -603,13 +603,13 @@ function AskWindow() {
                                                 textarea.focus();
                                                 textarea.setSelectionRange(
                                                     bangIndex +
-                                                        (cursorIndex === -1
-                                                            ? bang.length + 2
-                                                            : cursorIndex + 1),
+                                                    (cursorIndex === -1
+                                                        ? bang.length + 2
+                                                        : cursorIndex + 1),
                                                     bangIndex +
-                                                        (cursorIndex === -1
-                                                            ? bang.length + 2
-                                                            : cursorIndex + 1),
+                                                    (cursorIndex === -1
+                                                        ? bang.length + 2
+                                                        : cursorIndex + 1),
                                                 );
                                             });
                                         }

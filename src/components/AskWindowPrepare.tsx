@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Badge } from "./ui/badge";
 
 interface AskWindowPrepareProps {
     selectedText: string;
@@ -38,7 +39,7 @@ const AskWindowPrepare: React.FC<AskWindowPrepareProps> = ({
             <p data-tauri-drag-region>对话中可以使用以下!bang命令：</p>
             <div className="bang-list" data-tauri-drag-region>
                 <div className="bang-container" data-tauri-drag-region>
-                    <span className="bang-tag">!s</span>
+                    <Badge className="mr-2">!s</Badge>
                     <span data-tauri-drag-region>插入选择的文字</span>
                     {selectedText && (
                         <span className="preview" data-tauri-drag-region>
@@ -47,25 +48,25 @@ const AskWindowPrepare: React.FC<AskWindowPrepareProps> = ({
                     )}
                 </div>
                 <div className="bang-container" data-tauri-drag-region>
-                    <span className="bang-tag">!cd</span>
+                    <Badge className="mr-2">!cd</Badge>
                     <span data-tauri-drag-region>插入当前日期文本</span>
                     <span className="preview" data-tauri-drag-region>
                         {currentDate}
                     </span>
                 </div>
                 <div className="bang-container" data-tauri-drag-region>
-                    <span className="bang-tag">!ct</span>
+                    <Badge className="mr-2">!ct</Badge>
                     <span data-tauri-drag-region>插入当前时间文字</span>
                     <span className="preview" data-tauri-drag-region>
                         {currentTime}
                     </span>
                 </div>
                 <div className="bang-container" data-tauri-drag-region>
-                    <span className="bang-tag">!w(url)</span>
+                    <Badge className="mr-2">!w(url)</Badge>
                     <span data-tauri-drag-region>插入网页内容</span>
                 </div>
                 <div className="bang-container" data-tauri-drag-region>
-                    <span className="bang-tag">!wm(url)</span>
+                    <Badge className="mr-2">!wm(url)</Badge>
                     <span data-tauri-drag-region>
                         插入网页内容并转换为Markdown
                     </span>
