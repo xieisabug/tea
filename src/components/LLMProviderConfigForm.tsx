@@ -127,7 +127,7 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, index
             type: 'button' as const,
             label: '',
             value: '获取Model列表',
-            customRender: () => <RoundButton text='获取Model列表' onClick={fetchModelList} />,
+            onClick: fetchModelList,
         },
         tagInput: {
             type: 'custom' as const,

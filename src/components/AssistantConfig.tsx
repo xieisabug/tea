@@ -1,16 +1,12 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import "../styles/AssistantConfig.css";
-import {invoke} from "@tauri-apps/api/tauri";
-import RoundButton from './RoundButton';
-import IconButton from './IconButton';
-import Edit from '../assets/edit.svg?react';
-import Delete from '../assets/delete.svg?react';
-import Copy from '../assets/copy.svg?react';
-import CustomSelect from './CustomSelect';
+import { invoke } from "@tauri-apps/api/tauri";
 import ConfirmDialog from './ConfirmDialog';
 import FormDialog from './FormDialog';
 import { AssistantDetail, AssistantListItem } from '../data/Assistant';
 import { emit } from '@tauri-apps/api/event';
+import { Button } from './ui/button';
+import ConfigForm from './ConfigForm';
 
 interface ModelForSelect {
     name: string;
@@ -43,7 +39,7 @@ const AssistantConfig: React.FC = () => {
         });
     }, []);
     const onSave = (assistant: AssistantDetail) => {
-        return invoke("save_assistant", { assistantDetail: assistant});
+        return invoke("save_assistant", { assistantDetail: assistant });
     }
     const onAdd = () => {
         invoke<AssistantDetail>("add_assistant").then((assistantDetail: AssistantDetail) => {
@@ -53,7 +49,7 @@ const AssistantConfig: React.FC = () => {
         // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
     const onCopy = (assistantId: number) => {
-        invoke<AssistantDetail>("copy_assistant", {assistantId}).then((assistantDetail: AssistantDetail) => {
+        invoke<AssistantDetail>("copy_assistant", { assistantId }).then((assistantDetail: AssistantDetail) => {
             setAssistants([...assistants, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
             setCurrentAssistant(assistantDetail);
         });
@@ -73,11 +69,11 @@ const AssistantConfig: React.FC = () => {
             let index = currentAssistant.model_configs.findIndex((config) => {
                 return config.name === key
             });
-    
+
             if (index !== -1) {
                 let isValid = true;
                 let newValue: string | number | boolean = value;
-    
+
                 switch (value_type) {
                     case 'boolean':
                         if (typeof value !== 'boolean') {
@@ -122,7 +118,7 @@ const AssistantConfig: React.FC = () => {
                         isValid = false;
                         break;
                 }
-    
+
                 if (isValid) {
                     setCurrentAssistant({
                         ...currentAssistant,
@@ -145,11 +141,11 @@ const AssistantConfig: React.FC = () => {
             let index = currentAssistant.model_configs.findIndex((config) => {
                 return config.name === key
             });
-    
+
             if (index !== -1) {
                 let isValid = true;
                 let newValue: string | number | boolean = value;
-    
+
                 switch (value_type) {
                     case 'number':
                         if (typeof value !== 'string') {
@@ -191,7 +187,7 @@ const AssistantConfig: React.FC = () => {
                         isValid = false;
                         break;
                 }
-    
+
                 if (isValid) {
                     setCurrentAssistant({
                         ...currentAssistant,
@@ -324,113 +320,69 @@ const AssistantConfig: React.FC = () => {
         }
     }, [currentAssistant, formAssistantName, formAssistantDescription]);
 
+    const assistantFormConfig = {
+        model: {
+            type: "select" as const,
+            label: "Model",
+            options: models.map((m) => ({
+                value: `${m.llm_provider_id}%%${m.code}`,
+                label: m.name,
+            })),
+            value: currentAssistant?.model.length ?? 0 > 0 ? `${currentAssistant?.model[0].provider_id}%%${currentAssistant?.model[0].model_code}` : "-1",
+            onChange: (value: string | boolean) => {
+                const [modelCode, providerId] = (value as string).split("%%");
+                if (currentAssistant?.model.length ?? 0 > 0) {
+                    handleConfigChange("model_code", modelCode, "string");
+                    handleConfigChange("provider_id", providerId, "number");
+                } else {
+                    // Handle the case where model is not yet set
+                }
+            },
+        },
+        ...currentAssistant?.model_configs.reduce((acc, config) => {
+            acc[config.name] = {
+                type: config.value_type === 'boolean' ? "checkbox" as const : "input" as const,
+                label: config.name,
+                value: config.value_type === 'boolean' ? config.value == "true" : config.value,
+                onChange: (value: string | boolean) => handleConfigChange(config.name, value, config.value_type),
+                onBlur: (value: string | boolean) => handleConfigBlur(config.name, value as string, config.value_type),
+            };
+            return acc;
+        }, {} as Record<string, any>),
+        prompt: {
+            type: "textarea" as const,
+            label: "Prompt",
+            value: currentAssistant?.prompts[0].prompt ?? "",
+            onChange: (value: string | boolean) => handlePromptChange(value as string),
+        },
+    };
+
     return (
         <div className="assistant-editor">
-            <div className="assistant-list">
+            <div className="flex flex-wrap gap-4 mb-4">
                 {assistants.map((assistant, index) => (
-                    <RoundButton 
-                        key={index} 
-                        text={assistant.name} 
-                        onClick={() => handleChooseAssistant(assistant)} 
-                        primary={currentAssistant?.assistant.id === assistant.id} 
-                        className='assistant-button'
-                    />
+                    <Button
+                        key={index}
+                        variant={currentAssistant?.assistant.id === assistant.id ? "default" : "outline"}
+                        onClick={() => handleChooseAssistant(assistant)}
+                        className=''
+                    >{assistant.name}</Button>
                 ))}
-                <RoundButton text='新增' onClick={onAdd} />
 
+                <Button onClick={onAdd}>新增</Button>
             </div>
             {currentAssistant && (
-                <div className="config-window-container">
-                    <div className='config-window-title'>
-                        <div className='config-window-title-text-container'>
-                            <span className='config-window-title-name' title={currentAssistant.assistant.name}>{currentAssistant.assistant.name}</span>
-                            <span className='config-window-title-description' title={currentAssistant.assistant.description??""}>{currentAssistant.assistant.description}</span>    
-                        </div>
-                        <div className='config-window-icon-button-group'>
-                            <IconButton icon={<Copy fill='white' />} onClick={() => onCopy(currentAssistant.assistant.id)} />
-                            <IconButton icon={<Delete fill='white' />} onClick={openConfigDialog} />
-                            <IconButton icon={<Edit fill='white' />} onClick={openFormDialog} />
-                        </div>
-                    </div>
-                    <form className='config-window-form'>
-                        <div className='form-group'>
-                            <label>助手类型</label>
-                            <div>对话</div>
-                        </div>
-                        <div className="assistant-config-grid">
-                            
-                            <div className='assistant-config-properties'>
-                                <div className='form-group'>
-                                    <label>model</label>
-                                    <CustomSelect 
-                                        options={models.map(i => ({value: i.code + "%%" + i.llm_provider_id, label: i.name}))} 
-                                        value={currentAssistant.model.length > 0 ? currentAssistant.model[0].model_code + "%%" + currentAssistant.model[0].provider_id: "-1"} 
-                                        onChange={(v) => {
-                                            const [modelCode, providerId] = v.split("%%");
-                                            if (currentAssistant?.model.length > 0) {
-                                                setCurrentAssistant({
-                                                    ...currentAssistant,
-                                                    model: [{...currentAssistant?.model[0], model_code: modelCode, provider_id: parseInt(providerId)}]
-                                                })
-                                            } else {
-                                                setCurrentAssistant({
-                                                    ...currentAssistant,
-                                                    model: [{id: 0, assistant_id: currentAssistant.assistant.id, model_code: modelCode, provider_id: parseInt(providerId), alias: ''}]
-                                                })
-                                            }
-                                        }} 
-                                    />
-                                </div>
-                                {(currentAssistant.model_configs || []).map(config => (
-                                    <div className='form-group' key={config.name}>
-                                        <label>{config.name}</label>
-                                        <input
-                                            className='form-input'
-                                            type={config.value_type === 'boolean' ? 'checkbox' : 'text'}
-                                            value={config.value}
-                                            checked={config.value === 'true'}
-                                            onChange={(e) => handleConfigChange(config.name, e.target.type === 'checkbox' ? e.target.checked : e.target.value, config.value_type)}
-                                            onFocus={(e) => e.target.select()}
-                                            onBlur={(e) => handleConfigBlur(config.name, e.target.value, config.value_type)}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                            
-                            
-                            {/* <div className="form-group">
-                                <input
-                                    className='form-input'
-                                    type="text"
-                                    placeholder="新参数名"
-                                    value={newParamKey}
-                                    onChange={(e) => setNewParamKey(e.target.value)}
-                                />
-                                <input
-                                    className='form-input'
-                                    type="text"
-                                    placeholder="新参数值"
-                                    value={newParamValue}
-                                    onChange={(e) => setNewParamValue(e.target.value)}
-                                />
-                                <CustomSelect options={[{value: "query", label: "query"}, {value: "header", label: "header"}]} value={"header"} onChange={(v) => {}} />
-                                <button type="button" onClick={handleAddParam}>添加参数</button>
-                            </div> */}
-                            <div className='assistant-config-prompts'>
-                                <div>prompt</div>
-                                <textarea 
-                                    className='form-textarea assistant-config-prompt-textarea'
-                                    value={currentAssistant.prompts[0].prompt}
-                                    onChange={(e) => handlePromptChange(e.target.value)}></textarea>
-
-                            </div>
-                        </div>
-                        <div>
-                            <RoundButton primary text='保存' onClick={handleSave} />
-                        </div>
-                    </form>
-
-                </div>
+                <ConfigForm
+                    title={currentAssistant.assistant.name}
+                    description={currentAssistant.assistant.description ? currentAssistant.assistant.description : ""}
+                    config={assistantFormConfig}
+                    layout="prompt"
+                    classNames="bottom-space"
+                    onSave={handleSave}
+                    onCopy={() => onCopy(currentAssistant.assistant.id)}
+                    onDelete={openConfigDialog}
+                    onEdit={openFormDialog}
+                />
             )}
             <ConfirmDialog
                 title="确认操作"
@@ -454,7 +406,7 @@ const AssistantConfig: React.FC = () => {
                     </div>
                     <div className='form-group'>
                         <label>描述:</label>
-                        <input className='form-input' type="text" name="description" value={formAssistantDescription} onChange={e => setFormAssistantDescription(e.target.value)}/>
+                        <input className='form-input' type="text" name="description" value={formAssistantDescription} onChange={e => setFormAssistantDescription(e.target.value)} />
                     </div>
                 </form>
             </FormDialog>

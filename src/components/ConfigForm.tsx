@@ -6,7 +6,7 @@ import Copy from "../assets/copy.svg?react";
 import Delete from "../assets/delete.svg?react";
 import Edit from "../assets/edit.svg?react";
 import "../styles/ConfigForm.css";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Form } from "./ui/form";
 import { Textarea } from "./ui/textarea";
