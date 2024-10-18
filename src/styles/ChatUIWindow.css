@@ -35,9 +35,11 @@
     cursor: pointer;
     color: #7a7f85;
 }
+
 .chat-ui-toolbar button:active {
     box-shadow: none;
 }
+
 .chat-ui-toolbar button.main {
     border: 1px solid var(--main-color);
     margin-left: 18px;
@@ -49,6 +51,7 @@
     overflow-y: auto;
     overflow-x: hidden;
 }
+
 .conversation-list ul {
     list-style-type: none;
     padding: 0;
@@ -70,20 +73,24 @@
     box-sizing: border-box;
     position: relative;
 }
+
 .conversation-list li.selected {
     font-weight: bolder;
     border: 1px solid #cedfde;
     color: var(--main-color);
     background-color: var(--secondary-color);
 }
+
 .conversation-list li:hover {
     border: 1px solid #cedfde;
 }
+
 .conversation-list-item-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .conversation-list-item-assistant-name {
     font-size: 12px;
     overflow: hidden;
@@ -111,6 +118,7 @@
     flex-direction: column;
     border: 1px solid #ccc;
 }
+
 .conversation-menu-item {
     width: 100px;
     height: 30px;
@@ -119,6 +127,7 @@
     z-index: 1;
     cursor: pointer;
 }
+
 .conversation-menu-item:hover {
     background-color: #eee;
 }
@@ -128,13 +137,16 @@
     justify-content: space-between;
     padding: 10px 20px;
 }
+
 .chat-ui-information-title {
     color: var(--main-color);
 }
+
 .chat-ui-information-button-group {
     display: flex;
     align-items: center;
 }
+
 .chat-ui-information-button-group button {
     margin-left: 8px;
 }
@@ -155,16 +167,19 @@
     box-sizing: border-box;
     border-bottom: 1px solid #e3e4e8;
 }
+
 .conversation-title-panel-text-group {
     flex: 1;
     overflow: hidden;
 }
+
 .conversation-title-panel-title {
     font-size: 16px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .conversation-title-panel-assistant-name {
     font-size: 12px;
     color: #7a7f85;
@@ -172,12 +187,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
 .conversation-title-panel-button-group {
     display: flex;
     align-items: center;
     flex: 0 0 160px;
     justify-content: flex-end;
 }
+
 .conversation-title-panel-button-group button {
     margin-left: 8px;
 }
@@ -201,14 +218,17 @@
     max-width: 60%;
     font-size: 14px;
 }
+
 .message-item p {
     margin: 0;
 }
+
 .user-message {
     align-self: flex-end;
     background: var(--main-color);
     color: white;
 }
+
 .bot-message {
     align-self: flex-start;
     background: var(--secondary-color);
@@ -234,12 +254,15 @@
 .user-message .message-item-button-container {
     right: 0;
 }
+
 .bot-message .message-item-button-container {
     left: 0;
 }
+
 .message-code-container {
     position: relative;
 }
+
 .message-code-button-group {
     position: absolute;
     right: 0;
@@ -248,9 +271,11 @@
     background-color: white;
     opacity: 0.3;
 }
+
 .message-code-button-group:hover {
     opacity: 1;
 }
+
 .message-regenerate-bar {
     margin-bottom: 5px;
     display: flex;
@@ -260,6 +285,7 @@
     color: gray;
     font-weight: bold;
 }
+
 .message-regenerate-bar-button {
     cursor: pointer;
     margin: 0 10px;
@@ -275,6 +301,7 @@
     position: relative;
     bottom: 30px;
 }
+
 .input-area-img-container {
     position: absolute;
     bottom: 90px;
@@ -286,11 +313,13 @@
     align-content: center;
     flex-wrap: wrap;
 }
+
 .input-area-img-wrapper {
     position: relative;
     margin-left: 10px;
     margin-top: 10px;
 }
+
 .input-area-text-wrapper {
     position: relative;
     margin-left: 10px;
@@ -307,6 +336,7 @@
     padding: 5px;
     cursor: pointer;
 }
+
 .input-area-text-wrapper span {
     white-space: nowrap;
     overflow: hidden;
@@ -315,6 +345,7 @@
     display: inline-block;
     padding-left: 5px;
 }
+
 .input-area-img-delete-button {
     position: absolute;
     top: 50%;
@@ -322,17 +353,20 @@
     transform: translate(-50%, -50%);
     display: none;
 }
-.input-area-img-wrapper:hover > .input-area-img-delete-button,
-.input-area-text-wrapper:hover > .input-area-img-delete-button {
+
+.input-area-img-wrapper:hover>.input-area-img-delete-button,
+.input-area-text-wrapper:hover>.input-area-img-delete-button {
     display: block;
 }
+
 .input-area-img {
     max-width: 100px;
 }
 
 .input-area-textarea-container {
     min-height: 55px;
-    max-height: 40vh; /* 约为10行文本的高度 */
+    max-height: 40vh;
+    /* 约为10行文本的高度 */
     left: 100px;
     right: 170px;
     overflow: hidden;
@@ -340,7 +374,6 @@
     box-sizing: border-box;
     border-radius: 28px;
     padding: 0 50px 0 20px;
-    border: 2px solid var(--main-color);
     bottom: 30px;
     opacity: 0.4;
     background-color: white;
@@ -362,8 +395,6 @@
 .input-area-textarea-container:focus-within {
     outline: none;
     box-shadow: none;
-    box-shadow: 0px 2px 4px rgba(17, 133, 83, 0.25);
-    border: 1px solid var(--main-color);
     opacity: 1;
 }
 
@@ -375,6 +406,7 @@
     bottom: 60px;
     right: 102px;
 }
+
 .input-area-add-button {
     bottom: 72px;
     right: 185px;
@@ -389,9 +421,11 @@
     user-select: none;
     -webkit-user-select: none;
 }
+
 .new-chat-hint {
     font-size: 12px;
 }
+
 .new-chat-assistant-select {
     border: 1px solid #ccc;
     width: 50%;
@@ -411,6 +445,7 @@
     display: inline-block;
     cursor: pointer;
 }
+
 .message-file-attachment,
 .message-web-content {
     padding: 10px 20px;
@@ -431,6 +466,7 @@
     align-items: center;
     justify-content: center;
 }
+
 .chat-ui-window .loading-text {
     color: var(--main-color);
     font-size: 20px;

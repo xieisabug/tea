@@ -71,7 +71,7 @@ const FileDropArea: React.FC<FileDropAreaProps> = ({
                 backgroundColor: isDragging ? "#e6f7ff" : "white",
             }}
         >
-            <p>{isDragging ? "Drop files here" : "Drag and drop files here"}</p>
+            <p>{isDragging ? "拖拽文件后上传" : "将文件拖拽到此处"}</p>
         </div>
     );
 };

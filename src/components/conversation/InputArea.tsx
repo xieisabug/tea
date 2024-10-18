@@ -202,10 +202,10 @@ const InputArea: React.FC<{
                             textarea.value.substring(cursorPosition);
                         setInputText(
                             beforeBang +
-                                "!" +
-                                selectedBang[0] +
-                                " " +
-                                afterBang,
+                            "!" +
+                            selectedBang[0] +
+                            " " +
+                            afterBang,
                         );
 
                         // 设置光标位置
@@ -363,7 +363,7 @@ const InputArea: React.FC<{
                         </div>
                     ))}
                 </div>
-                <div className="input-area-textarea-container">
+                <div className="input-area-textarea-container border-2 border-primary">
                     <textarea
                         ref={textareaRef}
                         className="input-area-textarea"
