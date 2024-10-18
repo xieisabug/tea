@@ -38,7 +38,6 @@
 .ask-window-input:focus {
     outline: none;
     box-shadow: none;
-    border-bottom: 1px solid var(--main-color);
 }
 
 .ask-window-submit-button {
