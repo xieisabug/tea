@@ -26,26 +26,6 @@
     justify-content: center;
 }
 
-.chat-ui-toolbar button {
-    width: 114px;
-    height: 36px;
-    border-radius: 18px;
-    border: 1px solid #d0d2d4;
-    background: rgba(255, 255, 255, 1);
-    cursor: pointer;
-    color: #7a7f85;
-}
-
-.chat-ui-toolbar button:active {
-    box-shadow: none;
-}
-
-.chat-ui-toolbar button.main {
-    border: 1px solid var(--main-color);
-    margin-left: 18px;
-    color: var(--main-color);
-}
-
 .conversation-list {
     flex: 1;
     overflow-y: auto;
@@ -136,10 +116,6 @@
     display: flex;
     justify-content: space-between;
     padding: 10px 20px;
-}
-
-.chat-ui-information-title {
-    color: var(--main-color);
 }
 
 .chat-ui-information-button-group {
