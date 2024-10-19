@@ -32,7 +32,7 @@ function Menu({ items }: MenuProps) {
 
 function ConversationList({ onSelectConversation, conversationId }: ConversationListProps) {
     const [conversations, setConversations] = useState<Array<Conversation>>([]);
-    const {deleteConversation, listConversations} = useConversationManager();
+    const { deleteConversation, listConversations } = useConversationManager();
 
     useEffect(() => {
         listConversations()
@@ -99,11 +99,11 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                 setMenuShow(false);
             }
         };
-    
+
         document.addEventListener('click', handleOutsideClick);
-    
+
         return () => {
-          document.removeEventListener('click', handleOutsideClick);
+            document.removeEventListener('click', handleOutsideClick);
         };
     }, [menuShow, onMenuClick]);
 
@@ -119,7 +119,7 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
 
     const handleFormSubmit = useCallback(() => {
         invoke("update_conversation", { conversationId: menuShowConversationId, name: formConversationTitle }).then(() => {
-            const newConversations = 
+            const newConversations =
                 conversations.map((conversation) => {
                     if (conversation.id.toString() === menuShowConversationId) {
                         return { ...conversation, name: formConversationTitle };
@@ -141,13 +141,13 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                         <div className="conversation-list-item-name">{conversation.name}</div>
                         <div className="conversation-list-item-assistant-name">{conversation.assistant_name}</div>
 
-                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={conversationId == conversation.id.toString() ? "#468585": "black"} />} onClick={(e) => onMenuClick(e, conversation.id.toString())} />
+                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={"black"} />} onClick={(e) => onMenuClick(e, conversation.id.toString())} />
 
                         {
-                            menuShow && menuShowConversationId === conversation.id.toString() ? 
+                            menuShow && menuShowConversationId === conversation.id.toString() ?
                                 <Menu items={[
-                                    {label: "编辑", onClick: (e) => {e.stopPropagation(); setMenuShow(false); openFormDialog(conversation.name);}},
-                                    {label: "删除", onClick: (e) => {e.stopPropagation(); handleDeleteConversation(conversation.id.toString());}},
+                                    { label: "编辑", onClick: (e) => { e.stopPropagation(); setMenuShow(false); openFormDialog(conversation.name); } },
+                                    { label: "删除", onClick: (e) => { e.stopPropagation(); handleDeleteConversation(conversation.id.toString()); } },
                                 ]} /> : null
                         }
                     </li>
