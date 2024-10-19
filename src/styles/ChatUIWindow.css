@@ -55,11 +55,11 @@
 }
 
 .conversation-menu-icon {
-    @apply hidden absolute right-2 top-4;
+    @apply invisible absolute right-2 top-4;
 }
 
 .conversation-list li:hover .conversation-menu-icon {
-    @apply block;
+    @apply visible;
 }
 
 .conversation-menu {

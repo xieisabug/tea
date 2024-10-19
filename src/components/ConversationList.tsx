@@ -6,6 +6,8 @@ import IconButton from "./IconButton";
 import FormDialog from "./FormDialog";
 import useConversationManager from "../hooks/useConversationManager";
 import { Conversation } from "../data/Conversation";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Button } from "./ui/button";
 
 interface ConversationListProps {
     onSelectConversation: (conversation: string) => void;
@@ -141,15 +143,22 @@ function ConversationList({ onSelectConversation, conversationId }: Conversation
                         <div className="conversation-list-item-name">{conversation.name}</div>
                         <div className="conversation-list-item-assistant-name">{conversation.assistant_name}</div>
 
-                        <IconButton className="conversation-menu-icon" icon={<MenuIcon fill={"black"} />} onClick={(e) => onMenuClick(e, conversation.id.toString())} />
-
-                        {
-                            menuShow && menuShowConversationId === conversation.id.toString() ?
-                                <Menu items={[
-                                    { label: "编辑", onClick: (e) => { e.stopPropagation(); setMenuShow(false); openFormDialog(conversation.name); } },
-                                    { label: "删除", onClick: (e) => { e.stopPropagation(); handleDeleteConversation(conversation.id.toString()); } },
-                                ]} /> : null
-                        }
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="link" className="conversation-menu-icon" ><MenuIcon fill={"black"} /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onClick={() => {
+                                    setMenuShow(false);
+                                    openFormDialog(conversation.name);
+                                }}>
+                                    修改标题
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleDeleteConversation(conversation.id.toString())}>
+                                    删除
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </li>
                 ))}
             </ul>
