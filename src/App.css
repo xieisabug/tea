@@ -9,12 +9,6 @@
     font-style: normal;
 }
 
-:root {
-    --main-color: hsl(180, 31%, 40%);
-    --secondary-color: #edf3f3;
-    --secondary-border-color: #d0d2d4;
-}
-
 body {
     padding: 0;
     margin: 0;

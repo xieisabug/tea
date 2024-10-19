@@ -1,6 +1,6 @@
 .circle-button {
     position: fixed;
-    border: 1px solid var(--secondary-border-color);
+    border: 1px solid hsl(var(--primary));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9,7 +9,7 @@
 
 .circle-button.primary {
     border: 0;
-    background: var(--primary-color);
+    background: hsl(var(--primary));
 }
 
 .circle-button.medium {

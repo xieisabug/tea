@@ -15,8 +15,8 @@ const ConversationTitle: React.FC<{
             <div className="conversation-title-panel-assistant-name">{conversation?.assistant_name}</div>
         </div>
         <div className="conversation-title-panel-button-group">
-            <IconButton icon={<Edit fill="#468585" />} onClick={onEdit} border />
-            <IconButton icon={<Delete fill="#468585" />} onClick={onDelete} border />
+            <IconButton icon={<Edit fill="black" />} onClick={onEdit} border />
+            <IconButton icon={<Delete fill="black" />} onClick={onDelete} border />
         </div>
     </div>
 ));
