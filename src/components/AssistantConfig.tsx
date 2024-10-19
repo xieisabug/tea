@@ -325,17 +325,29 @@ const AssistantConfig: React.FC = () => {
             type: "select" as const,
             label: "Model",
             options: models.map((m) => ({
-                value: `${m.llm_provider_id}%%${m.code}`,
+                value: `${m.code}%%${m.llm_provider_id}`,
                 label: m.name,
             })),
-            value: currentAssistant?.model.length ?? 0 > 0 ? `${currentAssistant?.model[0].provider_id}%%${currentAssistant?.model[0].model_code}` : "-1",
+            value: currentAssistant?.model.length ?? 0 > 0 ? `${currentAssistant?.model[0].model_code}%%${currentAssistant?.model[0].provider_id}` : "-1",
             onChange: (value: string | boolean) => {
                 const [modelCode, providerId] = (value as string).split("%%");
+                console.log("model code", modelCode, "provider id", providerId, "current assistant", currentAssistant);
                 if (currentAssistant?.model.length ?? 0 > 0) {
-                    handleConfigChange("model_code", modelCode, "string");
-                    handleConfigChange("provider_id", providerId, "number");
+                    let assistant = currentAssistant as AssistantDetail;
+                    setCurrentAssistant({
+                        ...assistant,
+                        model: [{
+                            ...assistant?.model[0],
+                            model_code: modelCode,
+                            provider_id: parseInt(providerId),
+                        }]
+                    })
                 } else {
-                    // Handle the case where model is not yet set
+                    let assistant = currentAssistant as AssistantDetail;
+                    setCurrentAssistant({
+                        ...assistant,
+                        model: [{ id: 0, assistant_id: assistant.assistant.id, model_code: modelCode, provider_id: parseInt(providerId), alias: '' }]
+                    })
                 }
             },
         },
