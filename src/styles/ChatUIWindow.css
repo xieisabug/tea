@@ -163,7 +163,7 @@
 
 .user-message {
     align-self: flex-end;
-    background: hsl(var(--primary-foreground));
+    background: hsl(var(--secondary));
     color: hsl(var(--primary));
 }
 
