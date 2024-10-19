@@ -201,13 +201,15 @@
 
 .user-message {
     align-self: flex-end;
-    background: var(--main-color);
-    color: white;
+    background: hsl(var(--primary-foreground));
+    color: hsl(var(--primary));
 }
 
 .bot-message {
     align-self: flex-start;
-    background: var(--secondary-color);
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
 }
 
 .message-item-button-container {
@@ -219,8 +221,8 @@
     box-sizing: border-box;
     height: 42px;
     border-radius: 21px;
-    border: 1px solid #cee0df;
-    background-color: var(--secondary-color);
+    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--background));
 }
 
 .message-item:hover .message-item-button-container {

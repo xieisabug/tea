@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import { useEffect, useState } from "react";
 import ChatUIToolbar from "./components/ChatUIToolbar";
 import ConversationList from "./components/ConversationList";
 import ChatUIInfomation from "./components/ChatUIInfomation";
@@ -34,7 +34,7 @@ function ChatUIWindow() {
             <div className="center-content">
                 <ConversationUI conversationId={selectedConversation} onChangeConversationId={setSelectedConversation} />
             </div>
-            
+
             <AlertDialog
                 alertText={alertDialogText}
                 isOpen={isAlertDialogOpen}
