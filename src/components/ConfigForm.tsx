@@ -27,6 +27,7 @@ interface ConfigField {
 	| "custom"
 	| "button"; // 添加 "button" 类型
 	label: string;
+	className?: string;
 	options?: { value: string; label: string; tooltip?: string }[];
 	value: string | boolean;
 	tooltip?: string;
@@ -141,6 +142,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "textarea":
 				return (
 					<Textarea
+						className={field.className}
 						value={field.value as string}
 						onChange={(e) => field.onChange && field.onChange(e.target.value)}
 					/>
@@ -149,6 +151,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "password":
 				return (
 					<Input
+						className={field.className}
 						type={field.type}
 						value={field.value as string}
 						onChange={(e) => field.onChange && field.onChange(e.target.value)}
@@ -158,6 +161,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "checkbox":
 				return (
 					<Checkbox
+						className={field.className}
 						checked={field.value as boolean}
 						onCheckedChange={(checked) => field.onChange && field.onChange(checked)}
 					/>
@@ -165,6 +169,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			case "radio":
 				return (
 					<RadioGroup
+						className={field.className}
 						value={field.value as string}
 						onValueChange={(value: string) =>
 							field.onChange && field.onChange(value)
@@ -184,12 +189,12 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 					</RadioGroup>
 				);
 			case "static":
-				return <span>{field.value}</span>;
+				return <span className={field.className}>{field.value}</span>;
 			case "custom":
 				return field.customRender ? field.customRender() : null;
 			case "button":
 				return (
-					<Button onClick={() => {
+					<Button className={field.className} onClick={() => {
 						field.onClick && field.onClick();
 					}}>{field.value as string}</Button>
 				);

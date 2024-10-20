@@ -22,7 +22,7 @@ function App() {
 
     return <>
         {windowsMap[win.label]()}
-        <Toaster />
+        <Toaster richColors />
     </>
 }
 

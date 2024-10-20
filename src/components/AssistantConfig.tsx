@@ -3,7 +3,6 @@ import "../styles/AssistantConfig.css";
 import { invoke } from "@tauri-apps/api/tauri";
 import ConfirmDialog from './ConfirmDialog';
 import { AssistantDetail, AssistantListItem } from '../data/Assistant';
-import { emit } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import ConfigForm from './ConfigForm';
 import { DialogHeader, DialogFooter, Dialog, DialogTrigger, DialogContent, DialogTitle } from './ui/dialog';
@@ -230,6 +229,7 @@ const AssistantConfig: React.FC = () => {
         prompt: {
             type: "textarea" as const,
             label: "Prompt",
+            className: "h-48",
             value: currentAssistant?.prompts[0].prompt ?? "",
             onChange: (value: string | boolean) => handlePromptChange(value as string),
         },
@@ -277,19 +277,19 @@ const AssistantConfig: React.FC = () => {
 
     // 定义表单的验证模式
     const formSchema = z.object({
-      name: z.string().min(1, "名称不能为空"),
-      description: z.string(),
-      assistantType: z.string(),
+        name: z.string().min(1, "名称不能为空"),
+        description: z.string(),
+        assistantType: z.string(),
     });
 
     // 定义表单
     const form = useForm<z.infer<typeof formSchema>>({
-      resolver: zodResolver(formSchema),
-      defaultValues: {
-        name: "初始化助手名称",
-        description: "这是一个初始化的描述",
-        assistantType: "0",
-      },
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            name: "初始化助手名称",
+            description: "这是一个初始化的描述",
+            assistantType: "0",
+        },
     });
 
     // 处理表单提交
@@ -384,7 +384,9 @@ const AssistantConfig: React.FC = () => {
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="0">普通对话助手</SelectItem>
+                                                    <SelectGroup>
+                                                        <SelectItem value="0">普通对话助手</SelectItem>
+                                                    </SelectGroup>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
