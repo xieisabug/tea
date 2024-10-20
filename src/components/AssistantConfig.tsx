@@ -20,9 +20,12 @@ const AssistantConfig: React.FC = () => {
     // 模型数据
     const [models, setModels] = useState<ModelForSelect[]>([]);
     useEffect(() => {
-        invoke<Array<ModelForSelect>>("get_models_for_select").then((modelList) => {
-            setModels(modelList);
-        });
+        invoke<Array<ModelForSelect>>("get_models_for_select")
+            .then(setModels)
+            .catch((error) => {
+                console.error("获取模型列表失败:", error);
+                // 可以显示一个错误提示给用户
+            });
     }, []);
 
     const [currentAssistant, setCurrentAssistant] = useState<AssistantDetail | null>(null);
@@ -43,17 +46,15 @@ const AssistantConfig: React.FC = () => {
     }
     const onAdd = () => {
         invoke<AssistantDetail>("add_assistant").then((assistantDetail: AssistantDetail) => {
-            setAssistants([...assistants, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
+            setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
             setCurrentAssistant(assistantDetail);
         });
-        // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
     const onCopy = (assistantId: number) => {
         invoke<AssistantDetail>("copy_assistant", { assistantId }).then((assistantDetail: AssistantDetail) => {
-            setAssistants([...assistants, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
+            setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
             setCurrentAssistant(assistantDetail);
         });
-        // setAssistants([...assistants, { name, prompt: '', model: '', config: { max_tokens: 500, temperature: 0.7, top_p: 1.0, stream: false } }]);
     }
 
     const handleChooseAssistant = (assistant: AssistantListItem) => {
@@ -66,144 +67,23 @@ const AssistantConfig: React.FC = () => {
 
     const handleConfigChange = (key: string, value: string | boolean, value_type: string) => {
         if (currentAssistant) {
-            let index = currentAssistant.model_configs.findIndex((config) => {
-                return config.name === key
-            });
-
+            const index = currentAssistant.model_configs.findIndex(config => config.name === key);
             if (index !== -1) {
-                let isValid = true;
-                let newValue: string | number | boolean = value;
-
-                switch (value_type) {
-                    case 'boolean':
-                        if (typeof value !== 'boolean') {
-                            isValid = false;
-                        }
-                        break;
-                    case 'string':
-                        if (typeof value !== 'string') {
-                            isValid = false;
-                        }
-                        break;
-                    case 'number':
-                        if (typeof value !== 'string') {
-                            isValid = false;
-                        } else {
-                            if (/^\d+$/.test(value)) {
-                                let parsedValue = parseInt(value, 10);
-                                // 继续处理
-                                if (isNaN(parsedValue) || !Number.isInteger(parsedValue) || parsedValue < 0) {
-                                    isValid = false;
-                                }
-                            } else if (value === "") {
-                                newValue = 0;
-                            } else {
-                                isValid = false;
-                            }
-                        }
-                        break;
-                    case 'float':
-                        if (typeof value !== 'string') {
-                            isValid = false;
-                        } else {
-                            // 允许更自由的输入，包括部分完成的小数
-                            if (/^-?\d*\.?\d*$/.test(value)) {
-                                newValue = value;
-                            } else {
-                                isValid = false;
-                            }
-                        }
-                        break;
-                    default:
-                        isValid = false;
-                        break;
-                }
+                console.log("键", key, "值", value, "值类型", value_type);
+                const { isValid, parsedValue } = validateConfig(value, value_type);
+                console.log("验证结果：", isValid ? "有效" : "无效", "解析后的值：", parsedValue);
 
                 if (isValid) {
                     setCurrentAssistant({
                         ...currentAssistant,
-                        model_configs: [
-                            ...currentAssistant.model_configs.slice(0, index),
-                            {
-                                ...currentAssistant.model_configs[index],
-                                value: newValue.toString(),
-                            },
-                            ...currentAssistant.model_configs.slice(index + 1),
-                        ],
+                        model_configs: currentAssistant.model_configs.map((config, i) =>
+                            i === index ? { ...config, value: parsedValue.toString() } : config
+                        ),
                     });
                 }
             }
         }
     };
-
-    const handleConfigBlur = (key: string, value: string, value_type: string) => {
-        if (currentAssistant) {
-            let index = currentAssistant.model_configs.findIndex((config) => {
-                return config.name === key
-            });
-
-            if (index !== -1) {
-                let isValid = true;
-                let newValue: string | number | boolean = value;
-
-                switch (value_type) {
-                    case 'number':
-                        if (typeof value !== 'string') {
-                            isValid = false;
-                        } else {
-                            if (/^\d+$/.test(value)) {
-                                let parsedValue = parseInt(value, 10);
-                                // 继续处理
-                                if (isNaN(parsedValue) || !Number.isInteger(parsedValue) || parsedValue < 0) {
-                                    isValid = false;
-                                } else {
-                                    newValue = parsedValue;
-                                }
-                            } else if (value === "") {
-                                newValue = 0;
-                            }
-                        }
-                        break;
-                    case 'float':
-                        if (typeof value !== 'string') {
-                            isValid = false;
-                        } else {
-                            // 允许更自由的输入，包括部分完成的小数
-                            if (/^-?\d*\.?\d*$/.test(value)) {
-                                if (value === '' || value === '-' || value === '.' || value === '-.') {
-                                    newValue = 0;
-                                } else {
-                                    let parsedValue = parseFloat(value);
-                                    if (!isNaN(parsedValue) && Number.isFinite(parsedValue)) {
-                                        newValue = parsedValue;
-                                    }
-                                }
-                            } else {
-                                isValid = false;
-                            }
-                        }
-                        break;
-                    default:
-                        isValid = false;
-                        break;
-                }
-
-                if (isValid) {
-                    setCurrentAssistant({
-                        ...currentAssistant,
-                        model_configs: [
-                            ...currentAssistant.model_configs.slice(0, index),
-                            {
-                                ...currentAssistant.model_configs[index],
-                                value: newValue.toString(),
-                            },
-                            ...currentAssistant.model_configs.slice(index + 1),
-                        ],
-                    });
-                }
-            }
-        }
-    }
 
     const handlePromptChange = (value: string) => {
         if (currentAssistant) {
@@ -233,27 +113,6 @@ const AssistantConfig: React.FC = () => {
                 });
         }
     };
-
-    // const [newParamKey, setNewParamKey] = useState('');
-    // const [newParamValue, setNewParamValue] = useState('');
-    // const handleAddParam = () => {
-    //     if (currentAssistant && newParamKey) {
-    //         setCurrentAssistant({
-    //             ...currentAssistant,
-    //             model_configs: [
-    //                 ...currentAssistant.model_configs,
-    //                 {
-    //                     id: 0,
-    //                     assistant_id: currentAssistant.assistant.id,
-    //                     name: newParamKey,
-    //                     value: newParamValue,
-    //                 },
-    //             ]
-    //         });
-    //         setNewParamKey('');
-    //         setNewParamValue('');
-    //     }
-    // };
 
     // 删除助手
     const [confirmDialogIsOpen, setConfirmDialogIsOpen] = useState<boolean>(false);
@@ -357,7 +216,7 @@ const AssistantConfig: React.FC = () => {
                 label: config.name,
                 value: config.value_type === 'boolean' ? config.value == "true" : config.value,
                 onChange: (value: string | boolean) => handleConfigChange(config.name, value, config.value_type),
-                onBlur: (value: string | boolean) => handleConfigBlur(config.name, value as string, config.value_type),
+                onBlur: (value: string | boolean) => handleConfigChange(config.name, value as string, config.value_type),
             };
             return acc;
         }, {} as Record<string, any>),
@@ -367,6 +226,44 @@ const AssistantConfig: React.FC = () => {
             value: currentAssistant?.prompts[0].prompt ?? "",
             onChange: (value: string | boolean) => handlePromptChange(value as string),
         },
+    };
+
+    const validateConfig = (value: any, type: string): { isValid: boolean, parsedValue: any } => {
+        let isValid = true;
+        let parsedValue = value;
+
+        switch (type) {
+            case 'boolean':
+                isValid = typeof value === 'boolean';
+                break;
+            case 'string':
+                isValid = typeof value === 'string';
+                break;
+            case 'number':
+                if (typeof value !== 'string') {
+                    isValid = false;
+                } else if (/^\d+$/.test(value)) {
+                    const num = parseInt(value, 10);
+                    isValid = !isNaN(num) && Number.isInteger(num) && num >= 0;
+                    parsedValue = isValid ? num : value;
+                } else if (value === "") {
+                    parsedValue = 0;
+                } else {
+                    isValid = false;
+                }
+                break;
+            case 'float':
+                if (typeof value !== 'string') {
+                    isValid = false;
+                } else {
+                    isValid = /^-?\d*\.?\d*$/.test(value);
+                }
+                break;
+            default:
+                isValid = false;
+        }
+
+        return { isValid, parsedValue };
     };
 
     return (
