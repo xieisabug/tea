@@ -2,11 +2,18 @@ import React, { useCallback, useEffect, useState } from 'react';
 import "../styles/AssistantConfig.css";
 import { invoke } from "@tauri-apps/api/tauri";
 import ConfirmDialog from './ConfirmDialog';
-import FormDialog from './FormDialog';
 import { AssistantDetail, AssistantListItem } from '../data/Assistant';
 import { emit } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import ConfigForm from './ConfigForm';
+import { DialogHeader, DialogFooter, Dialog, DialogTrigger, DialogContent, DialogTitle } from './ui/dialog';
+import { Input } from './ui/input';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { toast } from 'sonner';
 
 interface ModelForSelect {
     name: string;
@@ -23,8 +30,7 @@ const AssistantConfig: React.FC = () => {
         invoke<Array<ModelForSelect>>("get_models_for_select")
             .then(setModels)
             .catch((error) => {
-                console.error("获取模型列表失败:", error);
-                // 可以显示一个错误提示给用户
+                toast.error('获取模型列表失败: ' + error);
             });
     }, []);
 
@@ -39,29 +45,34 @@ const AssistantConfig: React.FC = () => {
             if (assistantList.length) {
                 handleChooseAssistant(assistantList[0])
             }
+        }).catch((error) => {
+            toast.error('获取助手列表失败: ' + error);
         });
     }, []);
     const onSave = (assistant: AssistantDetail) => {
-        return invoke("save_assistant", { assistantDetail: assistant });
-    }
-    const onAdd = () => {
-        invoke<AssistantDetail>("add_assistant").then((assistantDetail: AssistantDetail) => {
-            setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
-            setCurrentAssistant(assistantDetail);
+        return invoke("save_assistant", { assistantDetail: assistant }).catch((error) => {
+            toast.error('保存助手失败: ' + error);
         });
     }
     const onCopy = (assistantId: number) => {
         invoke<AssistantDetail>("copy_assistant", { assistantId }).then((assistantDetail: AssistantDetail) => {
             setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
             setCurrentAssistant(assistantDetail);
+            toast.success('复制助手成功');
+        }).catch((error) => {
+            toast.error('复制助手失败: ' + error);
         });
     }
 
     const handleChooseAssistant = (assistant: AssistantListItem) => {
         if (!currentAssistant || currentAssistant.assistant.id !== assistant.id) {
-            invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id }).then((assistant: AssistantDetail) => {
-                setCurrentAssistant(assistant);
-            });
+            invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id })
+                .then((assistant: AssistantDetail) => {
+                    setCurrentAssistant(assistant);
+                })
+                .catch((error) => {
+                    toast.error('获取助手信息失败: ' + error);
+                });
         }
     }
 
@@ -103,13 +114,10 @@ const AssistantConfig: React.FC = () => {
         if (currentAssistant) {
             onSave(currentAssistant)
                 .then(() => {
-                    emit('config-window-success-notification');
+                    toast.success('保存成功');
                 })
                 .catch((error) => {
-                    emit('config-window-alert-dialog', {
-                        text: '保存失败: ' + error,
-                        type: 'error'
-                    });
+                    toast.error('保存失败: ' + error);
                 });
         }
     };
@@ -133,7 +141,9 @@ const AssistantConfig: React.FC = () => {
                     setCurrentAssistant(null);
                 }
                 setConfirmDialogIsOpen(false);
-                // 展示一个tips
+                toast.success('删除助手成功');
+            }).catch((error) => {
+                toast.error('删除助手失败: ' + error);
             });
         }
     }, [currentAssistant, assistants]);
@@ -141,23 +151,23 @@ const AssistantConfig: React.FC = () => {
     // 修改助手名称与描述
     const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
     const openFormDialog = useCallback(() => {
-        setFormAssistantName(currentAssistant?.assistant.name || "");
-        setFormAssistantDescription(currentAssistant?.assistant.description || "");
+        updateAssistantForm.reset({
+            name: currentAssistant?.assistant.name || "",
+            description: currentAssistant?.assistant.description || "",
+        });
         setFormDialogIsOpen(true);
     }, [currentAssistant]);
     const closeFormDialog = useCallback(() => {
         setFormDialogIsOpen(false);
     }, []);
-    const [formAssistantName, setFormAssistantName] = useState<string>("");
-    const [formAssistantDescription, setFormAssistantDescription] = useState<string>("");
-    const handleFormSubmit = useCallback(() => {
+    const handleFormSubmit = useCallback((values: z.infer<typeof updateAssistantSchema>) => {
         if (currentAssistant) {
             const newCurrentAssistant = {
                 ...currentAssistant,
                 assistant: {
                     ...currentAssistant.assistant,
-                    name: formAssistantName,
-                    description: formAssistantDescription,
+                    name: values.name,
+                    description: values.description ?? null,
                 },
             };
             onSave(newCurrentAssistant).then(() => {
@@ -166,18 +176,15 @@ const AssistantConfig: React.FC = () => {
                 const index = assistants.findIndex((assistant) => assistant.id === currentAssistant.assistant.id);
                 if (index >= 0) {
                     const newAssistants = [...assistants];
-                    newAssistants[index] = { id: currentAssistant.assistant.id, name: formAssistantName };
+                    newAssistants[index] = { id: currentAssistant.assistant.id, name: values.name };
                     setAssistants(newAssistants);
                 }
-                emit('config-window-success-notification');
+                toast.success('修改助手名称与描述成功');
             }).catch((error) => {
-                emit('config-window-alert-dialog', {
-                    text: '修改助手名称与描述失败: ' + error,
-                    type: 'error'
-                });
+                toast.error('修改助手名称与描述失败: ' + error);
             });
         }
-    }, [currentAssistant, formAssistantName, formAssistantDescription]);
+    }, [currentAssistant]);
 
     const assistantFormConfig = {
         model: {
@@ -266,6 +273,56 @@ const AssistantConfig: React.FC = () => {
         return { isValid, parsedValue };
     };
 
+    const [openAddAssistantDialog, setOpenAddAssistantDialog] = useState<boolean>(false);
+
+    // 定义表单的验证模式
+    const formSchema = z.object({
+      name: z.string().min(1, "名称不能为空"),
+      description: z.string(),
+      assistantType: z.string(),
+    });
+
+    // 定义表单
+    const form = useForm<z.infer<typeof formSchema>>({
+      resolver: zodResolver(formSchema),
+      defaultValues: {
+        name: "初始化助手名称",
+        description: "这是一个初始化的描述",
+        assistantType: "0",
+      },
+    });
+
+    // 处理表单提交
+    const onSubmit = (values: z.infer<typeof formSchema>) => {
+        invoke<AssistantDetail>("add_assistant", {
+            name: values.name,
+            description: values.description,
+            assistantType: parseInt(values.assistantType),
+        })
+            .then((assistantDetail: AssistantDetail) => {
+                setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
+                setCurrentAssistant(assistantDetail);
+                setOpenAddAssistantDialog(false);
+                toast.success('新增助手成功');
+            })
+            .catch((error) => {
+                toast.error('新增助手失败: ' + error);
+            });
+    };
+
+    const updateAssistantSchema = z.object({
+        name: z.string().min(1, "名称不能为空"),
+        description: z.string().optional(),
+    });
+
+    const updateAssistantForm = useForm<z.infer<typeof updateAssistantSchema>>({
+        resolver: zodResolver(updateAssistantSchema),
+        defaultValues: {
+            name: currentAssistant?.assistant.name || "",
+            description: currentAssistant?.assistant.description || "",
+        },
+    });
+
     return (
         <div className="assistant-editor">
             <div className="flex flex-wrap gap-4 mb-4">
@@ -278,7 +335,69 @@ const AssistantConfig: React.FC = () => {
                     >{assistant.name}</Button>
                 ))}
 
-                <Button onClick={onAdd}>新增</Button>
+                <Dialog open={openAddAssistantDialog} onOpenChange={setOpenAddAssistantDialog}>
+                    <DialogTrigger asChild>
+                        <Button>新增</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>新增助手</DialogTitle>
+                        </DialogHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>名称</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>描述</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="assistantType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>类型</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value.toString()}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="选择助手类型" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="0">普通对话助手</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <DialogFooter>
+                                    <Button type="submit">确认</Button>
+                                </DialogFooter>
+                            </form>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
             </div>
             {currentAssistant && (
                 <ConfigForm
@@ -302,23 +421,47 @@ const AssistantConfig: React.FC = () => {
                 onCancel={closeConfirmDialog}
                 isOpen={confirmDialogIsOpen}
             />
-            <FormDialog
-                title={"修改助手 : " + currentAssistant?.assistant.name}
-                onSubmit={handleFormSubmit}
-                onClose={closeFormDialog}
-                isOpen={formDialogIsOpen}
-            >
-                <form className='form-group-container'>
-                    <div className='form-group'>
-                        <label>名称:</label>
-                        <input className='form-input' type="text" name="name" value={formAssistantName} onChange={e => setFormAssistantName(e.target.value)} />
-                    </div>
-                    <div className='form-group'>
-                        <label>描述:</label>
-                        <input className='form-input' type="text" name="description" value={formAssistantDescription} onChange={e => setFormAssistantDescription(e.target.value)} />
-                    </div>
-                </form>
-            </FormDialog>
+
+            <Dialog open={formDialogIsOpen} onOpenChange={closeFormDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>修改助手 : {currentAssistant?.assistant.name}</DialogTitle>
+                    </DialogHeader>
+                    <Form {...updateAssistantForm}>
+                        <form onSubmit={updateAssistantForm.handleSubmit(handleFormSubmit)} className='form-group-container'>
+                            <FormField
+                                control={updateAssistantForm.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>名称:</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={updateAssistantForm.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>描述:</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <DialogFooter>
+                                <Button type="submit">确认</Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

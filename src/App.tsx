@@ -6,6 +6,7 @@ import ChatUIWindow from './ChatUIWindow.tsx';
 import PreviewHTMLWindow from './PreviewHTMLWindow.tsx';
 import PreviewReactWindow from './PreviewReactWindow.tsx';
 import PluginWindow from './PluginWindow.tsx';
+import { Toaster } from './components/ui/sonner.tsx';
 
 const windowsMap: Record<string, typeof AskWindow> = {
     ask: AskWindow,
@@ -19,7 +20,10 @@ const windowsMap: Record<string, typeof AskWindow> = {
 function App() {
     let win = getCurrent();
 
-    return <>{windowsMap[win.label]()}</>
+    return <>
+        {windowsMap[win.label]()}
+        <Toaster />
+    </>
 }
 
 export default App;

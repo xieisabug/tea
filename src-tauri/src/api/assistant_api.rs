@@ -211,16 +211,16 @@ pub async fn save_assistant(
 }
 
 #[tauri::command]
-pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, String> {
+pub fn add_assistant(app_handle: tauri::AppHandle, name: String, description: String, assistant_type: i64) -> Result<AssistantDetail, String> {
     println!("start add assistant");
     let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
 
     // Add a default assistant
     let assistant_id = assistant_db
         .add_assistant(
-            "初始助手名称",
-            "This is a default assistant",
-            Some(0), // Assuming 0 is a default assistant type
+            &name,
+            &description,
+            Some(assistant_type),
             false,
         )
         .map_err(|e| e.to_string())?;
