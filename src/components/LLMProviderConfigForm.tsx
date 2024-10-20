@@ -45,7 +45,6 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, index
     useEffect(() => {
         invoke<Array<LLMProviderConfig>>('get_llm_provider_config', { id })
             .then((configArray) => {
-                console.log(configArray)
                 const newConfig: Record<string, string> = {};
                 configArray.forEach((item) => {
                     newConfig[item.name] = item.value;

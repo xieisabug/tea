@@ -6,6 +6,8 @@ import FeatureAssistantConfig from "./components/FeatureAssistantConfig.tsx";
 import Model from "./assets/model.svg?react";
 import Assistant from "./assets/assistant.svg?react";
 import Program from "./assets/program.svg?react";
+import { appDataDir } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 interface MenuItem {
     id: string;
@@ -14,10 +16,11 @@ interface MenuItem {
     iconSelected: ReactNode;
 }
 
-const contentMap: Record<string, React.ReactElement> = {
-    'llm-provider-config': <LLMProviderConfig />,
-    'assistant-config': <AssistantConfig />,
-    'feature-assistant-config': <FeatureAssistantConfig />,
+// 将 contentMap 修改为映射到组件而不是元素
+const contentMap: Record<string, React.ComponentType<any>> = {
+    'llm-provider-config': LLMProviderConfig,
+    'assistant-config': AssistantConfig,
+    'feature-assistant-config': FeatureAssistantConfig,
 }
 
 function ConfigWindow() {
@@ -28,16 +31,50 @@ function ConfigWindow() {
     ];
 
     const [selectedMenu, setSelectedMenu] = useState<string>('llm-provider-config');
+    const [pluginList, setPluginList] = useState<any[]>([]);
 
     useEffect(() => {
-        console.log("listen config-window-success-notification");
+        const pluginLoadList = [
+            {
+                name: "代码生成",
+                code: "code-generate",
+                pluginType: ["assistantType"],
+                instance: null
+            }
+        ]
+
+        const initPlugin = async () => {
+            const dirPath = await appDataDir();
+            pluginLoadList.forEach(async (plugin) => {
+                const convertFilePath = dirPath + "plugin/" + plugin.code + "/dist/main.js";
+
+                // 加载脚本
+                const script = document.createElement('script');
+                script.src = convertFileSrc(convertFilePath);
+                script.onload = () => {
+                    // 脚本加载完成后，插件应该可以在全局范围内使用
+                    const SamplePlugin = (window as any).SamplePlugin;
+                    if (SamplePlugin) {
+                        const instance = new SamplePlugin();
+                        plugin.instance = instance;
+                        console.log("plugin loaded", instance);
+                    }
+                };
+                document.body.appendChild(script);
+            });
+        }
+
+        initPlugin();
     }, []);
+
+    // 获取选中的组件
+    const SelectedComponent = contentMap[selectedMenu];
 
     return (
         <div className="mx-auto grid md:grid-cols-[210px_1fr] lg:grid-cols-[250px_1fr] bg-background">
             <SideMenu menu={menuList} selectedMenu={selectedMenu} setSelectedMenu={setSelectedMenu} />
             <div className="max-h-screen overflow-auto">
-                {contentMap[selectedMenu]}
+                <SelectedComponent pluginList={pluginList} />
             </div>
         </div>
     );
