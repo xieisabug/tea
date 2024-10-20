@@ -3,10 +3,9 @@ import '../styles/LLMProviderConfig.css';
 import { invoke } from "@tauri-apps/api/tauri";
 import debounce from 'lodash/debounce';
 import TagInput from "./TagInput.tsx";
-import RoundButton from './RoundButton.tsx';
-import { emit } from '@tauri-apps/api/event';
 import ConfigForm from './ConfigForm.tsx';
 import { Switch } from './ui/switch.tsx';
+import { toast } from 'sonner';
 
 interface LLMProviderConfigFormProps {
     index: number;
@@ -74,13 +73,10 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, index
         invoke<Array<LLMModel>>('fetch_model_list', { llmProviderId: id })
             .then((modelList) => {
                 setTags(modelList.map((model) => model.name));
-                emit('config-window-success-notification');
+                toast.success('获取模型列表成功');
             })
             .catch((e) => {
-                emit('config-window-alert-dialog', {
-                    text: '获取模型列表失败，请检查Endpoint和Api Key配置: ' + e,
-                    type: 'error'
-                });
+                toast.error('获取模型列表失败，请检查Endpoint和Api Key配置: ' + e);
             });
     };
 
