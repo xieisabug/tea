@@ -62,6 +62,8 @@ function ConfigWindow() {
                 };
                 document.body.appendChild(script);
             });
+
+            setPluginList(pluginLoadList)
         }
 
         initPlugin();

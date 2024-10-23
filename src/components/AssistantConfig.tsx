@@ -21,7 +21,45 @@ interface ModelForSelect {
     llm_provider_id: number;
 }
 
-const AssistantConfig: React.FC = () => {
+interface AssistantType {
+    code: number;
+    name: string;
+}
+
+interface AssistantConfigProps {
+    pluginList: any[];
+}
+const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
+    const assistantTypeApi: AssistantTypeApi = {
+        typeRegist: (code: number, label: string) => {
+            console.log("regist type", code, label);
+            // 检查是否已存在相同的 code
+            setAssistantTypes(prev => {
+                if (!prev.some(type => type.code === code)) {
+                    return [...prev, {code: code, name: label}];
+                } else {
+                    return prev;
+                }
+            });
+        },
+        changeFieldLabel: (fieldName: string, label: string) => {},
+        addField: (fieldName: string, label: string, type: string, fieldConfig?: FieldConfig) => {},
+        addFieldTips: (fieldName: string, tips: string) => {},
+        runLogic: (callback: (assistantRunApi: AssistantRunApi) => void) => {}
+    };
+
+    const [assistantTypes, setAssistantTypes] = useState<AssistantType[]>([{ code: 0, name: "普通对话助手" }]);
+    useEffect(() => {
+        console.log(assistantTypes);
+    }, [assistantTypes])
+
+    useEffect(() => {
+        console.log("plugin load and init", pluginList);
+        pluginList.filter((plugin: any) => plugin.pluginType.includes("assistantType")).forEach((plugin: any) => {
+            plugin.instance.onInit(assistantTypeApi);
+        });
+    }, [pluginList]);
+
     // 基础数据
     // 模型数据
     const [models, setModels] = useState<ModelForSelect[]>([]);
@@ -385,7 +423,9 @@ const AssistantConfig: React.FC = () => {
                                                 </FormControl>
                                                 <SelectContent>
                                                     <SelectGroup>
-                                                        <SelectItem value="0">普通对话助手</SelectItem>
+                                                        {assistantTypes.map((type) => (
+                                                            <SelectItem key={type.code} value={type.code.toString()}>{type.name}</SelectItem>
+                                                        ))}
                                                     </SelectGroup>
                                                 </SelectContent>
                                             </Select>
