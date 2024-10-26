@@ -5,25 +5,16 @@ import ConfirmDialog from '../ConfirmDialog';
 import { AssistantDetail, AssistantListItem } from '../../data/Assistant';
 import { Button } from '../ui/button';
 import ConfigForm from '../ConfigForm';
-import { DialogHeader, DialogFooter, Dialog, DialogTrigger, DialogContent, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { toast } from 'sonner';
+import AddAssistantDialog from './AddAssistantDialog';
+import EditAssistantDialog from './EditAssistantDialog';
+import { AssistantType } from '../../types/assistant';
 
 interface ModelForSelect {
     name: string;
     code: string;
     id: number;
     llm_provider_id: number;
-}
-
-interface AssistantType {
-    code: number;
-    name: string;
 }
 
 interface AssistantConfigProps {
@@ -56,7 +47,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         addFieldTips: (fieldName: string, tips: string) => {
             console.log("add field tips", fieldName, tips);
         },
-        runLogic: (callback: (assistantRunApi: AssistantRunApi) => void) => {}
+        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => {}
     };
 
     const [assistantTypes, setAssistantTypes] = useState<AssistantType[]>([{ code: 0, name: "普通对话助手" }]);
@@ -96,7 +87,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         });
     }, []);
     const onSave = (assistant: AssistantDetail) => {
-        return invoke("save_assistant", { assistantDetail: assistant }).catch((error) => {
+        return invoke<void>("save_assistant", { assistantDetail: assistant }).catch((error) => {
             toast.error('保存助手失败: ' + error);
         });
     }
@@ -199,40 +190,21 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     // 修改助手名称与描述
     const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
     const openFormDialog = useCallback(() => {
-        updateAssistantForm.reset({
-            name: currentAssistant?.assistant.name || "",
-            description: currentAssistant?.assistant.description || "",
-        });
         setFormDialogIsOpen(true);
-    }, [currentAssistant]);
+    }, []);
     const closeFormDialog = useCallback(() => {
         setFormDialogIsOpen(false);
     }, []);
-    const handleFormSubmit = useCallback((values: z.infer<typeof updateAssistantSchema>) => {
-        if (currentAssistant) {
-            const newCurrentAssistant = {
-                ...currentAssistant,
-                assistant: {
-                    ...currentAssistant.assistant,
-                    name: values.name,
-                    description: values.description ?? null,
-                },
-            };
-            onSave(newCurrentAssistant).then(() => {
-                setCurrentAssistant(newCurrentAssistant);
-                setFormDialogIsOpen(false);
-                const index = assistants.findIndex((assistant) => assistant.id === currentAssistant.assistant.id);
-                if (index >= 0) {
-                    const newAssistants = [...assistants];
-                    newAssistants[index] = { id: currentAssistant.assistant.id, name: values.name };
-                    setAssistants(newAssistants);
-                }
-                toast.success('修改助手名称与描述成功');
-            }).catch((error) => {
-                toast.error('修改助手名称与描述失败: ' + error);
-            });
+
+    const handleAssistantUpdated = useCallback((updatedAssistant: AssistantDetail) => {
+        setCurrentAssistant(updatedAssistant);
+        const index = assistants.findIndex((assistant) => assistant.id === updatedAssistant.assistant.id);
+        if (index >= 0) {
+            const newAssistants = [...assistants];
+            newAssistants[index] = { id: updatedAssistant.assistant.id, name: updatedAssistant.assistant.name };
+            setAssistants(newAssistants);
         }
-    }, [currentAssistant]);
+    }, [assistants]);
 
     const assistantFormConfig = {
         assistantType: {
@@ -327,55 +299,11 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         return { isValid, parsedValue };
     };
 
-    const [openAddAssistantDialog, setOpenAddAssistantDialog] = useState<boolean>(false);
-
-    // 定义表单的验证模式
-    const formSchema = z.object({
-        name: z.string().min(1, "名称不能为空"),
-        description: z.string(),
-        assistantType: z.string(),
-    });
-
-    // 定义表单
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            name: "初始化助手名称",
-            description: "这是一个初始化的描述",
-            assistantType: "0",
-        },
-    });
-
-    // 处理表单提交
-    const onSubmit = (values: z.infer<typeof formSchema>) => {
-        invoke<AssistantDetail>("add_assistant", {
-            name: values.name,
-            description: values.description,
-            assistantType: parseInt(values.assistantType),
-        })
-            .then((assistantDetail: AssistantDetail) => {
-                setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
-                setCurrentAssistant(assistantDetail);
-                setOpenAddAssistantDialog(false);
-                toast.success('新增助手成功');
-            })
-            .catch((error) => {
-                toast.error('新增助手失败: ' + error);
-            });
+    // 添加新的处理函数
+    const handleAssistantAdded = (assistantDetail: AssistantDetail) => {
+        setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
+        setCurrentAssistant(assistantDetail);
     };
-
-    const updateAssistantSchema = z.object({
-        name: z.string().min(1, "名称不能为空"),
-        description: z.string().optional(),
-    });
-
-    const updateAssistantForm = useForm<z.infer<typeof updateAssistantSchema>>({
-        resolver: zodResolver(updateAssistantSchema),
-        defaultValues: {
-            name: currentAssistant?.assistant.name || "",
-            description: currentAssistant?.assistant.description || "",
-        },
-    });
 
     return (
         <div className="assistant-editor">
@@ -389,73 +317,10 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     >{assistant.name}</Button>
                 ))}
 
-                <Dialog open={openAddAssistantDialog} onOpenChange={setOpenAddAssistantDialog}>
-                    <DialogTrigger asChild>
-                        <Button>新增</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>新增助手</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>名称</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="description"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>描述</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="assistantType"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>类型</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="选择助手类型" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectGroup>
-                                                        {assistantTypes.map((type) => (
-                                                            <SelectItem key={type.code} value={type.code.toString()}>{type.name}</SelectItem>
-                                                        ))}
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <DialogFooter>
-                                    <Button type="submit">确认</Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </DialogContent>
-                </Dialog>
+                <AddAssistantDialog 
+                    assistantTypes={assistantTypes} 
+                    onAssistantAdded={handleAssistantAdded} 
+                />
             </div>
             {currentAssistant && (
                 <ConfigForm
@@ -480,46 +345,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 isOpen={confirmDialogIsOpen}
             />
 
-            <Dialog open={formDialogIsOpen} onOpenChange={closeFormDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>修改助手 : {currentAssistant?.assistant.name}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...updateAssistantForm}>
-                        <form onSubmit={updateAssistantForm.handleSubmit(handleFormSubmit)} className='form-group-container'>
-                            <FormField
-                                control={updateAssistantForm.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>名称:</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={updateAssistantForm.control}
-                                name="description"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>描述:</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <DialogFooter>
-                                <Button type="submit">确认</Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+            <EditAssistantDialog
+                isOpen={formDialogIsOpen}
+                onClose={closeFormDialog}
+                currentAssistant={currentAssistant}
+                onSave={onSave}
+                onAssistantUpdated={handleAssistantUpdated}
+            />
         </div>
     );
 };
