@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import "../styles/AssistantConfig.css";
+import "../../styles/AssistantConfig.css";
 import { invoke } from "@tauri-apps/api/tauri";
-import ConfirmDialog from './ConfirmDialog';
-import { AssistantDetail, AssistantListItem } from '../data/Assistant';
-import { Button } from './ui/button';
-import ConfigForm from './ConfigForm';
-import { DialogHeader, DialogFooter, Dialog, DialogTrigger, DialogContent, DialogTitle } from './ui/dialog';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import ConfirmDialog from '../ConfirmDialog';
+import { AssistantDetail, AssistantListItem } from '../../data/Assistant';
+import { Button } from '../ui/button';
+import ConfigForm from '../ConfigForm';
+import { DialogHeader, DialogFooter, Dialog, DialogTrigger, DialogContent, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { toast } from 'sonner';
 
 interface ModelForSelect {
@@ -30,8 +30,10 @@ interface AssistantConfigProps {
     pluginList: any[];
 }
 const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
+    const assistantTypePluginMap = new Map<number, TeaAssistantTypePlugin>();
+    const assistantTypeNameMap = new Map<number, string>();
     const assistantTypeApi: AssistantTypeApi = {
-        typeRegist: (code: number, label: string) => {
+        typeRegist: (code: number, label: string, pluginInstance: TeaAssistantTypePlugin & TeaPlugin) => {
             console.log("regist type", code, label);
             // 检查是否已存在相同的 code
             setAssistantTypes(prev => {
@@ -41,22 +43,29 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     return prev;
                 }
             });
+
+            assistantTypePluginMap.set(code, pluginInstance);
+            assistantTypeNameMap.set(code, label);
         },
-        changeFieldLabel: (fieldName: string, label: string) => {},
-        addField: (fieldName: string, label: string, type: string, fieldConfig?: FieldConfig) => {},
-        addFieldTips: (fieldName: string, tips: string) => {},
+        changeFieldLabel: (fieldName: string, label: string) => {
+            console.log("change field label", fieldName, label);
+        },
+        addField: (fieldName: string, label: string, type: string, fieldConfig?: FieldConfig) => {
+            console.log("add field", fieldName, label, type, fieldConfig);
+        },
+        addFieldTips: (fieldName: string, tips: string) => {
+            console.log("add field tips", fieldName, tips);
+        },
         runLogic: (callback: (assistantRunApi: AssistantRunApi) => void) => {}
     };
 
     const [assistantTypes, setAssistantTypes] = useState<AssistantType[]>([{ code: 0, name: "普通对话助手" }]);
     useEffect(() => {
         console.log(assistantTypes);
-    }, [assistantTypes])
-
+    }, [assistantTypes]);
     useEffect(() => {
-        console.log("plugin load and init", pluginList);
         pluginList.filter((plugin: any) => plugin.pluginType.includes("assistantType")).forEach((plugin: any) => {
-            plugin.instance.onInit(assistantTypeApi);
+            plugin.instance.onAssistantTypeInit(assistantTypeApi);
         });
     }, [pluginList]);
 
@@ -106,6 +115,8 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id })
                 .then((assistant: AssistantDetail) => {
                     setCurrentAssistant(assistant);
+                    console.log("assistant type", assistant.assistant);
+                    assistantTypePluginMap.get(assistant.assistant.assistant_type)?.onAssistantTypeSelect(assistantTypeApi);
                 })
                 .catch((error) => {
                     toast.error('获取助手信息失败: ' + error);
@@ -224,6 +235,11 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     }, [currentAssistant]);
 
     const assistantFormConfig = {
+        assistantType: {
+            type: "static" as const,
+            label: "助手类型",
+            value: assistantTypeNameMap.get(currentAssistant?.assistant.assistant_type ?? 0) ?? "普通对话助手",
+        },
         model: {
             type: "select" as const,
             label: "Model",
@@ -415,7 +431,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>类型</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value.toString()}>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl>
                                                     <SelectTrigger>
                                                         <SelectValue placeholder="选择助手类型" />

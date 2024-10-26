@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import '../styles/LLMProviderConfig.css';
+import '../../styles/LLMProviderConfig.css';
 import { invoke } from "@tauri-apps/api/tauri";
 import debounce from 'lodash/debounce';
-import TagInput from "./TagInput.tsx";
-import ConfigForm from './ConfigForm.tsx';
-import { Switch } from './ui/switch.tsx';
+import TagInput from "../TagInput";
+import ConfigForm from "../ConfigForm";
+import { Switch } from "../ui/switch";
 import { toast } from 'sonner';
 
 interface LLMProviderConfigFormProps {

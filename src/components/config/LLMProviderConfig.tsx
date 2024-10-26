@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import '../styles/LLMProviderConfig.css';
+import "../../styles/LLMProviderConfig.css";
 import { invoke } from "@tauri-apps/api/tauri";
-import LLMProviderConfigForm from "./LLMProviderConfigForm.tsx";
-import FormDialog from './FormDialog.tsx';
-import CustomSelect from './CustomSelect.tsx';
-import ConfirmDialog from './ConfirmDialog.tsx';
-import { Button } from './ui/button.tsx';
+import LLMProviderConfigForm from "./LLMProviderConfigForm";
+import FormDialog from "../FormDialog";
+import CustomSelect from "../CustomSelect";
+import ConfirmDialog from "../ConfirmDialog";
+import { Button } from "../ui/button";
 import { toast } from 'sonner';
 
 interface LLMProvider {

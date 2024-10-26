@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
-import "../styles/FeatureAssistantConfig.css";
-import ConfigForm from "./ConfigForm";
+import "../../styles/FeatureAssistantConfig.css";
+import ConfigForm from "../ConfigForm";
 import { toast } from 'sonner';
 
 interface ModelForSelect {

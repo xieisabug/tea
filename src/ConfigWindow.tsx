@@ -1,8 +1,8 @@
 import React, { ReactNode, useEffect, useState } from "react";
-import SideMenu from "./components/SideMenu.tsx";
-import LLMProviderConfig from "./components/LLMProviderConfig.tsx";
-import AssistantConfig from "./components/AssistantConfig.tsx";
-import FeatureAssistantConfig from "./components/FeatureAssistantConfig.tsx";
+import SideMenu from "./components/SideMenu";
+import LLMProviderConfig from "./components/config/LLMProviderConfig";
+import AssistantConfig from "./components/config/AssistantConfig";
+import FeatureAssistantConfig from "./components/config/FeatureAssistantConfig";
 import Model from "./assets/model.svg?react";
 import Assistant from "./assets/assistant.svg?react";
 import Program from "./assets/program.svg?react";
