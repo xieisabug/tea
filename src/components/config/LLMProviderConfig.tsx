@@ -105,6 +105,7 @@ const LLMProviderConfig: React.FC = () => {
             {
                 LLMProviders.map((provider, index) => {
                     return <LLMProviderConfigForm
+                        key={provider.id}
                         id={provider.id}
                         index={index}
                         apiType={provider.api_type}

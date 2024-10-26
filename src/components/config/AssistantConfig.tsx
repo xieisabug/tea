@@ -21,8 +21,9 @@ interface AssistantConfigProps {
     pluginList: any[];
 }
 const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
+    // 插件加载部分
     const assistantTypePluginMap = new Map<number, TeaAssistantTypePlugin>();
-    const assistantTypeNameMap = new Map<number, string>();
+    const [assistantTypeNameMap, setAssistantTypeNameMap] = useState<Map<number, string>>(new Map<number, string>());
     const assistantTypeApi: AssistantTypeApi = {
         typeRegist: (code: number, label: string, pluginInstance: TeaAssistantTypePlugin & TeaPlugin) => {
             console.log("regist type", code, label);
@@ -36,7 +37,10 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             });
 
             assistantTypePluginMap.set(code, pluginInstance);
-            assistantTypeNameMap.set(code, label);
+            setAssistantTypeNameMap(prev => {
+                prev.set(code, label);
+                return prev;
+            });
         },
         changeFieldLabel: (fieldName: string, label: string) => {
             console.log("change field label", fieldName, label);
@@ -49,21 +53,19 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         },
         runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => {}
     };
-
+    // 助手类型
     const [assistantTypes, setAssistantTypes] = useState<AssistantType[]>([{ code: 0, name: "普通对话助手" }]);
     useEffect(() => {
-        console.log(assistantTypes);
-    }, [assistantTypes]);
-    useEffect(() => {
+        // 加载助手类型的插件
         pluginList.filter((plugin: any) => plugin.pluginType.includes("assistantType")).forEach((plugin: any) => {
             plugin.instance.onAssistantTypeInit(assistantTypeApi);
         });
     }, [pluginList]);
 
-    // 基础数据
     // 模型数据
     const [models, setModels] = useState<ModelForSelect[]>([]);
     useEffect(() => {
+        // 获取模型列表
         invoke<Array<ModelForSelect>>("get_models_for_select")
             .then(setModels)
             .catch((error) => {
@@ -71,9 +73,11 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             });
     }, []);
 
+    // 当前助手
     const [currentAssistant, setCurrentAssistant] = useState<AssistantDetail | null>(null);
 
     // 助手相关
+    // 助手列表
     const [assistants, setAssistants] = useState<AssistantListItem[]>([]);
     useEffect(() => {
         invoke<Array<AssistantListItem>>("get_assistants").then((assistantList) => {
@@ -86,11 +90,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             toast.error('获取助手列表失败: ' + error);
         });
     }, []);
+    // 保存助手
     const onSave = (assistant: AssistantDetail) => {
         return invoke<void>("save_assistant", { assistantDetail: assistant }).catch((error) => {
             toast.error('保存助手失败: ' + error);
         });
     }
+    // 复制助手
     const onCopy = (assistantId: number) => {
         invoke<AssistantDetail>("copy_assistant", { assistantId }).then((assistantDetail: AssistantDetail) => {
             setAssistants((prev) => [...prev, { id: assistantDetail.assistant.id, name: assistantDetail.assistant.name }]);
@@ -101,12 +107,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         });
     }
 
+    // 点击某个助手后，选择助手
     const handleChooseAssistant = (assistant: AssistantListItem) => {
         if (!currentAssistant || currentAssistant.assistant.id !== assistant.id) {
             invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id })
                 .then((assistant: AssistantDetail) => {
                     setCurrentAssistant(assistant);
-                    console.log("assistant type", assistant.assistant);
+                    console.log("assistant type", assistant.assistant, assistantTypePluginMap, assistantTypeNameMap.get(assistant.assistant.assistant_type));
                     assistantTypePluginMap.get(assistant.assistant.assistant_type)?.onAssistantTypeSelect(assistantTypeApi);
                 })
                 .catch((error) => {
@@ -115,6 +122,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         }
     }
 
+    // 修改配置
     const handleConfigChange = (key: string, value: string | boolean, value_type: string) => {
         if (currentAssistant) {
             const index = currentAssistant.model_configs.findIndex(config => config.name === key);
@@ -135,6 +143,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         }
     };
 
+    // 修改 prompt
     const handlePromptChange = (value: string) => {
         if (currentAssistant) {
             setCurrentAssistant({
@@ -149,7 +158,8 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         }
     };
 
-    const handleSave = () => {
+    // 保存助手
+    const handleAssistantFormSave = () => {
         if (currentAssistant) {
             onSave(currentAssistant)
                 .then(() => {
@@ -162,12 +172,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     };
 
     // 删除助手
-    const [confirmDialogIsOpen, setConfirmDialogIsOpen] = useState<boolean>(false);
-    const closeConfirmDialog = useCallback(() => {
-        setConfirmDialogIsOpen(false);
+    const [confirmDeleteDialogIsOpen, setConfirmDeleteDialogIsOpen] = useState<boolean>(false);
+    const closeConfirmDeleteDialog = useCallback(() => {
+        setConfirmDeleteDialogIsOpen(false);
     }, []);
-    const openConfigDialog = useCallback(() => {
-        setConfirmDialogIsOpen(true);
+    // 打开删除助手对话框
+    const openConfirmDeleteDialog = useCallback(() => {
+        setConfirmDeleteDialogIsOpen(true);
     }, []);
     const handleDelete = useCallback(() => {
         if (currentAssistant) {
@@ -179,7 +190,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 } else {
                     setCurrentAssistant(null);
                 }
-                setConfirmDialogIsOpen(false);
+                setConfirmDeleteDialogIsOpen(false);
                 toast.success('删除助手成功');
             }).catch((error) => {
                 toast.error('删除助手失败: ' + error);
@@ -188,12 +199,12 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     }, [currentAssistant, assistants]);
 
     // 修改助手名称与描述
-    const [formDialogIsOpen, setFormDialogIsOpen] = useState<boolean>(false);
-    const openFormDialog = useCallback(() => {
-        setFormDialogIsOpen(true);
+    const [updateFormDialogIsOpen, setUpdateFormDialogIsOpen] = useState<boolean>(false);
+    const openUpdateFormDialog = useCallback(() => {
+        setUpdateFormDialogIsOpen(true);
     }, []);
-    const closeFormDialog = useCallback(() => {
-        setFormDialogIsOpen(false);
+    const closeUpdateFormDialog = useCallback(() => {
+        setUpdateFormDialogIsOpen(false);
     }, []);
 
     const handleAssistantUpdated = useCallback((updatedAssistant: AssistantDetail) => {
@@ -206,61 +217,68 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         }
     }, [assistants]);
 
-    const assistantFormConfig = {
-        assistantType: {
-            type: "static" as const,
-            label: "助手类型",
-            value: assistantTypeNameMap.get(currentAssistant?.assistant.assistant_type ?? 0) ?? "普通对话助手",
-        },
-        model: {
-            type: "select" as const,
-            label: "Model",
-            options: models.map((m) => ({
-                value: `${m.code}%%${m.llm_provider_id}`,
-                label: m.name,
-            })),
-            value: currentAssistant?.model.length ?? 0 > 0 ? `${currentAssistant?.model[0].model_code}%%${currentAssistant?.model[0].provider_id}` : "-1",
-            onChange: (value: string | boolean) => {
-                const [modelCode, providerId] = (value as string).split("%%");
-                console.log("model code", modelCode, "provider id", providerId, "current assistant", currentAssistant);
-                if (currentAssistant?.model.length ?? 0 > 0) {
-                    let assistant = currentAssistant as AssistantDetail;
-                    setCurrentAssistant({
-                        ...assistant,
-                        model: [{
-                            ...assistant?.model[0],
-                            model_code: modelCode,
-                            provider_id: parseInt(providerId),
-                        }]
-                    })
-                } else {
-                    let assistant = currentAssistant as AssistantDetail;
-                    setCurrentAssistant({
-                        ...assistant,
-                        model: [{ id: 0, assistant_id: assistant.assistant.id, model_code: modelCode, provider_id: parseInt(providerId), alias: '' }]
-                    })
-                }
-            },
-        },
-        ...currentAssistant?.model_configs.reduce((acc, config) => {
-            acc[config.name] = {
-                type: config.value_type === 'boolean' ? "checkbox" as const : "input" as const,
-                label: config.name,
-                value: config.value_type === 'boolean' ? config.value == "true" : config.value,
-                onChange: (value: string | boolean) => handleConfigChange(config.name, value, config.value_type),
-                onBlur: (value: string | boolean) => handleConfigChange(config.name, value as string, config.value_type),
-            };
-            return acc;
-        }, {} as Record<string, any>),
-        prompt: {
-            type: "textarea" as const,
-            label: "Prompt",
-            className: "h-48",
-            value: currentAssistant?.prompts[0].prompt ?? "",
-            onChange: (value: string | boolean) => handlePromptChange(value as string),
-        },
-    };
+    // 助手配置表单
+    const [assistantFormConfig, setAssistantFormConfig] = useState<Record<string, any>>({});
+    // 在 useEffect 中更新 formConfig，使用 currentAssistant 更新表单配置
+    useEffect(() => {
+        if (currentAssistant) {
+            setAssistantFormConfig({
+                assistantType: {
+                    type: "static" as const,
+                    label: "助手类型",
+                    value: assistantTypeNameMap.get(currentAssistant?.assistant.assistant_type ?? 0) ?? "普通对话助手",
+                },
+                model: {
+                    type: "select" as const,
+                    label: "Model",
+                    options: models.map((m) => ({
+                        value: `${m.code}%%${m.llm_provider_id}`,
+                        label: m.name,
+                    })),
+                    value: currentAssistant?.model.length ?? 0 > 0 ? `${currentAssistant?.model[0].model_code}%%${currentAssistant?.model[0].provider_id}` : "-1",
+                    onChange: (value: string | boolean) => {
+                        const [modelCode, providerId] = (value as string).split("%%");
+                        if (currentAssistant?.model.length ?? 0 > 0) {
+                            let assistant = currentAssistant as AssistantDetail;
+                            setCurrentAssistant({
+                                ...assistant,
+                                model: [{
+                                    ...assistant?.model[0],
+                                    model_code: modelCode,
+                                    provider_id: parseInt(providerId),
+                                }]
+                            })
+                        } else {
+                            let assistant = currentAssistant as AssistantDetail;
+                            setCurrentAssistant({
+                                ...assistant,
+                                model: [{ id: 0, assistant_id: assistant.assistant.id, model_code: modelCode, provider_id: parseInt(providerId), alias: '' }]
+                            })
+                        }
+                    },
+                },
+                ...currentAssistant?.model_configs.reduce((acc, config) => {
+                    acc[config.name] = {
+                        type: config.value_type === 'boolean' ? "checkbox" as const : "input" as const,
+                        label: config.name,
+                        value: config.value_type === 'boolean' ? config.value == "true" : config.value,
+                        onChange: (value: string | boolean) => handleConfigChange(config.name, value, config.value_type),
+                        onBlur: (value: string | boolean) => handleConfigChange(config.name, value as string, config.value_type),
+                    };
+                    return acc;
+                }, {} as Record<string, any>),
+                prompt: {
+                    type: "textarea" as const,
+                    label: "Prompt",
+                    className: "h-48",
+                    value: currentAssistant?.prompts[0].prompt ?? "",
+                    onChange: (value: string | boolean) => handlePromptChange(value as string),
+                },
+            });
+        }
+    }, [currentAssistant, models, assistantTypeNameMap]);
 
+    // 验证表单配置输入是否有效
     const validateConfig = (value: any, type: string): { isValid: boolean, parsedValue: any } => {
         let isValid = true;
         let parsedValue = value;
@@ -329,10 +347,10 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     config={assistantFormConfig}
                     layout="prompt"
                     classNames="bottom-space"
-                    onSave={handleSave}
+                    onSave={handleAssistantFormSave}
                     onCopy={() => onCopy(currentAssistant.assistant.id)}
-                    onDelete={openConfigDialog}
-                    onEdit={openFormDialog}
+                    onDelete={openConfirmDeleteDialog}
+                    onEdit={openUpdateFormDialog}
                 />
             )}
             <ConfirmDialog
@@ -341,13 +359,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 onConfirm={() => {
                     handleDelete();
                 }}
-                onCancel={closeConfirmDialog}
-                isOpen={confirmDialogIsOpen}
+                onCancel={closeConfirmDeleteDialog}
+                isOpen={confirmDeleteDialogIsOpen}
             />
 
             <EditAssistantDialog
-                isOpen={formDialogIsOpen}
-                onClose={closeFormDialog}
+                isOpen={updateFormDialogIsOpen}
+                onClose={closeUpdateFormDialog}
                 currentAssistant={currentAssistant}
                 onSave={onSave}
                 onAssistantUpdated={handleAssistantUpdated}
