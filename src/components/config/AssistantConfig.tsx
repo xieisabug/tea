@@ -28,7 +28,10 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     const [assistantTypePluginMap, setAssistantTypePluginMap] = useState<Map<number, TeaAssistantTypePlugin>>(new Map());
     // 插件名称
     const [assistantTypeNameMap, setAssistantTypeNameMap] = useState<Map<number, string>>(new Map<number, string>());
+    // 插件自定义字段
     const [assistantTypeCustomField, setAssistantTypeCustomField] = useState<Map<string, Record<string, any>>>(new Map<string, Record<string, any>>());
+    // 插件自定义label
+    const [assistantTypeCustomLabel, setAssistantTypeCustomLabel] = useState<Map<string, string>>(new Map<string, string>());
 
     const assistantTypeApi: AssistantTypeApi = {
         typeRegist: (code: number, label: string, pluginInstance: TeaAssistantTypePlugin & TeaPlugin) => {
@@ -53,7 +56,11 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             });
         },
         changeFieldLabel: (fieldName: string, label: string) => {
-            console.log("change field label", fieldName, label);
+            setAssistantTypeCustomLabel(prev => {
+                const newMap = new Map(prev);
+                newMap.set(fieldName, label);
+                return newMap;
+            });
         },
         addField: (fieldName: string, label: string, type: string, fieldConfig?: FieldConfig) => {
             setAssistantTypeCustomField(prev => {
@@ -130,6 +137,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 .then((assistant: AssistantDetail) => {
                     setCurrentAssistant(assistant);
                     setAssistantTypeCustomField(new Map<string, Record<string, any>>());
+                    setAssistantTypeCustomLabel(new Map<string, string>());
                     assistantTypePluginMap.get(assistant.assistant.assistant_type)?.onAssistantTypeSelect(assistantTypeApi);
                 })
                 .catch((error) => {
@@ -247,12 +255,12 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             setAssistantFormConfig({
                 assistantType: {
                     type: "static" as const,
-                    label: "助手类型",
+                    label: assistantTypeCustomLabel.get("assistantType") ?? "助手类型",
                     value: assistantTypeNameMap.get(currentAssistant?.assistant.assistant_type ?? 0) ?? "普通对话助手",
                 },
                 model: {
                     type: "select" as const,
-                    label: "Model",
+                    label: assistantTypeCustomLabel.get("model") ?? "Model",
                     options: models.map((m) => ({
                         value: `${m.code}%%${m.llm_provider_id}`,
                         label: m.name,
@@ -282,7 +290,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 ...currentAssistant?.model_configs.reduce((acc, config) => {
                     acc[config.name] = {
                         type: config.value_type === 'boolean' ? "checkbox" as const : "input" as const,
-                        label: config.name,
+                        label: assistantTypeCustomLabel.get(config.name) ?? config.name,
                         value: config.value_type === 'boolean' ? config.value == "true" : config.value,
                         onChange: (value: string | boolean) => handleConfigChange(config.name, value, config.value_type),
                         onBlur: (value: string | boolean) => handleConfigChange(config.name, value as string, config.value_type),
@@ -300,7 +308,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 }, {} as Record<string, any>),
                 prompt: {
                     type: "textarea" as const,
-                    label: "Prompt",
+                    label: assistantTypeCustomLabel.get("prompt") ?? "Prompt",
                     className: "h-48",
                     value: currentAssistant?.prompts[0].prompt ?? "",
                     onChange: (value: string | boolean) => handlePromptChange(value as string),

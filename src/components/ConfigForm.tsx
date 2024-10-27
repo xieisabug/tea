@@ -221,7 +221,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 						</div>
 						{config.prompt && (
 							<div className="assistant-config-prompts">
-								<Label htmlFor="prompt">Prompt</Label>
+								<Label htmlFor="prompt">{config.prompt.label}</Label>
 								{renderFormField("prompt", config.prompt)}
 							</div>
 						)}
