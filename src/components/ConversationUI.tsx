@@ -8,6 +8,8 @@ import React, {
     useRef,
     useState,
 } from "react";
+import { toast } from 'sonner';
+
 import {
     AddAttachmentResponse,
     AttachmentType,
@@ -16,7 +18,7 @@ import {
     Message,
 } from "../data/Conversation";
 import "katex/dist/katex.min.css";
-import { emit, listen } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { throttle } from "lodash";
 import NewChatComponent from "./NewChatComponent";
 import FileDropArea from "./FileDropArea";
@@ -30,11 +32,13 @@ import useConversationManager from "../hooks/useConversationManager";
 interface AssistantListItem {
     id: number;
     name: string;
+    assistant_type: number;
 }
 
 interface ConversationUIProps {
     conversationId: string;
     onChangeConversationId: (conversationId: string) => void;
+    pluginList: any[];
 }
 
 interface AiResponse {
@@ -46,7 +50,66 @@ interface AiResponse {
 function ConversationUI({
     conversationId,
     onChangeConversationId,
+    pluginList,
 }: ConversationUIProps) {
+    // 插件实例
+    const [assistantTypePluginMap, setAssistantTypePluginMap] = useState<Map<number, TeaAssistantTypePlugin>>(new Map());
+    const assistantTypeApi: AssistantTypeApi = {
+        typeRegist: (code: number, _: string, pluginInstance: TeaAssistantTypePlugin & TeaPlugin) => {
+            setAssistantTypePluginMap(prev => {
+                const newMap = new Map(prev);
+                newMap.set(code, pluginInstance);
+                return newMap;
+            });
+        },
+        changeFieldLabel: (_: string, __: string) => {
+        },
+        addField: (_: string, __: string, ___: string, ____?: FieldConfig) => {
+        },
+        addFieldTips: (_: string, __: string) => {
+        },
+        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => {}
+    };
+    const assistantRunApi: AssistantRunApi = {
+        askAI: function (question: string, modelId: string, prompt?: string, conversationId?: string): AskAiResponse {
+            console.log("ask AI", question, modelId, prompt, conversationId);
+            return {
+                answer: ""
+            };
+        },
+        askAssistant: function (question: string, assistantId: string, conversationId?: string): void {
+            console.log("ask assistant", question, assistantId, conversationId);
+        },
+        getUserInput: function (): string {
+            console.log("get user input");
+            return "";
+        },
+        setModelId: function (modelId: string) {
+            console.log("set model id", modelId);
+        },
+        getModelId: function (): string {
+            console.log("get model id");
+            return "";
+        },
+        getField: function (fieldName: string): string {
+            console.log("get field", fieldName);
+            return "";
+        },
+        appendAiResponse: function (response: string): void {
+            console.log("append ai response", response);
+        },
+        setAiResponse: function (response: string): void {
+            console.log("set ai response", response);
+        }
+    }
+
+    useEffect(() => {
+        // 加载助手类型的插件
+        pluginList.filter((plugin: any) => plugin.pluginType.includes("assistantType")).forEach((plugin: any) => {
+            plugin.instance?.onAssistantTypeInit(assistantTypeApi);
+        });
+    }, [pluginList]);
+
     // 是否应用滚动，默认是
     const [isUserScrolling, setIsUserScrolling] = useState(true);
     const scroll = throttle(() => {
@@ -221,130 +284,120 @@ function ConversationUI({
                 conversationId = conversation.id + "";
                 assistantId = conversation.assistant_id + "";
             }
-            try {
-                const userMessage = {
-                    id: 0,
-                    conversation_id: conversationId ? -1 : +conversationId,
-                    llm_model_id: -1,
-                    content: inputText,
-                    token_count: 0,
-                    message_type: "user",
-                    created_time: new Date(),
-                    attachment_list: [],
-                    regenerate: null,
-                };
 
-                setMessages((prevMessages) => [...prevMessages, userMessage]);
-                invoke<AiResponse>("ask_ai", {
-                    request: {
-                        prompt: inputText,
-                        conversation_id: conversationId,
-                        assistant_id: +assistantId,
-                        attachment_list: fileInfoList?.map((i) => i.id),
-                    },
-                }).then((res) => {
-                    console.log("ask ai response", res);
-                    if (unsubscribeRef.current) {
-                        console.log(
-                            "Unsubscribing from previous event listener",
-                        );
-                        unsubscribeRef.current.then((f) => f());
-                    }
-
-                    setMessageId(res.add_message_id);
-
-                    setMessages((prevMessages) => {
-                        const newMessages = [...prevMessages];
-                        const index = prevMessages.findIndex(
-                            (msg) => msg == userMessage,
-                        );
-                        if (index !== -1) {
-                            newMessages[index] = {
-                                ...newMessages[index],
-                                content: res.request_prompt_result_with_context,
-                            };
-                        }
-                        return newMessages;
-                    });
-
-                    if (conversationId != res.conversation_id + "") {
-                        onChangeConversationId(res.conversation_id + "");
-                    } else {
-                        const assistantMessage = {
-                            id: res.add_message_id,
-                            conversation_id: conversationId
-                                ? -1
-                                : +conversationId,
-                            llm_model_id: -1,
-                            content: "",
-                            token_count: 0,
-                            message_type: "assistant",
-                            created_time: new Date(),
-                            attachment_list: [],
-                            regenerate: null,
-                        };
-
-                        setMessages((prevMessages) => [
-                            ...prevMessages,
-                            assistantMessage,
-                        ]);
-                    }
-
-                    console.log(
-                        "Listening for response",
-                        `message_${res.add_message_id}`,
-                    );
-
-                    unsubscribeRef.current = listen(
-                        `message_${res.add_message_id}`,
-                        (event) => {
-                            const payload = event.payload as string;
-                            if (payload !== "Tea::Event::MessageFinish") {
-                                // 更新messages的最后一个对象
-                                setMessages((prevMessages) => {
-                                    const newMessages = [...prevMessages];
-                                    const index = newMessages.findIndex(
-                                        (msg) => msg.id === res.add_message_id,
-                                    );
-                                    if (index !== -1) {
-                                        newMessages[index] = {
-                                            ...newMessages[index],
-                                            content: event.payload as string,
-                                        };
-                                        scroll();
-                                    }
-                                    return newMessages;
-                                });
-                            } else {
-                                setAiIsResponsing(false);
-                            }
+            const assistantData = assistants.find(a => a.id === +assistantId);
+            if (assistantData?.assistant_type !== 0) {
+                assistantTypePluginMap.get(assistantData?.assistant_type?? 0)?.onAssistantTypeRun(assistantRunApi);
+            } else {
+                try {
+                    const userMessage = {
+                        id: 0,
+                        conversation_id: conversationId ? -1 : +conversationId,
+                        llm_model_id: -1,
+                        content: inputText,
+                        token_count: 0,
+                        message_type: "user",
+                        created_time: new Date(),
+                        attachment_list: [],
+                        regenerate: null,
+                    };
+    
+                    setMessages((prevMessages) => [...prevMessages, userMessage]);
+                    invoke<AiResponse>("ask_ai", {
+                        request: {
+                            prompt: inputText,
+                            conversation_id: conversationId,
+                            assistant_id: +assistantId,
+                            attachment_list: fileInfoList?.map((i) => i.id),
                         },
-                    );
-                });
-            } catch (error) {
-                emit("chat-window-alert-dialog", {
-                    text: "发送消息失败: " + error,
-                    type: "error",
-                });
-                console.error("Error:", error);
+                    }).then((res) => {
+                        console.log("ask ai response", res);
+                        if (unsubscribeRef.current) {
+                            console.log(
+                                "Unsubscribing from previous event listener",
+                            );
+                            unsubscribeRef.current.then((f) => f());
+                        }
+    
+                        setMessageId(res.add_message_id);
+    
+                        setMessages((prevMessages) => {
+                            const newMessages = [...prevMessages];
+                            const index = prevMessages.findIndex(
+                                (msg) => msg == userMessage,
+                            );
+                            if (index !== -1) {
+                                newMessages[index] = {
+                                    ...newMessages[index],
+                                    content: res.request_prompt_result_with_context,
+                                };
+                            }
+                            return newMessages;
+                        });
+    
+                        if (conversationId != res.conversation_id + "") {
+                            onChangeConversationId(res.conversation_id + "");
+                        } else {
+                            const assistantMessage = {
+                                id: res.add_message_id,
+                                conversation_id: conversationId
+                                    ? -1
+                                    : +conversationId,
+                                llm_model_id: -1,
+                                content: "",
+                                token_count: 0,
+                                message_type: "assistant",
+                                created_time: new Date(),
+                                attachment_list: [],
+                                regenerate: null,
+                            };
+    
+                            setMessages((prevMessages) => [
+                                ...prevMessages,
+                                assistantMessage,
+                            ]);
+                        }
+    
+                        console.log(
+                            "Listening for response",
+                            `message_${res.add_message_id}`,
+                        );
+    
+                        unsubscribeRef.current = listen(
+                            `message_${res.add_message_id}`,
+                            (event) => {
+                                const payload = event.payload as string;
+                                if (payload !== "Tea::Event::MessageFinish") {
+                                    // 更新messages的最后一个对象
+                                    setMessages((prevMessages) => {
+                                        const newMessages = [...prevMessages];
+                                        const index = newMessages.findIndex(
+                                            (msg) => msg.id === res.add_message_id,
+                                        );
+                                        if (index !== -1) {
+                                            newMessages[index] = {
+                                                ...newMessages[index],
+                                                content: event.payload as string,
+                                            };
+                                            scroll();
+                                        }
+                                        return newMessages;
+                                    });
+                                } else {
+                                    setAiIsResponsing(false);
+                                }
+                            },
+                        );
+                    });
+                } catch (error) {
+                    toast.error("发送消息失败: " + error);
+                }
             }
+
             setInputText("");
             setFileInfoList(null);
         }
     }, 200);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            if (e.shiftKey) {
-                // Shift + Enter for new line
-                return;
-            } else {
-                // Enter for submit
-                e.preventDefault();
-                handleSend();
-            }
-        }
-    };
 
     const [selectedAssistant, setSelectedAssistant] = useState(-1);
 
@@ -354,11 +407,7 @@ function ConversationUI({
                 console.log(res);
             })
             .catch((error) => {
-                emit("chat-window-alert-dialog", {
-                    text: "运行失败: " + JSON.stringify(error),
-                    type: "error",
-                });
-                console.error("artifact run error:", error);
+                toast.error("运行失败: " + JSON.stringify(error));
             });
     }, []);
 
@@ -416,22 +465,11 @@ function ConversationUI({
                         newFile.id = res.attachment_id;
                     })
                     .catch((error) => {
-                        emit("chat-window-alert-dialog", {
-                            text: "文件上传失败: " + JSON.stringify(error),
-                            type: "error",
-                        });
-                        console.error(
-                            `Error uploading file: ${newFile.name}`,
-                            error,
-                        );
+                        toast.error("文件上传失败: " + JSON.stringify(error));
                     });
             }
         } catch (error) {
-            emit("chat-window-alert-dialog", {
-                text: "文件选择失败: " + error,
-                type: "error",
-            });
-            console.error("Error selecting file:", error);
+            toast.error("文件选择失败: " + error);
         }
     }, [fileInfoList]);
 
@@ -518,23 +556,12 @@ function ConversationUI({
                             );
                         })
                         .catch((error) => {
-                            emit("chat-window-alert-dialog", {
-                                text: "文件上传失败: " + error,
-                                type: "error",
-                            });
-                            console.error(
-                                `Error uploading file: ${fileInfo.name}`,
-                                error,
-                            );
+                            toast.error("文件上传失败: " + error);
                         });
                 });
             })
             .catch((error) => {
-                emit("chat-window-alert-dialog", {
-                    text: "文件选择失败: " + error,
-                    type: "error",
-                });
-                console.error("Error processing files:", error);
+                toast.error("文件选择失败: " + error);
             });
     }, []);
 

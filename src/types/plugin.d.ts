@@ -20,7 +20,7 @@ interface FieldConfig {
 }
 
 interface AssistantRunApi {
-    askAI(question: string, modelId: string, prompt?: string, conversationId?: string): void;
+    askAI(question: string, modelId: string, prompt?: string, conversationId?: string): AskAiResponse;
     askAssistant(question: string, assistantId: string, conversationId?: string): void;
     getUserInput(): string;
     setModelId(modelId: string);
@@ -28,6 +28,10 @@ interface AssistantRunApi {
     getField(fieldName: string): string;
     appendAiResponse(response: string): void;
     setAiResponse(response: string): void;
+}
+
+declare class AskAiResponse {
+    answer: string;
 }
 
 declare class Config {

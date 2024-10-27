@@ -5,24 +5,55 @@ import ChatUIInfomation from "./components/ChatUIInfomation";
 import ConversationUI from "./components/ConversationUI";
 
 import "./styles/ChatUIWindow.css";
-import AlertDialog, { AlertDialogParam } from "./components/AlertDialog";
-import { listen } from "@tauri-apps/api/event";
+import { appDataDir } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/tauri";
 
 function ChatUIWindow() {
+    const [pluginList, setPluginList] = useState<any[]>([]);
 
     const [selectedConversation, setSelectedConversation] = useState<string>("");
 
     useEffect(() => {
-        listen<AlertDialogParam>('chat-window-alert-dialog', (event) => {
-            setIsAlertDialogOpen(true);
-            setAlertDialogText(event.payload.text);
-            setAlertDialogType(event.payload.type);
-        });
+        const pluginLoadList = [
+            {
+                name: "代码生成",
+                code: "code-generate",
+                pluginType: ["assistantType"],
+                instance: null
+            }
+        ]
+
+        const initPlugin = async () => {
+            const dirPath = await appDataDir();
+            const loadPromises = pluginLoadList.map(async (plugin) => {
+                const convertFilePath = dirPath + "plugin/" + plugin.code + "/dist/main.js";
+
+                return new Promise<void>((resolve) => {
+                    const script = document.createElement('script');
+                    script.src = convertFileSrc(convertFilePath);
+                    script.onload = () => {
+                        const SamplePlugin = (window as any).SamplePlugin;
+                        if (SamplePlugin) {
+                            plugin.instance = new SamplePlugin();
+                            console.log("plugin loaded", plugin.instance);
+                        }
+                        resolve();
+                    };
+                    document.body.appendChild(script);
+                });
+            });
+
+            // 等待所有插件加载完成
+            await Promise.all(loadPromises);
+            
+            // 所有插件实例都准备好后再更新状态
+            setPluginList([...pluginLoadList]);
+            console.log("setPluginList");
+        }
+
+        initPlugin();
     }, []);
 
-    const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
-    const [alertDialogText, setAlertDialogText] = useState('');
-    const [alertDialogType, setAlertDialogType] = useState('');
     return (
         <div className="chat-ui-window">
             <div className="left-side">
@@ -32,15 +63,8 @@ function ChatUIWindow() {
             </div>
 
             <div className="center-content">
-                <ConversationUI conversationId={selectedConversation} onChangeConversationId={setSelectedConversation} />
+                <ConversationUI pluginList={pluginList} conversationId={selectedConversation} onChangeConversationId={setSelectedConversation} />
             </div>
-
-            <AlertDialog
-                alertText={alertDialogText}
-                isOpen={isAlertDialogOpen}
-                onClose={() => setIsAlertDialogOpen(false)}
-                alertType={alertDialogType as 'success' | 'warning' | 'error'}
-            />
         </div>
     );
 }
