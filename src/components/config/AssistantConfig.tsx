@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import "../../styles/AssistantConfig.css";
+import { toast } from 'sonner';
 import { invoke } from "@tauri-apps/api/tauri";
-import ConfirmDialog from '../ConfirmDialog';
 import { AssistantDetail, AssistantListItem } from '../../data/Assistant';
 import { Button } from '../ui/button';
 import ConfigForm from '../ConfigForm';
-import { toast } from 'sonner';
+import ConfirmDialog from '../ConfirmDialog';
 import AddAssistantDialog from './AddAssistantDialog';
 import EditAssistantDialog from './EditAssistantDialog';
 import { AssistantType } from '../../types/assistant';
+import { validateConfig } from '../../utils/validate';
+
+import "../../styles/AssistantConfig.css";
 
 interface ModelForSelect {
     name: string;
@@ -30,7 +32,6 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
 
     const assistantTypeApi: AssistantTypeApi = {
         typeRegist: (code: number, label: string, pluginInstance: TeaAssistantTypePlugin & TeaPlugin) => {
-            console.log("regist type", code, label);
             // 检查是否已存在相同的 code
             setAssistantTypes(prev => {
                 if (!prev.some(type => type.code === code)) {
@@ -55,14 +56,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             console.log("change field label", fieldName, label);
         },
         addField: (fieldName: string, label: string, type: string, fieldConfig?: FieldConfig) => {
-            console.log("add field", fieldName, label, type, fieldConfig);
             setAssistantTypeCustomField(prev => {
                 const newMap = new Map(prev);
-                newMap.set(fieldName, {
+                newMap.set(fieldName, Object.assign({
                     type: type,
                     label: label,
                     value: "",
-                })
+                }, fieldConfig));
                 return newMap;
             })
         },
@@ -110,9 +110,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     }, []);
     // 保存助手
     const onSave = (assistant: AssistantDetail) => {
-        return invoke<void>("save_assistant", { assistantDetail: assistant }).catch((error) => {
-            toast.error('保存助手失败: ' + error);
-        });
+        return invoke<void>("save_assistant", { assistantDetail: assistant })
     }
     // 复制助手
     const onCopy = (assistantId: number) => {
@@ -146,10 +144,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         if (currentAssistant) {
             const index = currentAssistant.model_configs.findIndex(config => config.name === key); 
             if (index !== -1) {
-                console.log("键", key, "值", value, "值类型", value_type);
                 const { isValid, parsedValue } = validateConfig(value, value_type);
-                console.log("验证结果：", isValid ? "有效" : "无效", "解析后的值：", parsedValue);
-
                 if (isValid) {
                     setCurrentAssistant({
                         ...currentAssistant,
@@ -163,7 +158,13 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 if (isValid) {
                     setCurrentAssistant({
                         ...currentAssistant,
-                        model_configs: [...currentAssistant.model_configs, { name: key, value: parsedValue.toString(), value_type: value_type, id: -1, assistant_id: currentAssistant.assistant.id }],
+                        model_configs: [...currentAssistant.model_configs, { 
+                            name: key, 
+                            value: parsedValue.toString(),
+                            value_type: value_type, id: 0, 
+                            assistant_id: currentAssistant.assistant.id, 
+                            assistant_model_id: currentAssistant.model[0]?.id ?? 0
+                        }],
                     });
                 }
             }
@@ -172,30 +173,24 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
 
     // 修改 prompt
     const handlePromptChange = (value: string) => {
-        if (currentAssistant) {
-            setCurrentAssistant({
-                ...currentAssistant,
-                prompts: [
-                    {
-                        ...currentAssistant.prompts[0],
-                        prompt: value,
-                    },
-                ],
-            });
-        }
+        if (!currentAssistant?.prompts.length) return;
+        
+        setCurrentAssistant({
+            ...currentAssistant,
+            prompts: [{
+                ...currentAssistant.prompts[0],
+                prompt: value
+            }]
+        });
     };
 
     // 保存助手
     const handleAssistantFormSave = () => {
-        if (currentAssistant) {
-            onSave(currentAssistant)
-                .then(() => {
-                    toast.success('保存成功');
-                })
-                .catch((error) => {
-                    toast.error('保存失败: ' + error);
-                });
-        }
+        if (!currentAssistant) return;
+        
+        onSave(currentAssistant)
+            .then(() => toast.success('保存成功'))
+            .catch(error => toast.error('保存失败: ' + error));
     };
 
     // 删除助手
@@ -313,45 +308,6 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             });
         }
     }, [currentAssistant, models, assistantTypeNameMap, assistantTypeCustomField]);
-
-    // 验证表单配置输入是否有效
-    const validateConfig = (value: any, type: string): { isValid: boolean, parsedValue: any } => {
-        let isValid = true;
-        let parsedValue = value;
-
-        switch (type) {
-            case 'boolean':
-                isValid = typeof value === 'boolean';
-                break;
-            case 'string':
-                isValid = typeof value === 'string';
-                break;
-            case 'number':
-                if (typeof value !== 'string') {
-                    isValid = false;
-                } else if (/^\d+$/.test(value)) {
-                    const num = parseInt(value, 10);
-                    isValid = !isNaN(num) && Number.isInteger(num) && num >= 0;
-                    parsedValue = isValid ? num : value;
-                } else if (value === "") {
-                    parsedValue = 0;
-                } else {
-                    isValid = false;
-                }
-                break;
-            case 'float':
-                if (typeof value !== 'string') {
-                    isValid = false;
-                } else {
-                    isValid = /^-?\d*\.?\d*$/.test(value);
-                }
-                break;
-            default:
-                isValid = false;
-        }
-
-        return { isValid, parsedValue };
-    };
 
     // 添加新的处理函数
     const handleAssistantAdded = (assistantDetail: AssistantDetail) => {

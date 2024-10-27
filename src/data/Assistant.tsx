@@ -33,6 +33,7 @@ export interface AssistantModelConfig {
     name: string;
     value: string;
     value_type: string;
+    assistant_model_id: number;
 }
 
 export interface AssistantPromptParam {

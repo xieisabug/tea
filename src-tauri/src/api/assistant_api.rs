@@ -138,9 +138,9 @@ pub async fn save_assistant(
     }
 
     // Save or update the AssistantModels
-    for model in assistant_detail.model {
+    for mut model in assistant_detail.model {
         if model.id == 0 {
-            assistant_db
+            let result_id = assistant_db
                 .add_assistant_model(
                     model.assistant_id,
                     model.provider_id,
@@ -148,6 +148,7 @@ pub async fn save_assistant(
                     &model.alias,
                 )
                 .map_err(|e| e.to_string())?;
+            model.id = result_id;
         } else {
             assistant_db
                 .update_assistant_model(
@@ -161,17 +162,18 @@ pub async fn save_assistant(
     }
 
     // Save or update the AssistantModelConfigs
-    for config in assistant_detail.model_configs {
+    for mut config in assistant_detail.model_configs {
         if config.id == 0 {
-            assistant_db
+            let result_id = assistant_db
                 .add_assistant_model_config(
                     config.assistant_id,
-                    config.assistant_model_id,
+                    config.id,
                     &config.name,
                     config.value.as_deref().unwrap_or(""),
                     &config.value_type,
                 )
                 .map_err(|e| e.to_string())?;
+            config.id = result_id;
         } else {
             assistant_db
                 .update_assistant_model_config(
