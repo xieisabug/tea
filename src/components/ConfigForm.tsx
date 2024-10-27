@@ -204,6 +204,7 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 	};
 
 	const renderContent = () => {
+		console.log("config form ", config);
 		switch (layout) {
 			case "prompt":
 				return (

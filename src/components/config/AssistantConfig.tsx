@@ -22,8 +22,12 @@ interface AssistantConfigProps {
 }
 const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     // 插件加载部分
-    const assistantTypePluginMap = new Map<number, TeaAssistantTypePlugin>();
+    // 插件实例
+    const [assistantTypePluginMap, setAssistantTypePluginMap] = useState<Map<number, TeaAssistantTypePlugin>>(new Map());
+    // 插件名称
     const [assistantTypeNameMap, setAssistantTypeNameMap] = useState<Map<number, string>>(new Map<number, string>());
+    const [assistantTypeCustomField, setAssistantTypeCustomField] = useState<Map<string, Record<string, any>>>(new Map<string, Record<string, any>>());
+
     const assistantTypeApi: AssistantTypeApi = {
         typeRegist: (code: number, label: string, pluginInstance: TeaAssistantTypePlugin & TeaPlugin) => {
             console.log("regist type", code, label);
@@ -36,10 +40,15 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 }
             });
 
-            assistantTypePluginMap.set(code, pluginInstance);
+            setAssistantTypePluginMap(prev => {
+                const newMap = new Map(prev);
+                newMap.set(code, pluginInstance);
+                return newMap;
+            });
             setAssistantTypeNameMap(prev => {
-                prev.set(code, label);
-                return prev;
+                const newMap = new Map(prev);
+                newMap.set(code, label);
+                return newMap;
             });
         },
         changeFieldLabel: (fieldName: string, label: string) => {
@@ -47,6 +56,15 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         },
         addField: (fieldName: string, label: string, type: string, fieldConfig?: FieldConfig) => {
             console.log("add field", fieldName, label, type, fieldConfig);
+            setAssistantTypeCustomField(prev => {
+                const newMap = new Map(prev);
+                newMap.set(fieldName, {
+                    type: type,
+                    label: label,
+                    value: "",
+                })
+                return newMap;
+            })
         },
         addFieldTips: (fieldName: string, tips: string) => {
             console.log("add field tips", fieldName, tips);
@@ -113,7 +131,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id })
                 .then((assistant: AssistantDetail) => {
                     setCurrentAssistant(assistant);
-                    console.log("assistant type", assistant.assistant, assistantTypePluginMap, assistantTypeNameMap.get(assistant.assistant.assistant_type));
+                    setAssistantTypeCustomField(new Map<string, Record<string, any>>());
                     assistantTypePluginMap.get(assistant.assistant.assistant_type)?.onAssistantTypeSelect(assistantTypeApi);
                 })
                 .catch((error) => {
@@ -124,8 +142,9 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
 
     // 修改配置
     const handleConfigChange = (key: string, value: string | boolean, value_type: string) => {
+        console.log("handleConfigChange", key, value, value_type);
         if (currentAssistant) {
-            const index = currentAssistant.model_configs.findIndex(config => config.name === key);
+            const index = currentAssistant.model_configs.findIndex(config => config.name === key); 
             if (index !== -1) {
                 console.log("键", key, "值", value, "值类型", value_type);
                 const { isValid, parsedValue } = validateConfig(value, value_type);
@@ -137,6 +156,14 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                         model_configs: currentAssistant.model_configs.map((config, i) =>
                             i === index ? { ...config, value: parsedValue.toString() } : config
                         ),
+                    });
+                }
+            } else {
+                const {isValid, parsedValue} = validateConfig(value, value_type);
+                if (isValid) {
+                    setCurrentAssistant({
+                        ...currentAssistant,
+                        model_configs: [...currentAssistant.model_configs, { name: key, value: parsedValue.toString(), value_type: value_type, id: -1, assistant_id: currentAssistant.assistant.id }],
                     });
                 }
             }
@@ -267,6 +294,15 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     };
                     return acc;
                 }, {} as Record<string, any>),
+                ...Array.from(assistantTypeCustomField).reduce((acc, [key, objValue]) => {
+                    acc[key] = {
+                        ...objValue,
+                        value: objValue.type === "checkbox" ? currentAssistant?.model_configs.find(config => config.name === key)?.value === "true" : currentAssistant?.model_configs.find(config => config.name === key)?.value ?? "",
+                        onChange: (value: string | boolean) => handleConfigChange(key, value, objValue.type === "checkbox" ? "boolean" : "string"),
+                        onBlur: (value: string | boolean) => handleConfigChange(key, value as string, objValue.type === "checkbox" ? "boolean" : "string"),
+                    };
+                    return acc;
+                }, {} as Record<string, any>),
                 prompt: {
                     type: "textarea" as const,
                     label: "Prompt",
@@ -276,7 +312,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                 },
             });
         }
-    }, [currentAssistant, models, assistantTypeNameMap]);
+    }, [currentAssistant, models, assistantTypeNameMap, assistantTypeCustomField]);
 
     // 验证表单配置输入是否有效
     const validateConfig = (value: any, type: string): { isValid: boolean, parsedValue: any } => {
