@@ -41,12 +41,6 @@ interface ConversationUIProps {
     pluginList: any[];
 }
 
-interface AiResponse {
-    conversation_id: number;
-    add_message_id: number;
-    request_prompt_result_with_context: string;
-}
-
 function ConversationUI({
     conversationId,
     onChangeConversationId,
@@ -68,7 +62,10 @@ function ConversationUI({
         },
         addFieldTips: (_: string, __: string) => {
         },
-        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => {}
+        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => { },
+        forceFieldValue: function (_: string, __: string): void {
+
+        }
     };
     const assistantRunApi: AssistantRunApi = {
         askAI: function (question: string, modelId: string, prompt?: string, conversationId?: string): AskAiResponse {
@@ -77,15 +74,134 @@ function ConversationUI({
                 answer: ""
             };
         },
-        askAssistant: function (question: string, assistantId: string, conversationId?: string): void {
+        askAssistant: function (question: string, assistantId: string, conversationId?: string, 
+            onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any, 
+            onCustomUserMessageComing?: (_: AiResponse) => void,
+            onStreamMessageListener?: (_: string, __: AiResponse, responseFinishFunction: (_: boolean) => void) => void): Promise<AiResponse> {
             console.log("ask assistant", question, assistantId, conversationId);
+            let userMessage: any;
+            if (onCustomUserMessage) {
+                userMessage = onCustomUserMessage(question, assistantId, conversationId);
+            } else {
+                userMessage = {
+                    id: 0,
+                    conversation_id: conversationId ? +conversationId : -1,
+                    llm_model_id: -1,
+                    content: question,
+                    token_count: 0,
+                    message_type: "user",
+                    created_time: new Date(),
+                    attachment_list: [],
+                    regenerate: null,
+                };
+    
+                setMessages((prevMessages) => [...prevMessages, userMessage]);    
+            }
+            
+            return invoke<AiResponse>("ask_ai", {
+                request: {
+                    prompt: question,
+                    conversation_id: conversationId,
+                    assistant_id: +assistantId,
+                    attachment_list: fileInfoList?.map((i) => i.id),
+                },
+            }).then((res) => {
+                console.log("ask assistant response", res);
+                if (unsubscribeRef.current) {
+                    console.log(
+                        "Unsubscribing from previous event listener"
+                    );
+                    unsubscribeRef.current.then((f) => f());
+                }
+
+                if (onCustomUserMessageComing) {
+                    onCustomUserMessageComing(res);
+                } else {
+                    setMessageId(res.add_message_id);
+    
+                    setMessages((prevMessages) => {
+                        const newMessages = [...prevMessages];
+                        const index = prevMessages.findIndex(
+                            (msg) => msg == userMessage,
+                        );
+                        if (index !== -1) {
+                            newMessages[index] = {
+                                ...newMessages[index],
+                                content: res.request_prompt_result_with_context,
+                            };
+                        }
+                        return newMessages;
+                    });
+                }
+                
+
+                if (conversationId != res.conversation_id + "") {
+                    onChangeConversationId(res.conversation_id + "");
+                } else {
+                    const assistantMessage = {
+                        id: res.add_message_id,
+                        conversation_id: conversationId
+                            ? -1
+                            : +conversationId,
+                        llm_model_id: -1,
+                        content: "",
+                        token_count: 0,
+                        message_type: "assistant",
+                        created_time: new Date(),
+                        attachment_list: [],
+                        regenerate: null,
+                    };
+
+                    setMessages((prevMessages) => [
+                        ...prevMessages,
+                        assistantMessage,
+                    ]);
+                }
+
+                console.log(
+                    "Listening for response",
+                    `message_${res.add_message_id}`,
+                );
+
+                unsubscribeRef.current = listen(
+                    `message_${res.add_message_id}`,
+                    (event) => {
+                        if (onStreamMessageListener) {
+                            onStreamMessageListener(event.payload as string, res, setAiIsResponsing);
+                        } else {
+                            const payload = event.payload as string;
+                            if (payload !== "Tea::Event::MessageFinish") {
+                                // 更新messages的最后一个对象
+                                setMessages((prevMessages) => {
+                                    const newMessages = [...prevMessages];
+                                    const index = newMessages.findIndex(
+                                        (msg) => msg.id === res.add_message_id,
+                                    );
+                                    if (index !== -1) {
+                                        newMessages[index] = {
+                                            ...newMessages[index],
+                                            content: event.payload as string,
+                                        };
+                                        scroll();
+                                    }
+                                    return newMessages;
+                                });
+                            } else {
+                                setAiIsResponsing(false);
+                            }
+                        }
+                    },
+                );
+                return res;
+            }).catch(e => {
+                console.error("ask assistant error", e);
+                toast.error("发送消息失败: " + e);
+                throw e;
+            });
         },
         getUserInput: function (): string {
             console.log("get user input");
-            return "";
-        },
-        setModelId: function (modelId: string) {
-            console.log("set model id", modelId);
+            return inputText;
         },
         getModelId: function (): string {
             console.log("get model id");
@@ -95,11 +211,46 @@ function ConversationUI({
             console.log("get field", fieldName);
             return "";
         },
-        appendAiResponse: function (response: string): void {
-            console.log("append ai response", response);
+        appendAiResponse: function (messageId: number, response: string): void {
+            console.log("append ai response", messageId, response);
+            setMessages((prevMessages) => {
+                const newMessages = [...prevMessages];
+                const index = newMessages.findIndex(
+                    (msg) => msg.id === messageId
+                );
+                if (index !== -1) {
+                    newMessages[index] = {
+                        ...newMessages[index],
+                        content: newMessages[index].content + response,
+                    };
+                    scroll();
+                }
+                return newMessages;
+            });
         },
-        setAiResponse: function (response: string): void {
-            console.log("set ai response", response);
+        setAiResponse: function (messageId: number, response: string): void {
+            console.log("set ai response", messageId, response);
+            setMessages((prevMessages) => {
+                const newMessages = [...prevMessages];
+                const index = newMessages.findIndex(
+                    (msg) => msg.id === messageId
+                );
+                if (index !== -1) {
+                    newMessages[index] = {
+                        ...newMessages[index],
+                        content: response,
+                    };
+                    scroll();
+                }
+                return newMessages;
+            });
+        },
+        getAssistantId: function (): string {
+            if (!conversation || !conversation.id) {
+                return selectedAssistant + "";
+            } else {
+                return conversation.assistant_id + "";
+            }
         }
     }
 
@@ -292,7 +443,7 @@ function ConversationUI({
                 try {
                     const userMessage = {
                         id: 0,
-                        conversation_id: conversationId ? -1 : +conversationId,
+                        conversation_id: conversationId ? +conversationId : -1,
                         llm_model_id: -1,
                         content: inputText,
                         token_count: 0,

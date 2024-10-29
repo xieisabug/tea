@@ -2,9 +2,10 @@ interface SystemApi {
 }
 
 interface AssistantTypeApi {
-    typeRegist(code: number, label: string, pluginInstance: any): void;
+    typeRegist(code: number, label: string, plugin: TeaAssistantTypePlugin): void;
     changeFieldLabel(fieldName: string, label: string): void;
     addField(fieldName: string, label: string, type: string, fieldConfig?: FieldConfig): void;
+    forceFieldValue(fieldName: string, value: string): void;
     addFieldTips(fieldName: string, tips: string): void;
     runLogic(callback: (assistantRunApi: AssistantRunApi) => void): void;
 }
@@ -21,13 +22,22 @@ interface FieldConfig {
 
 interface AssistantRunApi {
     askAI(question: string, modelId: string, prompt?: string, conversationId?: string): AskAiResponse;
-    askAssistant(question: string, assistantId: string, conversationId?: string): void;
+    askAssistant(question: string, assistantId: string, conversationId?: string, 
+        onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any, 
+        onCustomUserMessageComing?: (aiResponse: AiResponse) => void,
+        onStreamMessageListener?: (payload: string, aiResponse: AiResponse, responseIsResponsingFunction: (isFinish: boolean) => void) => void): Promise<AiResponse>;
     getUserInput(): string;
-    setModelId(modelId: string);
     getModelId(): string;
+    getAssistantId(): string;
     getField(fieldName: string): string;
-    appendAiResponse(response: string): void;
-    setAiResponse(response: string): void;
+    appendAiResponse(messageId: number, response: string): void;
+    setAiResponse(messageId: number, response: string): void;
+}
+
+interface AiResponse {
+    conversation_id: number;
+    add_message_id: number;
+    request_prompt_result_with_context: string;
 }
 
 declare class AskAiResponse {
