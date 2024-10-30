@@ -22,7 +22,7 @@ interface FieldConfig {
 
 interface AssistantRunApi {
     askAI(question: string, modelId: string, prompt?: string, conversationId?: string): AskAiResponse;
-    askAssistant(question: string, assistantId: string, conversationId?: string, 
+    askAssistant(question: string, assistantId: string, conversationId?: string, overrideModelConfig?: Array<[string, string]>, overrideSystemPrompt?: string,
         onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any, 
         onCustomUserMessageComing?: (aiResponse: AiResponse) => void,
         onStreamMessageListener?: (payload: string, aiResponse: AiResponse, responseIsResponsingFunction: (isFinish: boolean) => void) => void): Promise<AiResponse>;

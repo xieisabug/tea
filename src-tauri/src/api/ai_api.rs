@@ -48,8 +48,10 @@ pub async fn ask_ai(
     message_token_manager: State<'_, MessageTokenManager>,
     window: tauri::Window,
     request: AiRequest,
+    override_model_config: Option<Vec<(String, serde_json::Value)>>,
+    override_prompt: Option<String>,
 ) -> Result<AiResponse, AppError> {
-    println!("ask_ai: {:?}", request);
+    println!("ask_ai: {:?}, override_model_config: {:?}, override_prompt: {:?}", request, override_model_config, override_prompt);
     let template_engine = TemplateEngine::new();
     let mut template_context = HashMap::new();
     let (tx, mut rx) = mpsc::channel(100);
@@ -82,6 +84,7 @@ pub async fn ask_ai(
             &assistant_detail,
             assistant_prompt_result,
             request_prompt_result.clone(),
+            override_prompt.clone(),
         )
         .await?;
 
@@ -121,6 +124,35 @@ pub async fn ask_ai(
                 value: Some(model_detail.model.code),
                 value_type: "string".to_string(),
             });
+
+            if let Some(override_configs) = override_model_config {
+                for (key, value) in override_configs {
+                    let value_type = match &value {
+                        serde_json::Value::String(_) => "string",
+                        serde_json::Value::Number(_) => "number",
+                        serde_json::Value::Bool(_) => "boolean",
+                        serde_json::Value::Array(_) => "array",
+                        serde_json::Value::Object(_) => "object",
+                        serde_json::Value::Null => "null",
+                    }.to_string();
+
+                    let value_str = value.to_string();
+
+                    if let Some(existing_config) = model_config_clone.iter_mut().find(|c| c.name == key) {
+                        existing_config.value = Some(value_str);
+                        existing_config.value_type = value_type;
+                    } else {
+                        model_config_clone.push(AssistantModelConfig {
+                            id: 0,
+                            assistant_id: assistant_detail.assistant.id,
+                            assistant_model_id: model_detail.model.id,
+                            name: key,
+                            value: Some(value_str),
+                            value_type,
+                        });
+                    }
+                }
+            }
 
             let config_map = assistant_detail
                 .model_configs
@@ -599,6 +631,7 @@ async fn initialize_conversation(
     assistant_detail: &AssistantDetail,
     assistant_prompt_result: String,
     request_prompt_result: String,
+    override_prompt: Option<String>,
 ) -> Result<
     (
         i64,
@@ -632,7 +665,7 @@ async fn initialize_conversation(
             let request_prompt_result_with_context =
                 format!("{}\n{}", request_prompt_result, context);
             let init_message_list = vec![
-                (String::from("system"), assistant_prompt_result, vec![]),
+                (String::from("system"), override_prompt.unwrap_or(assistant_prompt_result), vec![]),
                 (
                     String::from("user"),
                     request_prompt_result_with_context.clone(),

@@ -74,11 +74,11 @@ function ConversationUI({
                 answer: ""
             };
         },
-        askAssistant: function (question: string, assistantId: string, conversationId?: string, 
+        askAssistant: function (question: string, assistantId: string, conversationId?: string, overrideModelConfig?: Array<[string, any]>, overrideSystemPrompt?: string,
             onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any, 
             onCustomUserMessageComing?: (_: AiResponse) => void,
             onStreamMessageListener?: (_: string, __: AiResponse, responseFinishFunction: (_: boolean) => void) => void): Promise<AiResponse> {
-            console.log("ask assistant", question, assistantId, conversationId);
+            console.log("ask assistant", question, assistantId, conversationId, overrideModelConfig, overrideSystemPrompt);
             let userMessage: any;
             if (onCustomUserMessage) {
                 userMessage = onCustomUserMessage(question, assistantId, conversationId);
@@ -105,6 +105,8 @@ function ConversationUI({
                     assistant_id: +assistantId,
                     attachment_list: fileInfoList?.map((i) => i.id),
                 },
+                overrideModelConfig: overrideModelConfig,
+                overridePrompt: overrideSystemPrompt
             }).then((res) => {
                 console.log("ask assistant response", res);
                 if (unsubscribeRef.current) {
