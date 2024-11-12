@@ -41,6 +41,13 @@ interface ConversationUIProps {
     pluginList: any[];
 }
 
+// 用于存储AskAssistantApi中对应的处理函数
+interface AskAssistantApiFunctions {
+    onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any;
+    onCustomUserMessageComing?: (aiResponse: AiResponse) => void;
+    onStreamMessageListener?: (payload: string, aiResponse: AiResponse, responseIsResponsingFunction: (isFinish: boolean) => void) => void;
+}
+
 function ConversationUI({
     conversationId,
     onChangeConversationId,
@@ -67,6 +74,7 @@ function ConversationUI({
 
         }
     };
+    const [functionMap, setFunctionMap] = useState<Map<number, AskAssistantApiFunctions>>(new Map());
     const assistantRunApi: AssistantRunApi = {
         askAI: function (question: string, modelId: string, prompt?: string, conversationId?: string): AskAiResponse {
             console.log("ask AI", question, modelId, prompt, conversationId);
@@ -75,7 +83,7 @@ function ConversationUI({
             };
         },
         askAssistant: function (question: string, assistantId: string, conversationId?: string, overrideModelConfig?: Array<[string, any]>, overrideSystemPrompt?: string,
-            onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any, 
+            onCustomUserMessage?: (question: string, assistantId: string, conversationId?: string) => any,
             onCustomUserMessageComing?: (_: AiResponse) => void,
             onStreamMessageListener?: (_: string, __: AiResponse, responseFinishFunction: (_: boolean) => void) => void): Promise<AiResponse> {
             console.log("ask assistant", question, assistantId, conversationId, overrideModelConfig, overrideSystemPrompt);
@@ -94,10 +102,10 @@ function ConversationUI({
                     attachment_list: [],
                     regenerate: null,
                 };
-    
-                setMessages((prevMessages) => [...prevMessages, userMessage]);    
+
+                setMessages((prevMessages) => [...prevMessages, userMessage]);
             }
-            
+
             return invoke<AiResponse>("ask_ai", {
                 request: {
                     prompt: question,
@@ -115,12 +123,23 @@ function ConversationUI({
                     );
                     unsubscribeRef.current.then((f) => f());
                 }
+                console.log(`init ${res.add_message_id} function map`)
+                setFunctionMap(prev => {
+                    const newMap = new Map(prev);
+                    newMap.set(res.add_message_id, {
+                        onCustomUserMessage,
+                        onCustomUserMessageComing,
+                        onStreamMessageListener
+                    });
+                    return newMap;
+                });
 
-                if (onCustomUserMessageComing) {
-                    onCustomUserMessageComing(res);
+                const customUserMessageComing = functionMap.get(res.add_message_id)?.onCustomUserMessageComing;
+                if (customUserMessageComing) {
+                    customUserMessageComing(res);
                 } else {
                     setMessageId(res.add_message_id);
-    
+
                     setMessages((prevMessages) => {
                         const newMessages = [...prevMessages];
                         const index = prevMessages.findIndex(
@@ -135,7 +154,7 @@ function ConversationUI({
                         return newMessages;
                     });
                 }
-                
+
 
                 if (conversationId != res.conversation_id + "") {
                     onChangeConversationId(res.conversation_id + "");
@@ -168,8 +187,9 @@ function ConversationUI({
                 unsubscribeRef.current = listen(
                     `message_${res.add_message_id}`,
                     (event) => {
-                        if (onStreamMessageListener) {
-                            onStreamMessageListener(event.payload as string, res, setAiIsResponsing);
+                        const streamMessageListener = functionMap.get(res.add_message_id)?.onStreamMessageListener;
+                        if (streamMessageListener) {
+                            streamMessageListener(event.payload as string, res, setAiIsResponsing);
                         } else {
                             const payload = event.payload as string;
                             if (payload !== "Tea::Event::MessageFinish") {
@@ -359,25 +379,30 @@ function ConversationUI({
             unsubscribeRef.current = listen(
                 `message_${lastMessageId}`,
                 (event) => {
-                    const payload = event.payload as string;
-                    if (payload !== "Tea::Event::MessageFinish") {
-                        // 更新messages的最后一个对象
-                        setMessages((prevMessages) => {
-                            const newMessages = [...prevMessages];
-                            const index = newMessages.findIndex(
-                                (msg) => msg.id === lastMessageId,
-                            );
-                            if (index !== -1) {
-                                newMessages[index] = {
-                                    ...newMessages[index],
-                                    content: event.payload as string,
-                                };
-                                scroll();
-                            }
-                            return newMessages;
-                        });
+                    const streamMessageListener = functionMap.get(lastMessageId)?.onStreamMessageListener;
+                    if (streamMessageListener) {
+                        streamMessageListener(event.payload as string, { conversation_id: +conversationId, add_message_id: lastMessageId, request_prompt_result_with_context: "" }, setAiIsResponsing);
                     } else {
-                        setAiIsResponsing(false);
+                        const payload = event.payload as string;
+                        if (payload !== "Tea::Event::MessageFinish") {
+                            // 更新messages的最后一个对象
+                            setMessages((prevMessages) => {
+                                const newMessages = [...prevMessages];
+                                const index = newMessages.findIndex(
+                                    (msg) => msg.id === lastMessageId,
+                                );
+                                if (index !== -1) {
+                                    newMessages[index] = {
+                                        ...newMessages[index],
+                                        content: event.payload as string,
+                                    };
+                                    scroll();
+                                }
+                                return newMessages;
+                            });
+                        } else {
+                            setAiIsResponsing(false);
+                        }
                     }
                 },
             );
@@ -440,7 +465,7 @@ function ConversationUI({
 
             const assistantData = assistants.find(a => a.id === +assistantId);
             if (assistantData?.assistant_type !== 0) {
-                assistantTypePluginMap.get(assistantData?.assistant_type?? 0)?.onAssistantTypeRun(assistantRunApi);
+                assistantTypePluginMap.get(assistantData?.assistant_type ?? 0)?.onAssistantTypeRun(assistantRunApi);
             } else {
                 try {
                     const userMessage = {
@@ -454,7 +479,7 @@ function ConversationUI({
                         attachment_list: [],
                         regenerate: null,
                     };
-    
+
                     setMessages((prevMessages) => [...prevMessages, userMessage]);
                     invoke<AiResponse>("ask_ai", {
                         request: {
@@ -471,9 +496,9 @@ function ConversationUI({
                             );
                             unsubscribeRef.current.then((f) => f());
                         }
-    
+
                         setMessageId(res.add_message_id);
-    
+
                         setMessages((prevMessages) => {
                             const newMessages = [...prevMessages];
                             const index = prevMessages.findIndex(
@@ -487,7 +512,7 @@ function ConversationUI({
                             }
                             return newMessages;
                         });
-    
+
                         if (conversationId != res.conversation_id + "") {
                             onChangeConversationId(res.conversation_id + "");
                         } else {
@@ -504,18 +529,18 @@ function ConversationUI({
                                 attachment_list: [],
                                 regenerate: null,
                             };
-    
+
                             setMessages((prevMessages) => [
                                 ...prevMessages,
                                 assistantMessage,
                             ]);
                         }
-    
+
                         console.log(
                             "Listening for response",
                             `message_${res.add_message_id}`,
                         );
-    
+
                         unsubscribeRef.current = listen(
                             `message_${res.add_message_id}`,
                             (event) => {
