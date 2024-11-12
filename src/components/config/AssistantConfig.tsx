@@ -38,7 +38,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             // 检查是否已存在相同的 code
             setAssistantTypes(prev => {
                 if (!prev.some(type => type.code === code)) {
-                    return [...prev, {code: code, name: label}];
+                    return [...prev, { code: code, name: label }];
                 } else {
                     return prev;
                 }
@@ -76,14 +76,14 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         addFieldTips: (fieldName: string, tips: string) => {
             console.log("add field tips", fieldName, tips);
         },
-        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => {}
+        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => { }
     };
     // 助手类型
     const [assistantTypes, setAssistantTypes] = useState<AssistantType[]>([{ code: 0, name: "普通对话助手" }]);
     useEffect(() => {
         // 加载助手类型的插件
         pluginList.filter((plugin: any) => plugin.pluginType.includes("assistantType")).forEach((plugin: any) => {
-            plugin.instance.onAssistantTypeInit(assistantTypeApi);
+            plugin?.instance?.onAssistantTypeInit(assistantTypeApi);
         });
     }, [pluginList]);
 
@@ -150,7 +150,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     const handleConfigChange = (key: string, value: string | boolean, value_type: string) => {
         console.log("handleConfigChange", key, value, value_type);
         if (currentAssistant) {
-            const index = currentAssistant.model_configs.findIndex(config => config.name === key); 
+            const index = currentAssistant.model_configs.findIndex(config => config.name === key);
             if (index !== -1) {
                 const { isValid, parsedValue } = validateConfig(value, value_type);
                 if (isValid) {
@@ -162,15 +162,15 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     });
                 }
             } else {
-                const {isValid, parsedValue} = validateConfig(value, value_type);
+                const { isValid, parsedValue } = validateConfig(value, value_type);
                 if (isValid) {
                     setCurrentAssistant({
                         ...currentAssistant,
-                        model_configs: [...currentAssistant.model_configs, { 
-                            name: key, 
+                        model_configs: [...currentAssistant.model_configs, {
+                            name: key,
                             value: parsedValue.toString(),
-                            value_type: value_type, id: 0, 
-                            assistant_id: currentAssistant.assistant.id, 
+                            value_type: value_type, id: 0,
+                            assistant_id: currentAssistant.assistant.id,
                             assistant_model_id: currentAssistant.model[0]?.id ?? 0
                         }],
                     });
@@ -182,7 +182,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     // 修改 prompt
     const handlePromptChange = (value: string) => {
         if (!currentAssistant?.prompts.length) return;
-        
+
         setCurrentAssistant({
             ...currentAssistant,
             prompts: [{
@@ -195,7 +195,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     // 保存助手
     const handleAssistantFormSave = () => {
         if (!currentAssistant) return;
-        
+
         onSave(currentAssistant)
             .then(() => toast.success('保存成功'))
             .catch(error => toast.error('保存失败: ' + error));
@@ -335,9 +335,9 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     >{assistant.name}</Button>
                 ))}
 
-                <AddAssistantDialog 
-                    assistantTypes={assistantTypes} 
-                    onAssistantAdded={handleAssistantAdded} 
+                <AddAssistantDialog
+                    assistantTypes={assistantTypes}
+                    onAssistantAdded={handleAssistantAdded}
                 />
             </div>
             {currentAssistant && (
