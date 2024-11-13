@@ -19,7 +19,8 @@ use std::sync::Arc;
 use crate::api::ai_api::{ask_ai, cancel_ai, regenerate_ai};
 use crate::api::artifacts_api::run_artifacts;
 use crate::api::assistant_api::{
-    add_assistant, copy_assistant, delete_assistant, get_assistant, get_assistants, save_assistant,
+    add_assistant, copy_assistant, delete_assistant, get_assistant, get_assistant_field_value,
+    get_assistants, save_assistant,
 };
 use crate::api::attachment_api::{add_attachment, add_attachment_content};
 use crate::api::conversation_api::{
@@ -232,6 +233,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             add_attachment_content,
             get_assistants,
             get_assistant,
+            get_assistant_field_value,
             save_assistant,
             add_assistant,
             delete_assistant,

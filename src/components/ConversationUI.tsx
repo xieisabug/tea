@@ -229,9 +229,9 @@ function ConversationUI({
             console.log("get model id");
             return "";
         },
-        getField: function (fieldName: string): string {
+        getField: async function (assistantId: string, fieldName: string): Promise<string> {
             console.log("get field", fieldName);
-            return "";
+            return await invoke<string>("get_assistant_field_value", { assistantId: +assistantId, fieldName });
         },
         appendAiResponse: function (messageId: number, response: string): void {
             console.log("append ai response", messageId, response);
