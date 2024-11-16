@@ -5,6 +5,8 @@ import remarkMath from "remark-math";
 import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 import rehypeKatex from "rehype-katex";
+import remarkCustomCompenent from "@/react-markdown/remarkCustomComponent";
+import TipsComponent from "@/react-markdown/components/TipsComponent";
 import IconButton from "./IconButton";
 import Copy from "../assets/copy.svg?react";
 import Ok from "../assets/ok.svg?react";
@@ -169,7 +171,11 @@ const MessageItem = React.memo(
 
                 <ReactMarkdown
                     children={customParser(currentMessageContent, customTags)}
-                    remarkPlugins={[remarkMath, remarkBreaks]}
+                    remarkPlugins={[
+                        remarkMath,
+                        remarkBreaks,
+                        remarkCustomCompenent,
+                    ]}
                     rehypePlugins={[rehypeRaw, rehypeKatex]}
                     components={
                         {
@@ -211,6 +217,7 @@ const MessageItem = React.memo(
                             fileattachment: MessageFileAttachment,
                             bangwebtomarkdown: MessageWebContent,
                             bangweb: MessageWebContent,
+                            tipscomponent: TipsComponent,
                         } as CustomComponents
                     }
                 />
