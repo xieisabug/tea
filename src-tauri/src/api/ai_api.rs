@@ -233,7 +233,7 @@ pub async fn ask_ai(
         let window_clone = window.clone();
         tokio::spawn(async move {
             loop {
-                match timeout(Duration::from_secs(60), rx.recv()).await {
+                match timeout(Duration::from_secs(600), rx.recv()).await {
                     Ok(Some((id, content, done))) => {
                         println!("Received data: id={}, content={}", id, content);
                         window_clone
@@ -572,7 +572,7 @@ pub async fn regenerate_ai(
     let window_clone = window.clone();
     tokio::spawn(async move {
         loop {
-            match timeout(Duration::from_secs(60), rx.recv()).await {
+            match timeout(Duration::from_secs(600), rx.recv()).await {
                 Ok(Some((id, content, done))) => {
                     println!("Received data: id={}, content={}", id, content);
                     window_clone
