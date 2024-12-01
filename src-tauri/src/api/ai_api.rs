@@ -51,7 +51,10 @@ pub async fn ask_ai(
     override_model_config: Option<Vec<(String, serde_json::Value)>>,
     override_prompt: Option<String>,
 ) -> Result<AiResponse, AppError> {
-    println!("ask_ai: {:?}, override_model_config: {:?}, override_prompt: {:?}", request, override_model_config, override_prompt);
+    println!(
+        "ask_ai: {:?}, override_model_config: {:?}, override_prompt: {:?}",
+        request, override_model_config, override_prompt
+    );
     let template_engine = TemplateEngine::new();
     let mut template_context = HashMap::new();
     let (tx, mut rx) = mpsc::channel(100);
@@ -134,11 +137,14 @@ pub async fn ask_ai(
                         serde_json::Value::Array(_) => "array",
                         serde_json::Value::Object(_) => "object",
                         serde_json::Value::Null => "null",
-                    }.to_string();
+                    }
+                    .to_string();
 
                     let value_str = value.to_string();
 
-                    if let Some(existing_config) = model_config_clone.iter_mut().find(|c| c.name == key) {
+                    if let Some(existing_config) =
+                        model_config_clone.iter_mut().find(|c| c.name == key)
+                    {
                         existing_config.value = Some(value_str);
                         existing_config.value_type = value_type;
                     } else {
@@ -391,6 +397,33 @@ pub async fn regenerate_ai(
         .unwrap()
         .list_by_conversation_id(conversation_id)?;
 
+    let parent_ids: HashSet<i64> = messages.iter().filter_map(|m| m.0.parent_id).collect();
+    println!("parent_ids: {:?}", parent_ids);
+
+    let parent_max_child: HashMap<i64, i64> = messages
+        .iter()
+        .filter(|m| {
+            if let Some(pid) = m.0.parent_id {
+                parent_ids.contains(&pid)
+            } else {
+                false
+            }
+        })
+        .fold(HashMap::new(), |mut acc, m| {
+            if let Some(parent_id) = m.0.parent_id {
+                let msg_id = m.0.id;
+                let entry = acc.entry(parent_id).or_insert(msg_id);
+                if msg_id > *entry {
+                    *entry = msg_id;
+                }
+            }
+            acc
+        });
+    println!("parent_max_child: {:?}", parent_max_child);
+
+    let max_child_ids: HashSet<i64> = parent_max_child.values().cloned().collect();
+    println!("max_child_ids: {:?}", max_child_ids);
+
     let assistant_id = conversation.assistant_id.unwrap();
     let assistant_detail = get_assistant(app_handle.clone(), assistant_id).unwrap();
 
@@ -400,14 +433,24 @@ pub async fn regenerate_ai(
 
     let init_message_list = messages
         .into_iter()
-        .filter_map(|m| {
-            if m.0.id < message_id {
+        .filter_map(|m: (Message, Option<MessageAttachment>)| {
+            if m.0.id >= message_id {
+                return None;
+            }
+
+            if parent_ids.contains(&m.0.id) {
+                // 这是一个父消息，保留它
+                Some((m.0.message_type, m.0.content, vec![]))
+            } else if max_child_ids.contains(&m.0.id) {
+                // 这是一个子消息，并且是最大 id 的子消息，保留它
                 Some((m.0.message_type, m.0.content, vec![]))
             } else {
+                // 其他情况，过滤掉
                 None
             }
         })
         .collect::<Vec<_>>();
+    println!("init_message_list: {:?}", init_message_list);
 
     let (tx, mut rx) = mpsc::channel(100);
 
@@ -665,7 +708,11 @@ async fn initialize_conversation(
             let request_prompt_result_with_context =
                 format!("{}\n{}", request_prompt_result, context);
             let init_message_list = vec![
-                (String::from("system"), override_prompt.unwrap_or(assistant_prompt_result), vec![]),
+                (
+                    String::from("system"),
+                    override_prompt.unwrap_or(assistant_prompt_result),
+                    vec![],
+                ),
                 (
                     String::from("user"),
                     request_prompt_result_with_context.clone(),
