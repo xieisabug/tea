@@ -1,15 +1,12 @@
-import React, {useCallback, useEffect, useState} from 'react';
-import '../styles/LLMProviderConfig.css';
-import {invoke} from "@tauri-apps/api/tauri";
-import LLMProviderConfigForm from "./LLMProviderConfigForm.tsx";
-import RoundButton from './RoundButton.tsx';
-import Switch from './Switch.tsx';
-import { emit } from '@tauri-apps/api/event';
-import FormDialog from './FormDialog.tsx';
-import CustomSelect from './CustomSelect.tsx';
-import IconButton from './IconButton.tsx';
-import Delete from "../assets/delete.svg?react";
-import ConfirmDialog from './ConfirmDialog.tsx';
+import React, { useCallback, useEffect, useState } from 'react';
+import "../../styles/LLMProviderConfig.css";
+import { invoke } from "@tauri-apps/api/tauri";
+import LLMProviderConfigForm from "./LLMProviderConfigForm";
+import FormDialog from "../FormDialog";
+import CustomSelect from "../CustomSelect";
+import ConfirmDialog from "../ConfirmDialog";
+import { Button } from "../ui/button";
+import { toast } from 'sonner';
 
 interface LLMProvider {
     id: string;
@@ -39,13 +36,10 @@ const LLMProviderConfig: React.FC = () => {
 
     const getLLMProviderList = useCallback(() => {
         invoke<Array<LLMProvider>>('get_llm_providers')
-                .then(setLLMProviders)
-                .catch((e) => {
-                    emit('config-window-alert-dialog', {
-                        text: '获取大模型提供商失败: ' + e,
-                        type: 'error'
-                    });
-                });
+            .then(setLLMProviders)
+            .catch((e) => {
+                toast.error('获取大模型提供商失败: ' + e);
+            });
     }, []);
     useEffect(() => {
         getLLMProviderList();
@@ -73,17 +67,14 @@ const LLMProviderConfig: React.FC = () => {
             name: providerName,
             apiType: formApiType
         }).then(() => {
-            emit('config-window-success-notification');
+            toast.success('添加大模型提供商成功');
             setProviderName('');
             setFormApiType('openai_api');
             closeNewProviderDialog();
 
             getLLMProviderList();
         }).catch((e) => {
-            emit('config-window-alert-dialog', {
-                text: '添加大模型提供商失败: ' + e,
-                type: 'error'
-            });
+            toast.error('添加大模型提供商失败: ' + e);
         });
     }
 
@@ -93,19 +84,13 @@ const LLMProviderConfig: React.FC = () => {
         if (!deleteLLMProviderId) {
             return;
         }
-        invoke('delete_llm_provider', {llmProviderId: deleteLLMProviderId}).then(() => {
-            emit('config-window-success-notification');
+        invoke('delete_llm_provider', { llmProviderId: deleteLLMProviderId }).then(() => {
+            toast.success('删除大模型提供商成功');
             getLLMProviderList();
-        })
-        .catch(e => {
-            emit('config-window-alert-dialog', {
-                text: '删除失败: ' + e,
-                type: 'error'
-            });
-        })
-        .finally(() => {
-            closeConfirmDialog();
-        })
+        }).catch(e => {
+            toast.error('删除大模型提供商失败: ' + e);
+        });
+        closeConfirmDialog();
     }, [deleteLLMProviderId]);
     const openConfirmDialog = (LLMPRoviderId: string) => {
         setConfirmDialogIsOpen(true)
@@ -119,26 +104,17 @@ const LLMProviderConfig: React.FC = () => {
         <div className="model-config">
             {
                 LLMProviders.map((provider, index) => {
-                    return <div className='config-window-container provider-config-window' key={index}>
-                        <div className='config-window-title'>
-                            <div className='config-window-title-text-container'>
-                                <span className='config-window-title-name'>{provider.name}</span>
-                            </div>
-                            
-                            <div className='config-window-icon-button-group'>
-                                {
-                                    provider.is_official ? null:
-                                        <IconButton icon={<Delete fill='white'/>} onClick={() => openConfirmDialog(provider.id)} />
-                                }
-                                <label>
-                                    <Switch state={provider.is_enabled} onChange={() => handleToggle(index)} />
-                                </label>
-                            </div>
-                            
-                        </div>
-
-                        <LLMProviderConfigForm id={provider.id} apiType={provider.api_type}/>
-                    </div>
+                    return <LLMProviderConfigForm
+                        key={provider.id}
+                        id={provider.id}
+                        index={index}
+                        apiType={provider.api_type}
+                        name={provider.name}
+                        isOffical={provider.is_official}
+                        enabled={provider.is_enabled}
+                        onToggleEnabled={handleToggle}
+                        onDelete={openConfirmDialog}
+                    />
                 })
             }
             <FormDialog title='新增大模型提供商' isOpen={newProviderDialogOpen} onClose={closeNewProviderDialog} onSubmit={handleNewProviderSubmit}>
@@ -154,7 +130,7 @@ const LLMProviderConfig: React.FC = () => {
                 </form>
             </FormDialog>
             <ConfirmDialog isOpen={confirmDialogIsOpen} title='请确认' confirmText='是否要删除该提供商？' onConfirm={onConfirmDeleteProvider} onCancel={closeConfirmDialog} />
-            <RoundButton text='新增' onClick={openNewProviderDialog} />
+            <Button onClick={openNewProviderDialog}>新增</Button>
         </div>
     );
 }

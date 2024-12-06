@@ -434,7 +434,7 @@ function AskWindow() {
                         placeholder="Ask AI..."
                     ></textarea>
                     <button
-                        className="ask-window-submit-button"
+                        className="ask-window-submit-button bg-primary"
                         type="button"
                         onClick={onSend}
                     >

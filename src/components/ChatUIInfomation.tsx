@@ -8,12 +8,16 @@ function ChatUIInfomation() {
         await invoke('open_config_window')
     }
 
+    const openPlugin = async () => {
+        await invoke('open_plugin_window')
+    }
+
     return (
         <div className="chat-ui-information">
-            <h1 className="chat-ui-information-title">Tea</h1>
+            <h1 className="text-primary text-3xl">Aipp</h1>
             <div className="chat-ui-information-button-group">
-                <IconButton icon={<Setting fill="#468585"/>} onClick={openConfig} border />
-                <IconButton icon={<Experiment fill="#468585"/>} onClick={() => {}} border />
+                <IconButton icon={<Setting fill="black" />} onClick={openConfig} border />
+                <IconButton icon={<Experiment fill="black" />} onClick={openPlugin} border />
             </div>
         </div>
     );

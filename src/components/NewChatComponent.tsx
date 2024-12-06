@@ -1,5 +1,6 @@
 import AskWindowPrepare from "./AskWindowPrepare";
 import CustomSelect from "./CustomSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface AssistantListItem {
     id: number;
@@ -23,18 +24,25 @@ const NewChatComponent: React.FC<NewChatComponentProps> = ({
         <div className="new-chat" data-tauri-drag-region>
             <div className="new-chat-hint" data-tauri-drag-region>
                 <AskWindowPrepare selectedText={selectedText} />
-                <p data-tauri-drag-region>
+                <p className="mt-4" data-tauri-drag-region>
                     请选择一个对话，或者选择一个助手开始新聊天
                 </p>
             </div>
-            <CustomSelect
-                options={assistants.map((assistant) => ({
-                    value: assistant.id.toString(),
-                    label: assistant.name,
-                }))}
-                value={selectedAssistant + ""}
-                onChange={(value) => setSelectedAssistant(+value)}
-            />
+            <Select
+                value={selectedAssistant.toString()}
+                onValueChange={(value) => setSelectedAssistant(Number(value))}
+            >
+                <SelectTrigger className="w-60 mt-4">
+                    <SelectValue placeholder="选择一个助手" />
+                </SelectTrigger>
+                <SelectContent>
+                    {assistants.map((assistant) => (
+                        <SelectItem key={assistant.id} value={assistant.id.toString()}>
+                            {assistant.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
         </div>
     );
 };

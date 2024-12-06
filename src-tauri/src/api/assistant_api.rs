@@ -138,9 +138,9 @@ pub async fn save_assistant(
     }
 
     // Save or update the AssistantModels
-    for model in assistant_detail.model {
+    for mut model in assistant_detail.model {
         if model.id == 0 {
-            assistant_db
+            let result_id = assistant_db
                 .add_assistant_model(
                     model.assistant_id,
                     model.provider_id,
@@ -148,6 +148,7 @@ pub async fn save_assistant(
                     &model.alias,
                 )
                 .map_err(|e| e.to_string())?;
+            model.id = result_id;
         } else {
             assistant_db
                 .update_assistant_model(
@@ -161,17 +162,18 @@ pub async fn save_assistant(
     }
 
     // Save or update the AssistantModelConfigs
-    for config in assistant_detail.model_configs {
+    for mut config in assistant_detail.model_configs {
         if config.id == 0 {
-            assistant_db
+            let result_id = assistant_db
                 .add_assistant_model_config(
                     config.assistant_id,
-                    config.assistant_model_id,
+                    config.id,
                     &config.name,
                     config.value.as_deref().unwrap_or(""),
                     &config.value_type,
                 )
                 .map_err(|e| e.to_string())?;
+            config.id = result_id;
         } else {
             assistant_db
                 .update_assistant_model_config(
@@ -211,18 +213,18 @@ pub async fn save_assistant(
 }
 
 #[tauri::command]
-pub fn add_assistant(app_handle: tauri::AppHandle) -> Result<AssistantDetail, String> {
+pub fn add_assistant(
+    app_handle: tauri::AppHandle,
+    name: String,
+    description: String,
+    assistant_type: i64,
+) -> Result<AssistantDetail, String> {
     println!("start add assistant");
     let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
 
     // Add a default assistant
     let assistant_id = assistant_db
-        .add_assistant(
-            "初始助手名称",
-            "This is a default assistant",
-            Some(0), // Assuming 0 is a default assistant type
-            false,
-        )
+        .add_assistant(&name, &description, Some(assistant_type), false)
         .map_err(|e| e.to_string())?;
 
     // Get the newly added assistant
@@ -458,4 +460,42 @@ pub fn delete_assistant(app_handle: tauri::AppHandle, assistant_id: i64) -> Resu
     assistant_db
         .delete_assistant(assistant_id)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_assistant_field_value(
+    app_handle: tauri::AppHandle,
+    assistant_id: i64,
+    field_name: &str,
+) -> Result<String, String> {
+    let assistant_db = AssistantDatabase::new(&app_handle).map_err(|e| e.to_string())?;
+
+    if field_name == "prompt" {
+        // Get prompts for this assistant
+        let prompts = assistant_db
+            .get_assistant_prompt(assistant_id)
+            .map_err(|e| e.to_string())?;
+
+        println!("Prompts for assistant {}: {:?}", assistant_id, prompts);
+
+        // Return first prompt's content
+        return prompts
+            .first()
+            .map(|p| p.prompt.clone())
+            .ok_or_else(|| "No prompt found".to_string());
+    }
+
+    // Get all model configs for this assistant
+    let configs = assistant_db
+        .get_assistant_model_configs(assistant_id)
+        .map_err(|e| e.to_string())?;
+
+    println!("Configs for assistant {}: {:?}", assistant_id, configs);
+
+    // Find config with matching name
+    configs
+        .iter()
+        .find(|config| config.name == field_name)
+        .and_then(|config| config.value.clone())
+        .ok_or_else(|| format!("Field '{}' not found", field_name))
 }

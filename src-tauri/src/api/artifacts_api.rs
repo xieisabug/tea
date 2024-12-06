@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
 use crate::FeatureConfigState;
-use serde_json::json;
-use tauri::Manager;
 
 use crate::{
     artifacts::{applescript::run_applescript, powershell::run_powershell},
@@ -57,11 +55,7 @@ pub async fn run_artifacts(
         }
         _ => {
             // Handle other languages here
-            app_handle.emit_to(
-                "chat_ui",
-                "chat-window-alert-dialog",
-                json!({"text": "暂不支持该语言的代码执行", "type": "warning"}),
-            )?;
+            return Err(AppError::RunCodeError("暂不支持该语言的代码执行".to_owned()));
         }
     }
     Ok("".to_string())

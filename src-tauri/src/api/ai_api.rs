@@ -48,8 +48,13 @@ pub async fn ask_ai(
     message_token_manager: State<'_, MessageTokenManager>,
     window: tauri::Window,
     request: AiRequest,
+    override_model_config: Option<Vec<(String, serde_json::Value)>>,
+    override_prompt: Option<String>,
 ) -> Result<AiResponse, AppError> {
-    println!("ask_ai: {:?}", request);
+    println!(
+        "ask_ai: {:?}, override_model_config: {:?}, override_prompt: {:?}",
+        request, override_model_config, override_prompt
+    );
     let template_engine = TemplateEngine::new();
     let mut template_context = HashMap::new();
     let (tx, mut rx) = mpsc::channel(100);
@@ -82,6 +87,7 @@ pub async fn ask_ai(
             &assistant_detail,
             assistant_prompt_result,
             request_prompt_result.clone(),
+            override_prompt.clone(),
         )
         .await?;
 
@@ -121,6 +127,38 @@ pub async fn ask_ai(
                 value: Some(model_detail.model.code),
                 value_type: "string".to_string(),
             });
+
+            if let Some(override_configs) = override_model_config {
+                for (key, value) in override_configs {
+                    let value_type = match &value {
+                        serde_json::Value::String(_) => "string",
+                        serde_json::Value::Number(_) => "number",
+                        serde_json::Value::Bool(_) => "boolean",
+                        serde_json::Value::Array(_) => "array",
+                        serde_json::Value::Object(_) => "object",
+                        serde_json::Value::Null => "null",
+                    }
+                    .to_string();
+
+                    let value_str = value.to_string();
+
+                    if let Some(existing_config) =
+                        model_config_clone.iter_mut().find(|c| c.name == key)
+                    {
+                        existing_config.value = Some(value_str);
+                        existing_config.value_type = value_type;
+                    } else {
+                        model_config_clone.push(AssistantModelConfig {
+                            id: 0,
+                            assistant_id: assistant_detail.assistant.id,
+                            assistant_model_id: model_detail.model.id,
+                            name: key,
+                            value: Some(value_str),
+                            value_type,
+                        });
+                    }
+                }
+            }
 
             let config_map = assistant_detail
                 .model_configs
@@ -195,7 +233,7 @@ pub async fn ask_ai(
         let window_clone = window.clone();
         tokio::spawn(async move {
             loop {
-                match timeout(Duration::from_secs(60), rx.recv()).await {
+                match timeout(Duration::from_secs(600), rx.recv()).await {
                     Ok(Some((id, content, done))) => {
                         println!("Received data: id={}, content={}", id, content);
                         window_clone
@@ -359,6 +397,33 @@ pub async fn regenerate_ai(
         .unwrap()
         .list_by_conversation_id(conversation_id)?;
 
+    let parent_ids: HashSet<i64> = messages.iter().filter_map(|m| m.0.parent_id).collect();
+    println!("parent_ids: {:?}", parent_ids);
+
+    let parent_max_child: HashMap<i64, i64> = messages
+        .iter()
+        .filter(|m| {
+            if let Some(pid) = m.0.parent_id {
+                parent_ids.contains(&pid)
+            } else {
+                false
+            }
+        })
+        .fold(HashMap::new(), |mut acc, m| {
+            if let Some(parent_id) = m.0.parent_id {
+                let msg_id = m.0.id;
+                let entry = acc.entry(parent_id).or_insert(msg_id);
+                if msg_id > *entry {
+                    *entry = msg_id;
+                }
+            }
+            acc
+        });
+    println!("parent_max_child: {:?}", parent_max_child);
+
+    let max_child_ids: HashSet<i64> = parent_max_child.values().cloned().collect();
+    println!("max_child_ids: {:?}", max_child_ids);
+
     let assistant_id = conversation.assistant_id.unwrap();
     let assistant_detail = get_assistant(app_handle.clone(), assistant_id).unwrap();
 
@@ -368,14 +433,24 @@ pub async fn regenerate_ai(
 
     let init_message_list = messages
         .into_iter()
-        .filter_map(|m| {
-            if m.0.id < message_id {
+        .filter_map(|m: (Message, Option<MessageAttachment>)| {
+            if m.0.id >= message_id {
+                return None;
+            }
+
+            if parent_ids.contains(&m.0.id) {
+                // 这是一个父消息，保留它
+                Some((m.0.message_type, m.0.content, vec![]))
+            } else if max_child_ids.contains(&m.0.id) {
+                // 这是一个子消息，并且是最大 id 的子消息，保留它
                 Some((m.0.message_type, m.0.content, vec![]))
             } else {
+                // 其他情况，过滤掉
                 None
             }
         })
         .collect::<Vec<_>>();
+    println!("init_message_list: {:?}", init_message_list);
 
     let (tx, mut rx) = mpsc::channel(100);
 
@@ -497,7 +572,7 @@ pub async fn regenerate_ai(
     let window_clone = window.clone();
     tokio::spawn(async move {
         loop {
-            match timeout(Duration::from_secs(60), rx.recv()).await {
+            match timeout(Duration::from_secs(600), rx.recv()).await {
                 Ok(Some((id, content, done))) => {
                     println!("Received data: id={}, content={}", id, content);
                     window_clone
@@ -599,6 +674,7 @@ async fn initialize_conversation(
     assistant_detail: &AssistantDetail,
     assistant_prompt_result: String,
     request_prompt_result: String,
+    override_prompt: Option<String>,
 ) -> Result<
     (
         i64,
@@ -632,7 +708,11 @@ async fn initialize_conversation(
             let request_prompt_result_with_context =
                 format!("{}\n{}", request_prompt_result, context);
             let init_message_list = vec![
-                (String::from("system"), assistant_prompt_result, vec![]),
+                (
+                    String::from("system"),
+                    override_prompt.unwrap_or(assistant_prompt_result),
+                    vec![],
+                ),
                 (
                     String::from("user"),
                     request_prompt_result_with_context.clone(),

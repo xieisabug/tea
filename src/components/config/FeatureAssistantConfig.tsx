@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
-import "../styles/FeatureAssistantConfig.css";
-import { emit } from "@tauri-apps/api/event";
-import ConfigForm from "./ConfigForm";
+import "../../styles/FeatureAssistantConfig.css";
+import ConfigForm from "../ConfigForm";
+import { toast } from 'sonner';
 
 interface ModelForSelect {
     name: string;
@@ -28,8 +28,9 @@ const FeatureAssistantConfig: React.FC = () => {
         invoke<Array<ModelForSelect>>("get_models_for_select").then(
             (modelList) => {
                 setModels(modelList);
-            },
-        );
+            }).catch((e) => {
+                toast.error('获取模型列表失败: ' + e);
+            });
     }, []);
 
     const [featureConfig, setFeatureConfig] = useState<FeatureConfig>(
@@ -50,7 +51,9 @@ const FeatureAssistantConfig: React.FC = () => {
                 console.log("init featureConfig", featureConfig);
                 setFeatureConfig(new Map(featureConfig));
             },
-        );
+        ).catch((e) => {
+            toast.error('获取配置失败: ' + e);
+        });
     }, []);
 
     const handleConfigChange = (
@@ -72,7 +75,7 @@ const FeatureAssistantConfig: React.FC = () => {
             featureCode: feature_code,
             config: featureConfig.get(feature_code),
         }).then(() => {
-            emit("config-window-success-notification");
+            toast.success('保存成功');
         });
     };
 
@@ -169,10 +172,7 @@ const FeatureAssistantConfig: React.FC = () => {
     };
 
     const handleSyncData = () => {
-        emit('config-window-alert-dialog', {
-            text: '暂未实现，敬请期待',
-            type: 'info'
-        });
+        toast.info('暂未实现，敬请期待');
     };
 
     const dataFolderConfig = {
@@ -195,8 +195,6 @@ const FeatureAssistantConfig: React.FC = () => {
             <ConfigForm
                 title="对话总结"
                 description="对话开始时总结该对话并且生成标题"
-                enableExpand={true}
-                defaultExpanded={true}
                 config={summaryFormConfig}
                 layout="prompt"
                 classNames="bottom-space"
@@ -206,7 +204,6 @@ const FeatureAssistantConfig: React.FC = () => {
             <ConfigForm
                 title="预览配置"
                 description="在大模型编写完react或者vue组件之后，能够快速预览"
-                enableExpand={true}
                 config={previewFormConfig}
                 layout="default"
                 classNames="bottom-space"
@@ -216,7 +213,6 @@ const FeatureAssistantConfig: React.FC = () => {
             <ConfigForm
                 title="数据目录"
                 description="管理和同步数据文件夹"
-                enableExpand={true}
                 config={dataFolderConfig}
                 layout="default"
                 classNames="bottom-space"

@@ -1,5 +1,8 @@
 import React, { useState, KeyboardEvent, ChangeEvent } from 'react';
 import '../styles/TagInput.css';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge'; // 导入 Shadcn 的 Badge 组件
 
 // 定义TagInputProps接口
 interface TagInputProps {
@@ -25,24 +28,24 @@ const TagInput: React.FC<TagInputProps> = ({ tags, placeholder, onAddTag, onRemo
     };
 
     return (
-        <div className="tag-input-container">
-            <div className="tags-container">
+        <div className="tag-input-container grid">
+            <div className="tags-container gap-1">
                 {tags.map((tag, index) => (
-                    <span key={index} className="tag">
-            {tag}
-                        <button onClick={() => onRemoveTag(index)} className="tag-close">
-              &times;
-            </button>
-          </span>
+                    <Badge key={index} >
+                        {tag}
+                        <Button variant="ghost" className="h-4 w-4 p-0 hover:bg-transparent" size="sm" onClick={() => onRemoveTag(index)}>
+                            &times;
+                        </Button>
+                    </Badge>
                 ))}
             </div>
-            <input
+            <Input
                 type="text"
                 value={inputValue}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
-                className="form-input tag-input"
+            // className="form-input tag-input"
             />
         </div>
     );
