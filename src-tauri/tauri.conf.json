@@ -23,8 +23,9 @@
   "plugins": {},
   "app": {
     "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
+      "id": "aipp",
+      "iconAsTemplate": true,
+      "iconPath": "icons/favicon.ico"
     },
     "security": {
       "csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; connect-src ipc: http://ipc.localhost 'self' http://localhost:8097",

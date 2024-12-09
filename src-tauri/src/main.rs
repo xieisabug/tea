@@ -53,7 +53,7 @@ use std::sync::Arc;
 use tauri::Emitter;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    tray::TrayIconBuilder,
     Manager, RunEvent,
 };
 use tokio::sync::Mutex as TokioMutex;
@@ -155,19 +155,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let show = MenuItemBuilder::with_id("show", "显示").build(app)?;
             let tray_menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
 
-            let _ = TrayIconBuilder::with_id("aipp")
-                .menu(&tray_menu)
-                .on_menu_event(move |app, event| match event.id().as_ref() {
-                    "quit" => {
-                        app.exit(0);
-                    }
-                    "show" => {
-                        handle_open_ask_window(&app);
-                    }
-                    _ => {}
-                })
-                .menu_on_left_click(true)
-                .build(app)?;
+            let tray = app.tray_by_id("aipp").unwrap();
+            tray.set_menu(Some(tray_menu))?;
+            tray.on_menu_event(move |app, event| match event.id().as_ref() {
+                "quit" => {
+                    app.exit(0);
+                }
+                "show" => {
+                    handle_open_ask_window(&app);
+                }
+                _ => {}
+            });
+            tray.set_show_menu_on_left_click(true);
 
             if !query_accessibility_permissions() {
                 println!("Please grant accessibility permissions to the app");
