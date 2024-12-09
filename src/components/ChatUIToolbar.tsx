@@ -1,4 +1,4 @@
-import { message } from "@tauri-apps/api/dialog";
+import { message } from "@tauri-apps/plugin-dialog";
 import { Button } from "./ui/button";
 
 interface ChatUIToolbarProps {

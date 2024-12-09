@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { writeText } from "@tauri-apps/api/clipboard";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkMath from "remark-math";
 import remarkBreaks from "remark-breaks";

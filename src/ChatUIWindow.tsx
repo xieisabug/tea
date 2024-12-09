@@ -6,7 +6,7 @@ import ConversationUI from "./components/ConversationUI";
 
 import "./styles/ChatUIWindow.css";
 import { appDataDir } from "@tauri-apps/api/path";
-import { convertFileSrc } from "@tauri-apps/api/tauri";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 function ChatUIWindow() {
     const [pluginList, setPluginList] = useState<any[]>([]);

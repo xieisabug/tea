@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { AssistantDetail, AssistantListItem } from '../../data/Assistant';
 import { Button } from '../ui/button';
 import ConfigForm from '../ConfigForm';
@@ -71,12 +71,15 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     value: "",
                 }, fieldConfig));
                 return newMap;
-            })
+            });
         },
         addFieldTips: (fieldName: string, tips: string) => {
             console.log("add field tips", fieldName, tips);
         },
-        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => { }
+        runLogic: (_: (assistantRunApi: AssistantRunApi) => void) => { },
+        forceFieldValue: function (_: string, __: string): void {
+
+        }
     };
     // 助手类型
     const [assistantTypes, setAssistantTypes] = useState<AssistantType[]>([{ code: 0, name: "普通对话助手" }]);

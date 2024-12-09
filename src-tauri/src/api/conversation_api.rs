@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use tauri::Manager;
+use tauri::Emitter;
 
 use crate::{
     db::conversation_db::{
@@ -181,6 +181,6 @@ pub fn update_conversation(
         .update(&conversation)
         .map_err(|e| e.to_string())?;
 
-    let _ = app_handle.emit_all("title_change", [conversation_id.to_string(), name]);
+    let _ = app_handle.emit("title_change", [conversation_id.to_string(), name]);
     Ok(())
 }

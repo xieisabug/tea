@@ -1,6 +1,6 @@
-use rusqlite::{Connection, params, Result};
-use serde::{Deserialize, Serialize};
 use super::get_db_path;
+use rusqlite::{params, Connection, Result};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Assistant {
@@ -122,8 +122,14 @@ impl AssistantDatabase {
         }
         Ok(())
     }
-    
-    pub fn add_assistant(&self, name: &str, description: &str, assistant_type: Option<i64>, is_addition: bool) -> Result<i64> {
+
+    pub fn add_assistant(
+        &self,
+        name: &str,
+        description: &str,
+        assistant_type: Option<i64>,
+        is_addition: bool,
+    ) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant (name, description, assistant_type, is_addition) VALUES (?, ?, ?, ?)",
             params![name, description, assistant_type, is_addition],
@@ -141,10 +147,8 @@ impl AssistantDatabase {
     }
 
     pub fn delete_assistant(&self, id: i64) -> Result<()> {
-        self.conn.execute(
-            "DELETE FROM assistant WHERE id = ?",
-            params![id],
-        )?;
+        self.conn
+            .execute("DELETE FROM assistant WHERE id = ?", params![id])?;
         Ok(())
     }
 
@@ -173,7 +177,13 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_model(&self, assistant_id: i64, provider_id: i64, model_code: &str, alias: &str) -> Result<i64> {
+    pub fn add_assistant_model(
+        &self,
+        assistant_id: i64,
+        provider_id: i64,
+        model_code: &str,
+        alias: &str,
+    ) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant_model (assistant_id, provider_id, model_code, alias) VALUES (?, ?, ?, ?)",
             params![assistant_id, provider_id, model_code, alias],
@@ -182,7 +192,13 @@ impl AssistantDatabase {
         Ok(id)
     }
 
-    pub fn update_assistant_model(&self, id: i64, provider_id: i64, model_code: &str, alias: &str) -> Result<()> {
+    pub fn update_assistant_model(
+        &self,
+        id: i64,
+        provider_id: i64,
+        model_code: &str,
+        alias: &str,
+    ) -> Result<()> {
         self.conn.execute(
             "UPDATE assistant_model SET model_code = ?, provider_id = ?, alias = ? WHERE id = ?",
             params![model_code, provider_id, alias, id],
@@ -190,7 +206,14 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_model_config(&self, assistant_id: i64, assistant_model_id: i64, name: &str, value: &str, value_type: &str) -> Result<i64> {
+    pub fn add_assistant_model_config(
+        &self,
+        assistant_id: i64,
+        assistant_model_id: i64,
+        name: &str,
+        value: &str,
+        value_type: &str,
+    ) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO assistant_model_config (assistant_id, assistant_model_id, name, value, value_type) VALUES (?, ?, ?, ?, ?)",
             params![assistant_id, assistant_model_id, name, value, value_type],
@@ -215,7 +238,14 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn add_assistant_prompt_param(&self, assistant_id: i64, assistant_prompt_id: i64, param_name: &str, param_type: &str, param_value: &str) -> Result<()> {
+    pub fn add_assistant_prompt_param(
+        &self,
+        assistant_id: i64,
+        assistant_prompt_id: i64,
+        param_name: &str,
+        param_type: &str,
+        param_value: &str,
+    ) -> Result<()> {
         self.conn.execute(
             "INSERT INTO assistant_prompt_param (assistant_id, assistant_prompt_id, param_name, param_type, param_value) VALUES (?, ?, ?, ?, ?)",
             params![assistant_id, assistant_prompt_id, param_name, param_type, param_value],
@@ -223,7 +253,13 @@ impl AssistantDatabase {
         Ok(())
     }
 
-    pub fn update_assistant_prompt_param(&self, id: i64, param_name: &str, param_type: &str, param_value: &str) -> Result<()> {
+    pub fn update_assistant_prompt_param(
+        &self,
+        id: i64,
+        param_name: &str,
+        param_type: &str,
+        param_value: &str,
+    ) -> Result<()> {
         self.conn.execute(
             "UPDATE assistant_prompt_param SET param_name = ?, param_type = ?, param_value = ? WHERE id = ?",
             params![param_name, param_type, param_value, id],
@@ -317,7 +353,10 @@ impl AssistantDatabase {
         Ok(assistant_prompts)
     }
 
-    pub fn get_assistant_model_configs(&self, assistant_id: i64) -> Result<Vec<AssistantModelConfig>> {
+    pub fn get_assistant_model_configs(
+        &self,
+        assistant_id: i64,
+    ) -> Result<Vec<AssistantModelConfig>> {
         let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_model_id, name, value, value_type FROM assistant_model_config WHERE assistant_id = ?")?;
         let assistant_model_config_iter = stmt.query_map(params![assistant_id], |row| {
             Ok(AssistantModelConfig {
@@ -337,18 +376,23 @@ impl AssistantDatabase {
         Ok(assistant_model_configs)
     }
 
-    pub fn get_assistant_model_configs_with_model_id(&self, assistant_id: i64, assistant_model_id: i64) -> Result<Vec<AssistantModelConfig>> {
+    pub fn get_assistant_model_configs_with_model_id(
+        &self,
+        assistant_id: i64,
+        assistant_model_id: i64,
+    ) -> Result<Vec<AssistantModelConfig>> {
         let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_model_id, name, value, value_type FROM assistant_model_config WHERE assistant_id = ? AND assistant_model_id = ?")?;
-        let assistant_model_config_iter = stmt.query_map(params![assistant_id, assistant_model_id], |row| {
-            Ok(AssistantModelConfig {
-                id: row.get(0)?,
-                assistant_id: row.get(1)?,
-                assistant_model_id: row.get(2)?,
-                name: row.get(3)?,
-                value: row.get(4)?,
-                value_type: row.get(5)?,
-            })
-        })?;
+        let assistant_model_config_iter =
+            stmt.query_map(params![assistant_id, assistant_model_id], |row| {
+                Ok(AssistantModelConfig {
+                    id: row.get(0)?,
+                    assistant_id: row.get(1)?,
+                    assistant_model_id: row.get(2)?,
+                    name: row.get(3)?,
+                    value: row.get(4)?,
+                    value_type: row.get(5)?,
+                })
+            })?;
 
         let mut assistant_model_configs = Vec::new();
         for assistant_model_config in assistant_model_config_iter {
@@ -357,7 +401,10 @@ impl AssistantDatabase {
         Ok(assistant_model_configs)
     }
 
-    pub fn get_assistant_prompt_params(&self, assistant_id: i64) -> Result<Vec<AssistantPromptParam>> {
+    pub fn get_assistant_prompt_params(
+        &self,
+        assistant_id: i64,
+    ) -> Result<Vec<AssistantPromptParam>> {
         let mut stmt = self.conn.prepare("SELECT id, assistant_id, assistant_prompt_id, param_name, param_type, param_value FROM assistant_prompt_param WHERE assistant_id = ?")?;
         let assistant_prompt_param_iter = stmt.query_map(params![assistant_id], |row| {
             Ok(AssistantPromptParam {

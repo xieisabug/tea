@@ -1,6 +1,6 @@
 use std::cmp::Ord;
 use std::collections::HashMap;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::template_engine::{BangType, TemplateEngine};
 use crate::AppState;
@@ -66,7 +66,7 @@ pub async fn save_feature_config(
 
 #[tauri::command]
 pub async fn open_data_folder(app: tauri::AppHandle) -> Result<(), String> {
-    let app_dir = app.path_resolver().app_data_dir().unwrap();
+    let app_dir = app.path().app_data_dir().unwrap();
     let db_path = app_dir.join("db");
     if let Err(e) = open::that(db_path) {
         return Err(format!("无法打开数据文件夹: {}", e));

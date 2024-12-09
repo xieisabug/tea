@@ -1,4 +1,4 @@
-import { writeText } from "@tauri-apps/api/clipboard";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import React, { useState, useCallback, useEffect } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 // srcery   railscasts   nnfx-dark    atelier-estuary-dark

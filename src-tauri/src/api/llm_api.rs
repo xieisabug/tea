@@ -52,9 +52,14 @@ pub async fn get_llm_providers(app_handle: tauri::AppHandle) -> Result<Vec<LlmPr
 }
 
 #[tauri::command]
-pub async fn add_llm_provider(app: tauri::AppHandle, name: String, api_type: String) -> Result<(), String> {
+pub async fn add_llm_provider(
+    app: tauri::AppHandle,
+    name: String,
+    api_type: String,
+) -> Result<(), String> {
     let db = LLMDatabase::new(&app).map_err(|e| e.to_string())?;
-    db.add_llm_provider(&*name, &*api_type, "", false, false).map_err(|e| e.to_string())?;
+    db.add_llm_provider(&*name, &*api_type, "", false, false)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -74,9 +79,13 @@ pub async fn update_llm_provider(
 }
 
 #[tauri::command]
-pub async fn delete_llm_provider(app_handle: tauri::AppHandle, llm_provider_id: i64) -> Result<(), String> {
+pub async fn delete_llm_provider(
+    app_handle: tauri::AppHandle,
+    llm_provider_id: i64,
+) -> Result<(), String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
-    db.delete_llm_provider(llm_provider_id).map_err(|e| e.to_string())?;
+    db.delete_llm_provider(llm_provider_id)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -196,7 +205,7 @@ pub async fn fetch_model_list(
 pub async fn add_llm_model(
     app_handle: tauri::AppHandle,
     llm_provider_id: i64,
-    code: String
+    code: String,
 ) -> Result<(), String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let code_str = code.as_str();
@@ -214,7 +223,11 @@ pub async fn add_llm_model(
 }
 
 #[tauri::command]
-pub async fn delete_llm_model(app_handle: tauri::AppHandle, llm_provider_id: i64, code: String) -> Result<(), String> {
+pub async fn delete_llm_model(
+    app_handle: tauri::AppHandle,
+    llm_provider_id: i64,
+    code: String,
+) -> Result<(), String> {
     let db = LLMDatabase::new(&app_handle).map_err(|e| e.to_string())?;
     let _ = db.delete_llm_model(llm_provider_id, code);
     Ok(())

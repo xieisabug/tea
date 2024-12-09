@@ -1,5 +1,5 @@
-use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
 
@@ -21,7 +21,9 @@ pub fn run_applescript(script: &str) -> Result<String, Box<dyn std::error::Error
     thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
-            tx_stdout.send(format!("stdout: {}", line.unwrap())).unwrap();
+            tx_stdout
+                .send(format!("stdout: {}", line.unwrap()))
+                .unwrap();
         }
     });
 
@@ -39,7 +41,7 @@ pub fn run_applescript(script: &str) -> Result<String, Box<dyn std::error::Error
     loop {
         match rx.recv_timeout(std::time::Duration::from_millis(100)) {
             Ok(line) => {
-                println!("{}", line);  // 实时打印输出
+                println!("{}", line); // 实时打印输出
                 output.push_str(&line);
                 output.push('\n');
             }
@@ -50,7 +52,7 @@ pub fn run_applescript(script: &str) -> Result<String, Box<dyn std::error::Error
                         output.push_str(&format!("AppleScript 执行完成，退出状态: {}", status));
                         break;
                     }
-                    Ok(None) => continue,  // 进程仍在运行
+                    Ok(None) => continue, // 进程仍在运行
                     Err(e) => return Err(Box::new(e)),
                 }
             }

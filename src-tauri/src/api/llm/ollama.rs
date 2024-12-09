@@ -1,19 +1,20 @@
 use crate::{
     api::llm_api::LlmModel,
-    db::{assistant_db::AssistantModelConfig, conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig},
+    db::{
+        assistant_db::AssistantModelConfig,
+        conversation_db::{AttachmentType, MessageAttachment},
+        llm_db::LLMProviderConfig,
+    },
 };
+use anyhow::{anyhow, Result};
 use futures::{future::BoxFuture, StreamExt};
 use regex::Regex;
-use reqwest::{
-    header::AUTHORIZATION,
-    Client,
-};
+use reqwest::{header::AUTHORIZATION, Client};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
 use tokio::{select, sync::mpsc};
-use anyhow::{Result, anyhow};
+use tokio_util::sync::CancellationToken;
 
 use super::ModelProvider;
 
@@ -74,10 +75,7 @@ impl ModelProvider for OllamaProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/api/chat",
-                endpoint
-            );
+            let url = format!("{}/api/chat", endpoint);
             let api_key = config_map.get("api_key").unwrap_or(&"".to_string()).clone();
 
             let json_messages = messages
@@ -89,10 +87,12 @@ impl ModelProvider for OllamaProvider {
                             .filter(|a| a.attachment_type == AttachmentType::Image)
                             .map(|a| {
                                 let attachment_content = a.attachment_content.clone().unwrap();
-                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let re =
+                                    Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)")
+                                        .unwrap();
                                 let caps = re.captures(&attachment_content).unwrap();
                                 let data = caps.name("data").unwrap().as_str();
-                        
+
                                 data.to_string()
                             })
                             .collect::<Vec<String>>();
@@ -107,7 +107,6 @@ impl ModelProvider for OllamaProvider {
                             "content": content
                         })
                     }
-                    
                 })
                 .collect::<Vec<serde_json::Value>>();
 
@@ -188,10 +187,7 @@ impl ModelProvider for OllamaProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/api/chat",
-                endpoint
-            );
+            let url = format!("{}/api/chat", endpoint);
             println!("url: {}", url);
             let api_key = config_map.get("api_key").unwrap_or(&"".to_string()).clone();
 
@@ -204,10 +200,12 @@ impl ModelProvider for OllamaProvider {
                             .filter(|a| a.attachment_type == AttachmentType::Image)
                             .map(|a| {
                                 let attachment_content = a.attachment_content.clone().unwrap();
-                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let re =
+                                    Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)")
+                                        .unwrap();
                                 let caps = re.captures(&attachment_content).unwrap();
                                 let data = caps.name("data").unwrap().as_str();
-                        
+
                                 data.to_string()
                             })
                             .collect::<Vec<String>>();
@@ -222,7 +220,6 @@ impl ModelProvider for OllamaProvider {
                             "content": content
                         })
                     }
-                    
                 })
                 .collect::<Vec<serde_json::Value>>();
 
@@ -283,7 +280,7 @@ impl ModelProvider for OllamaProvider {
                             Some(Ok(chunk)) => {
                                 let text = String::from_utf8_lossy(&chunk);
                                 println!("text: {}", text.clone());
-    
+
                                 if let Ok(response) = serde_json::from_str::<serde_json::Value>(text.to_string().as_str()) {
                                     if let Some(delta) = response["message"]["content"].as_str() {
                                         full_text.push_str(delta);
@@ -324,19 +321,16 @@ impl ModelProvider for OllamaProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/api/tags",
-                endpoint
-            );
+            let url = format!("{}/api/tags", endpoint);
             let api_key = config_map.get("api_key").unwrap_or(&"".to_string()).clone();
 
             let response = client
                 .get(&url)
                 .header(AUTHORIZATION, &format!("Bearer {}", api_key))
-                .send().await?;
+                .send()
+                .await?;
 
-            let models_response: ModelsResponse =
-                response.json().await?;
+            let models_response: ModelsResponse = response.json().await?;
 
             for model in models_response.models {
                 let llm_model = LlmModel {

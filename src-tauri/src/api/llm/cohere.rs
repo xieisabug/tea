@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::{anyhow, bail, Result};
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
     Client,
@@ -7,9 +8,11 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
-use anyhow::{Result, bail, anyhow};
 
-use crate::{api::llm_api::LlmModel, db::{conversation_db::MessageAttachment, llm_db::LLMProviderConfig}};
+use crate::{
+    api::llm_api::LlmModel,
+    db::{conversation_db::MessageAttachment, llm_db::LLMProviderConfig},
+};
 
 use super::ModelProvider;
 use futures::StreamExt;
@@ -243,12 +246,12 @@ impl ModelProvider for CohereProvider {
                                 let text = String::from_utf8_lossy(&chunk);
                                 println!("cohere chat stream text: {}", text);
                                 buffer.extend_from_slice(&chunk);
-                            
+
                                 // 处理粘包和拆包
                                 while let Some(json_end) = find_json_end(&buffer) {
                                     let chunk_data = buffer.drain(..=json_end).collect::<Vec<_>>();
                                     let chunk_str = String::from_utf8_lossy(&chunk_data);
-                            
+
                                     if let Ok(chunk_response) = serde_json::from_str::<serde_json::Value>(&chunk_str) {
                                         match chunk_response["event_type"].as_str() {
                                             Some("text-generation") => {
@@ -270,7 +273,7 @@ impl ModelProvider for CohereProvider {
                                     }
                                 }
                             }
-                            
+
                             Some(Err(e)) => bail!(e),
                             None => break,
                         }

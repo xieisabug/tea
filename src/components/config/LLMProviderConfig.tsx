@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import "../../styles/LLMProviderConfig.css";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import LLMProviderConfigForm from "./LLMProviderConfigForm";
 import FormDialog from "../FormDialog";
 import CustomSelect from "../CustomSelect";

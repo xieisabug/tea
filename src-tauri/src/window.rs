@@ -1,15 +1,18 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tauri::{AppHandle, Manager, Url, WindowBuilder, WindowEvent, WindowUrl};
+use tauri::Emitter;
+use tauri::Listener;
+use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 pub fn create_ask_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(app, "ask", WindowUrl::App("index.html".into()))
-        .title("Tea")
-        .inner_size(800.0, 450.0)
-        .fullscreen(false)
-        .resizable(false)
-        .decorations(false)
-        .center();
+    let window_builder =
+        WebviewWindowBuilder::new(app, "ask", WebviewUrl::App("index.html".into()))
+            .title("Aipp")
+            .inner_size(800.0, 450.0)
+            .fullscreen(false)
+            .resizable(false)
+            .decorations(false)
+            .center();
 
     #[cfg(not(target_os = "macos"))]
     let window_builder = window_builder.transparent(true);
@@ -28,13 +31,14 @@ pub fn create_ask_window(app: &AppHandle) {
 }
 
 pub fn create_config_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(app, "config", WindowUrl::App("index.html".into()))
-        .title("Tea")
-        .inner_size(1000.0, 800.0)
-        .fullscreen(false)
-        .resizable(true)
-        .decorations(true)
-        .center();
+    let window_builder =
+        WebviewWindowBuilder::new(app, "config", WebviewUrl::App("index.html".into()))
+            .title("Aipp")
+            .inner_size(1000.0, 800.0)
+            .fullscreen(false)
+            .resizable(true)
+            .decorations(true)
+            .center();
 
     #[cfg(not(target_os = "macos"))]
     let window_builder = window_builder.transparent(false);
@@ -53,14 +57,15 @@ pub fn create_config_window(app: &AppHandle) {
 }
 
 pub fn create_chat_ui_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(app, "chat_ui", WindowUrl::App("index.html".into()))
-        .title("Tea")
-        .inner_size(1000.0, 800.0)
-        .fullscreen(false)
-        .resizable(true)
-        .decorations(true)
-        .disable_file_drop_handler()
-        .center();
+    let window_builder =
+        WebviewWindowBuilder::new(app, "chat_ui", WebviewUrl::App("index.html".into()))
+            .title("Aipp")
+            .inner_size(1000.0, 800.0)
+            .fullscreen(false)
+            .resizable(true)
+            .decorations(true)
+            .disable_drag_drop_handler()
+            .center();
 
     #[cfg(not(target_os = "macos"))]
     let window_builder = window_builder.transparent(false);
@@ -80,13 +85,14 @@ pub fn create_chat_ui_window(app: &AppHandle) {
 }
 
 pub fn create_plugin_window(app: &AppHandle) {
-    let window_builder = WindowBuilder::new(app, "plugin", WindowUrl::App("index.html".into()))
-        .title("Tea")
-        .inner_size(1000.0, 800.0)
-        .fullscreen(false)
-        .resizable(true)
-        .decorations(true)
-        .center();
+    let window_builder =
+        WebviewWindowBuilder::new(app, "plugin", WebviewUrl::App("index.html".into()))
+            .title("Aipp")
+            .inner_size(1000.0, 800.0)
+            .fullscreen(false)
+            .resizable(true)
+            .decorations(true)
+            .center();
 
     #[cfg(not(target_os = "macos"))]
     let window_builder = window_builder.transparent(false);
@@ -106,11 +112,11 @@ pub fn create_plugin_window(app: &AppHandle) {
 
 #[tauri::command]
 pub async fn open_config_window(app_handle: AppHandle) -> Result<(), String> {
-    if app_handle.get_window("config").is_none() {
+    if app_handle.get_webview_window("config").is_none() {
         println!("Creating window");
 
         create_config_window(&app_handle)
-    } else if let Some(window) = app_handle.get_window("config") {
+    } else if let Some(window) = app_handle.get_webview_window("config") {
         println!("Showing window");
         if window.is_minimized().unwrap_or(false) {
             window.unminimize().unwrap();
@@ -123,30 +129,38 @@ pub async fn open_config_window(app_handle: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn open_chat_ui_window(app_handle: AppHandle) -> Result<(), String> {
-    if app_handle.get_window("chat_ui").is_none() {
+    if app_handle.get_webview_window("chat_ui").is_none() {
         println!("Creating window");
 
         create_chat_ui_window(&app_handle);
-        app_handle.get_window("ask").unwrap().hide().unwrap();
-    } else if let Some(window) = app_handle.get_window("config") {
+        app_handle
+            .get_webview_window("ask")
+            .unwrap()
+            .hide()
+            .unwrap();
+    } else if let Some(window) = app_handle.get_webview_window("config") {
         println!("Showing window");
         if window.is_minimized().unwrap_or(false) {
             window.unminimize().unwrap();
         }
         window.show().unwrap();
         window.set_focus().unwrap();
-        app_handle.get_window("ask").unwrap().hide().unwrap();
+        app_handle
+            .get_webview_window("ask")
+            .unwrap()
+            .hide()
+            .unwrap();
     }
     Ok(())
 }
 
 #[tauri::command]
 pub async fn open_plugin_window(app_handle: AppHandle) -> Result<(), String> {
-    if app_handle.get_window("plugin").is_none() {
+    if app_handle.get_webview_window("plugin").is_none() {
         println!("Creating window");
 
         create_plugin_window(&app_handle);
-    } else if let Some(window) = app_handle.get_window("plugin") {
+    } else if let Some(window) = app_handle.get_webview_window("plugin") {
         println!("Showing window");
         if window.is_minimized().unwrap_or(false) {
             window.unminimize().unwrap();
@@ -158,12 +172,12 @@ pub async fn open_plugin_window(app_handle: AppHandle) -> Result<(), String> {
 }
 
 pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Result<(), String> {
-    let window_builder = WindowBuilder::new(
+    let window_builder = WebviewWindowBuilder::new(
         &app_handle,
         "preview_html",
-        WindowUrl::App("index.html".into()),
+        WebviewUrl::App("index.html".into()),
     )
-    .title("Tea")
+    .title("Aipp")
     .inner_size(1000.0, 800.0)
     .fullscreen(false)
     .resizable(true)
@@ -182,7 +196,7 @@ pub async fn open_preview_html_window(app_handle: AppHandle, html: String) -> Re
                 }
             });
 
-            let window = app_handle.get_window("preview_html").unwrap();
+            let window = app_handle.get_webview_window("preview_html").unwrap();
 
             window.clone().once("preview-window-load", move |_| {
                 window.emit("preview_html", html.clone()).unwrap();
@@ -235,8 +249,8 @@ pub async fn open_preview_react_window(
             .map_err(|e| e.to_string())?;
 
             let window_builder =
-                WindowBuilder::new(&app_handle, "preview_react", WindowUrl::External(url))
-                    .title("Tea")
+                WebviewWindowBuilder::new(&app_handle, "preview_react", WebviewUrl::External(url))
+                    .title("Aipp")
                     .inner_size(1000.0, 800.0)
                     .fullscreen(false)
                     .resizable(true)
@@ -255,7 +269,7 @@ pub async fn open_preview_react_window(
                         }
                     });
 
-                    let window = app_handle.get_window("preview_react").unwrap();
+                    let window = app_handle.get_webview_window("preview_react").unwrap();
 
                     window.clone().once("preview-window-load", move |_| {
                         let payload = ReactComponentPayload {
@@ -313,8 +327,8 @@ pub async fn open_preview_vue_window(
             .map_err(|e| e.to_string())?;
 
             let window_builder =
-                WindowBuilder::new(&app_handle, "preview_vue", WindowUrl::External(url))
-                    .title("Tea")
+                WebviewWindowBuilder::new(&app_handle, "preview_vue", WebviewUrl::External(url))
+                    .title("Aipp")
                     .inner_size(1000.0, 800.0)
                     .fullscreen(false)
                     .resizable(true)
@@ -333,7 +347,7 @@ pub async fn open_preview_vue_window(
                         }
                     });
 
-                    let window = app_handle.get_window("preview_vue").unwrap();
+                    let window = app_handle.get_webview_window("preview_vue").unwrap();
 
                     window.clone().once("preview-window-load", move |_| {
                         let payload = ReactComponentPayload {

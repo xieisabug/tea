@@ -25,7 +25,6 @@ impl SystemDatabase {
     }
 
     pub fn create_tables(&self) -> Result<()> {
-
         self.conn.execute(
             "CREATE TABLE IF NOT EXISTS system_config (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,10 +58,10 @@ impl SystemDatabase {
     }
 
     pub fn get_config(&self, key: &str) -> Result<String> {
-        let mut stmt = self.conn.prepare("SELECT value FROM system_config WHERE key = ?")?;
-        let mut rows = stmt.query_map(params![key], |row| {
-            Ok(row.get(0)?)
-        })?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM system_config WHERE key = ?")?;
+        let mut rows = stmt.query_map(params![key], |row| Ok(row.get(0)?))?;
 
         if let Some(row) = rows.next() {
             let value = row?; // Handle potential error
@@ -81,10 +80,8 @@ impl SystemDatabase {
     }
 
     pub fn delete_system_config(&self, key: &str) -> Result<()> {
-        self.conn.execute(
-            "DELETE FROM system_config WHERE key = ?",
-            params![key],
-        )?;
+        self.conn
+            .execute("DELETE FROM system_config WHERE key = ?", params![key])?;
         Ok(())
     }
 
@@ -102,7 +99,7 @@ impl SystemDatabase {
         )?;
         Ok(())
     }
-    
+
     fn update_feature_config(&self, config: &FeatureConfig) -> Result<()> {
         self.conn.execute(
             "UPDATE feature_config SET value = ?1, data_type = ?2, description = ?3
@@ -131,16 +128,18 @@ impl SystemDatabase {
             "SELECT id, feature_code, key, value, data_type, description
              FROM feature_config WHERE feature_code = ?1 AND key = ?2",
         )?;
-        let config = stmt.query_row(params![feature_code, key], |row| {
-            Ok(FeatureConfig {
-                id: Some(row.get(0)?),
-                feature_code: row.get(1)?,
-                key: row.get(2)?,
-                value: row.get(3)?,
-                data_type: row.get(4)?,
-                description: row.get(5)?,
+        let config = stmt
+            .query_row(params![feature_code, key], |row| {
+                Ok(FeatureConfig {
+                    id: Some(row.get(0)?),
+                    feature_code: row.get(1)?,
+                    key: row.get(2)?,
+                    value: row.get(3)?,
+                    data_type: row.get(4)?,
+                    description: row.get(5)?,
+                })
             })
-        }).optional()?;
+            .optional()?;
         Ok(config)
     }
 
@@ -150,17 +149,18 @@ impl SystemDatabase {
             "SELECT id, feature_code, key, value, data_type, description
              FROM feature_config WHERE feature_code = ?1",
         )?;
-        let configs = stmt.query_map(params![feature_code], |row| {
-            Ok(FeatureConfig {
-                id: Some(row.get(0)?),
-                feature_code: row.get(1)?,
-                key: row.get(2)?,
-                value: row.get(3)?,
-                data_type: row.get(4)?,
-                description: row.get(5)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
+        let configs = stmt
+            .query_map(params![feature_code], |row| {
+                Ok(FeatureConfig {
+                    id: Some(row.get(0)?),
+                    feature_code: row.get(1)?,
+                    key: row.get(2)?,
+                    value: row.get(3)?,
+                    data_type: row.get(4)?,
+                    description: row.get(5)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(configs)
     }
 
@@ -170,17 +170,18 @@ impl SystemDatabase {
             "SELECT id, feature_code, key, value, data_type, description
              FROM feature_config",
         )?;
-        let configs = stmt.query_map(params![], |row| {
-            Ok(FeatureConfig {
-                id: Some(row.get(0)?),
-                feature_code: row.get(1)?,
-                key: row.get(2)?,
-                value: row.get(3)?,
-                data_type: row.get(4)?,
-                description: row.get(5)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
+        let configs = stmt
+            .query_map(params![], |row| {
+                Ok(FeatureConfig {
+                    id: Some(row.get(0)?),
+                    feature_code: row.get(1)?,
+                    key: row.get(2)?,
+                    value: row.get(3)?,
+                    data_type: row.get(4)?,
+                    description: row.get(5)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(configs)
     }
 
@@ -201,7 +202,8 @@ impl SystemDatabase {
 - 字数在5-15个字左右，必须是中文，不要包含标点符号
 - 准确概括对话的核心主题，尽量贴近用户的提问
 - 不要透露任何私人信息
-- 用祈使句或陈述句".to_string(),
+- 用祈使句或陈述句"
+                .to_string(),
             data_type: "string".to_string(),
             description: Some("对话总结使用长度".to_string()),
         })?;

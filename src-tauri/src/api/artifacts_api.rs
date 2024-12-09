@@ -55,7 +55,9 @@ pub async fn run_artifacts(
         }
         _ => {
             // Handle other languages here
-            return Err(AppError::RunCodeError("暂不支持该语言的代码执行".to_owned()));
+            return Err(AppError::RunCodeError(
+                "暂不支持该语言的代码执行".to_owned(),
+            ));
         }
     }
     Ok("".to_string())

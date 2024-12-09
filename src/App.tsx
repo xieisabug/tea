@@ -1,4 +1,4 @@
-import { getCurrent } from '@tauri-apps/api/window';
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import './App.css';
 import AskWindow from "./AskWindow.tsx";
 import ConfigWindow from "./ConfigWindow.tsx";
@@ -18,7 +18,7 @@ const windowsMap: Record<string, typeof AskWindow> = {
 }
 
 function App() {
-    let win = getCurrent();
+    let win = getCurrentWebviewWindow();
 
     return <>
         {windowsMap[win.label]()}

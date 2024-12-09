@@ -6,17 +6,18 @@ use llm_db::LLMDatabase;
 use rusqlite::params;
 use semver::Version;
 use system_db::SystemDatabase;
+use tauri::Manager;
 
 pub mod assistant_db;
 pub mod conversation_db;
 pub mod llm_db;
-pub mod system_db;
 pub mod plugin_db;
+pub mod system_db;
 
 const CURRENT_VERSION: &str = "0.0.2";
 
 fn get_db_path(app_handle: &tauri::AppHandle, db_name: &str) -> Result<PathBuf, String> {
-    let app_dir = app_handle.path_resolver().app_data_dir().unwrap();
+    let app_dir = app_handle.path().app_data_dir().unwrap();
     let db_path = app_dir.join("db");
     std::fs::create_dir_all(&db_path).map_err(|e| e.to_string())?;
     Ok(db_path.join(db_name))
@@ -77,7 +78,7 @@ pub fn database_upgrade(
                         match result {
                             Ok(_) => {
                                 println!("special_logic_{} done", version_str);
-                            },
+                            }
                             Err(err) => {
                                 println!("special_logic_{} error: {:?}", version_str, err);
                                 app_handle.exit(-1);
@@ -136,11 +137,17 @@ fn special_logic_0_0_2(
 
     assistant_db
         .conn
-        .execute("UPDATE assistant_model_config SET value_type = 'boolean' WHERE name = 'stream';", [])
+        .execute(
+            "UPDATE assistant_model_config SET value_type = 'boolean' WHERE name = 'stream';",
+            [],
+        )
         .map_err(|e| format!("更新stream类型失败: {}", e.to_string()))?;
     assistant_db
         .conn
-        .execute("UPDATE assistant_model_config SET value_type = 'number' WHERE name = 'max_tokens';", [])
+        .execute(
+            "UPDATE assistant_model_config SET value_type = 'number' WHERE name = 'max_tokens';",
+            [],
+        )
         .map_err(|e| format!("更新max_tokens类型失败: {}", e.to_string()))?;
 
     // 查询所有 model_id

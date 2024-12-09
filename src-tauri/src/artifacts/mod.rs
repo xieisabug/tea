@@ -1,2 +1,2 @@
-pub mod powershell;
 pub mod applescript;
+pub mod powershell;
