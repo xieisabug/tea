@@ -3,5 +3,10 @@
     "label": "dev",
     "command": "cd $ZED_WORKTREE_ROOT && npm run tauri dev",
     "args": []
+  },
+  {
+    "label": "dev-powershell",
+    "command": "cd $ZED_WORKTREE_ROOT; npm run tauri dev",
+    "args": []
   }
 ]

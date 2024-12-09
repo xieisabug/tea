@@ -99,6 +99,7 @@ impl AssistantDatabase {
                 assistant_model_id INTEGER,
                 name TEXT NOT NULL,
                 value TEXT,
+                value_type TEXT default 'float' not null,
                 FOREIGN KEY (assistant_id) REFERENCES assistant(id)
             );",
             [],
