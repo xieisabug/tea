@@ -53,7 +53,6 @@ use std::sync::Arc;
 use tauri::Emitter;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
-    tray::TrayIconBuilder,
     Manager, RunEvent,
 };
 use tokio::sync::Mutex as TokioMutex;
@@ -119,28 +118,6 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
     })
 }
 
-fn get_screenshot() -> Result<String, String> {
-    let screens = Screen::all().unwrap();
-    if let Some(screen) = screens.get(0) {
-        // 捕获整个屏幕
-        let image = screen.capture().unwrap();
-
-        // 将图像转换为PNG格式
-        let mut png_data = Vec::new();
-        let _ = image
-            .write_to(&mut Cursor::new(&mut png_data), ImageOutputFormat::Png)
-            .unwrap();
-
-        // 将PNG数据转换为base64
-        let base64_image = general_purpose::STANDARD.encode(&png_data);
-
-        // 添加适当的data URI前缀
-        Ok(format!("data:image/png;base64,{}", base64_image))
-    } else {
-        Err("未获取到屏幕数据".to_string())
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
@@ -166,11 +143,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 _ => {}
             });
-            tray.set_show_menu_on_left_click(true);
+            let _ = tray.set_show_menu_on_left_click(true);
 
             if !query_accessibility_permissions() {
                 println!("Please grant accessibility permissions to the app");
             } else {
+                // 注册全局快捷键
                 #[cfg(desktop)]
                 {
                     use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
@@ -314,7 +292,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
-    app.run(|app_handle, e| match e {
+    app.run(|_, e| match e {
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
         }
