@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/tauri";
-import { appWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import "./styles/AskWindow.css";
 import ReactMarkdown, { Components } from "react-markdown";
@@ -19,9 +19,10 @@ import AskWindowPrepare from "./components/AskWindowPrepare";
 import AskAIHint from "./components/AskAIHint";
 import IconButton from "./components/IconButton";
 import { throttle } from "lodash";
-import { writeText } from "@tauri-apps/api/clipboard";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import CodeBlock from "./components/CodeBlock";
 import { getCaretCoordinates } from "./utils/caretCoordinates";
+const appWindow = getCurrentWebviewWindow()
 
 interface AiResponse {
     conversation_id: number;
@@ -603,13 +604,13 @@ function AskWindow() {
                                                 textarea.focus();
                                                 textarea.setSelectionRange(
                                                     bangIndex +
-                                                        (cursorIndex === -1
-                                                            ? bang.length + 2
-                                                            : cursorIndex + 1),
+                                                    (cursorIndex === -1
+                                                        ? bang.length + 2
+                                                        : cursorIndex + 1),
                                                     bangIndex +
-                                                        (cursorIndex === -1
-                                                            ? bang.length + 2
-                                                            : cursorIndex + 1),
+                                                    (cursorIndex === -1
+                                                        ? bang.length + 2
+                                                        : cursorIndex + 1),
                                                 );
                                             });
                                         }

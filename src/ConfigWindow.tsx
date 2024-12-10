@@ -7,7 +7,7 @@ import Model from "./assets/model.svg?react";
 import Assistant from "./assets/assistant.svg?react";
 import Program from "./assets/program.svg?react";
 import { appDataDir } from "@tauri-apps/api/path";
-import { convertFileSrc } from "@tauri-apps/api/tauri";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 interface MenuItem {
     id: string;

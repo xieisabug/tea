@@ -7,7 +7,7 @@ import Delete from "../../assets/delete.svg?react";
 import Text from "../../assets/text.svg?react";
 import { AttachmentType, FileInfo } from "../../data/Conversation";
 import IconButton from "../IconButton";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { getCaretCoordinates } from "../../utils/caretCoordinates";
 
 const InputArea: React.FC<{

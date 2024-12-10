@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "package": "tauri build"
   },
   "dependencies": {
     "@babel/standalone": "^7.25.3",
@@ -23,7 +24,12 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.2",
-    "@tauri-apps/api": "^1",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-clipboard-manager": "^2.0.1",
+    "@tauri-apps/plugin-dialog": "^2.0.1",
+    "@tauri-apps/plugin-fs": "^2.0.3",
+    "@tauri-apps/plugin-global-shortcut": "^2.0.0",
+    "@tauri-apps/plugin-shell": "^2.0.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "katex": "^0.16.11",
@@ -47,7 +53,7 @@
   },
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",
-    "@tauri-apps/cli": "^1",
+    "@tauri-apps/cli": "^2.1.0",
     "@types/babel__standalone": "^7.1.7",
     "@types/lodash": "^4.17.6",
     "@types/react": "^18.2.15",

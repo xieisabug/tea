@@ -8,7 +8,7 @@ import { Input } from '../ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { AssistantType } from '../../types/assistant';
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { toast } from 'sonner';
 import { AssistantDetail } from '../../data/Assistant';
 

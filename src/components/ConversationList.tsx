@@ -1,8 +1,7 @@
-import { MouseEventHandler, useCallback, useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/tauri";
+import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import MenuIcon from "../assets/menu.svg?react";
-import IconButton from "./IconButton";
 import FormDialog from "./FormDialog";
 import useConversationManager from "../hooks/useConversationManager";
 import { Conversation } from "../data/Conversation";
@@ -10,8 +9,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
@@ -19,31 +16,6 @@ import { Button } from "./ui/button";
 interface ConversationListProps {
     onSelectConversation: (conversation: string) => void;
     conversationId: string;
-}
-
-interface MenuProps {
-    items: Array<{
-        label: string;
-        onClick: MouseEventHandler<HTMLButtonElement>;
-    }>;
-}
-
-function Menu({ items }: MenuProps) {
-    return (
-        <div className="conversation-menu">
-            {items.map((item) => {
-                return (
-                    <button
-                        key={item.label}
-                        className="conversation-menu-item"
-                        onClick={item.onClick}
-                    >
-                        {item.label}
-                    </button>
-                );
-            })}
-        </div>
-    );
 }
 
 function ConversationList({

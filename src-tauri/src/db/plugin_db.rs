@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use super::get_db_path;
+use crate::errors::AppError;
 use chrono::prelude::*;
 use rusqlite::{Connection, OptionalExtension, Result};
 use serde::{Deserialize, Serialize};
-use crate::errors::AppError;
-use super::get_db_path;
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Plugin {
@@ -150,7 +150,8 @@ impl Repository<Plugin> for PluginRepository {
     }
 
     fn delete(&self, id: i64) -> Result<()> {
-        self.conn.execute("DELETE FROM Plugins WHERE plugin_id = ?", &[&id])?;
+        self.conn
+            .execute("DELETE FROM Plugins WHERE plugin_id = ?", &[&id])?;
         Ok(())
     }
 }
@@ -235,7 +236,8 @@ impl Repository<PluginStatus> for PluginStatusRepository {
     }
 
     fn delete(&self, id: i64) -> Result<()> {
-        self.conn.execute("DELETE FROM PluginStatus WHERE status_id = ?", &[&id])?;
+        self.conn
+            .execute("DELETE FROM PluginStatus WHERE status_id = ?", &[&id])?;
         Ok(())
     }
 }
@@ -249,7 +251,10 @@ impl PluginConfigurationRepository {
         PluginConfigurationRepository { conn }
     }
 
-    pub fn get_configurations_by_plugin_id(&self, plugin_id: i64) -> Result<Vec<PluginConfiguration>> {
+    pub fn get_configurations_by_plugin_id(
+        &self,
+        plugin_id: i64,
+    ) -> Result<Vec<PluginConfiguration>> {
         let mut stmt = self.conn.prepare(
             "SELECT config_id, plugin_id, config_key, config_value
              FROM PluginConfigurations
@@ -272,11 +277,7 @@ impl Repository<PluginConfiguration> for PluginConfigurationRepository {
         self.conn.execute(
             "INSERT INTO PluginConfigurations (plugin_id, config_key, config_value)
              VALUES (?1, ?2, ?3)",
-            (
-                &config.plugin_id,
-                &config.config_key,
-                &config.config_value,
-            ),
+            (&config.plugin_id, &config.config_key, &config.config_value),
         )?;
         let id = self.conn.last_insert_rowid();
         Ok(PluginConfiguration {
@@ -315,7 +316,10 @@ impl Repository<PluginConfiguration> for PluginConfigurationRepository {
     }
 
     fn delete(&self, id: i64) -> Result<()> {
-        self.conn.execute("DELETE FROM PluginConfigurations WHERE config_id = ?", &[&id])?;
+        self.conn.execute(
+            "DELETE FROM PluginConfigurations WHERE config_id = ?",
+            &[&id],
+        )?;
         Ok(())
     }
 }
@@ -329,7 +333,11 @@ impl PluginDataRepository {
         PluginDataRepository { conn }
     }
 
-    pub fn get_data_by_plugin_and_session(&self, plugin_id: i64, session_id: &str) -> Result<Vec<PluginData>> {
+    pub fn get_data_by_plugin_and_session(
+        &self,
+        plugin_id: i64,
+        session_id: &str,
+    ) -> Result<Vec<PluginData>> {
         let mut stmt = self.conn.prepare(
             "SELECT data_id, plugin_id, session_id, data_key, data_value, created_at, updated_at
              FROM PluginData
@@ -407,7 +415,8 @@ impl Repository<PluginData> for PluginDataRepository {
     }
 
     fn delete(&self, id: i64) -> Result<()> {
-        self.conn.execute("DELETE FROM PluginData WHERE data_id = ?", &[&id])?;
+        self.conn
+            .execute("DELETE FROM PluginData WHERE data_id = ?", &[&id])?;
         Ok(())
     }
 }

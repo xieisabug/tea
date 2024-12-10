@@ -1,13 +1,19 @@
 use super::ModelProvider;
-use crate::{api::llm_api::LlmModel, db::{conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig}};
+use crate::{
+    api::llm_api::LlmModel,
+    db::{
+        conversation_db::{AttachmentType, MessageAttachment},
+        llm_db::LLMProviderConfig,
+    },
+};
+use anyhow::{anyhow, Result};
 use futures::StreamExt;
 use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{json, Value};
-use tokio_util::sync::CancellationToken;
 use std::collections::HashMap;
-use anyhow::{Result, anyhow};
+use tokio_util::sync::CancellationToken;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ModelsResponse {
@@ -144,10 +150,7 @@ impl ModelProvider for AnthropicProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/v1/messages",
-                endpoint
-            );
+            let url = format!("{}/v1/messages", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
 
             let json_messages = messages
@@ -155,23 +158,23 @@ impl ModelProvider for AnthropicProvider {
                 .filter(|(message_type, _, _)| message_type != "system")
                 .map(|(message_type, content, attachment_list)| {
                     if attachment_list.len() > 0 {
-                        let content_array = vec![
-                            json!({
-                                "type": "text",
-                                "text": content
-                            })
-                        ];
-                        
+                        let content_array = vec![json!({
+                            "type": "text",
+                            "text": content
+                        })];
+
                         let mut images = attachment_list
                             .iter()
                             .filter(|a| a.attachment_type == AttachmentType::Image)
                             .map(|a| {
                                 let attachment_content = a.attachment_content.clone().unwrap();
-                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let re =
+                                    Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)")
+                                        .unwrap();
                                 let caps = re.captures(&attachment_content).unwrap();
                                 let media_type = caps.name("media_type").unwrap().as_str();
                                 let data = caps.name("data").unwrap().as_str();
-                        
+
                                 json!({
                                     "type": "image",
                                     "source": {
@@ -281,10 +284,7 @@ impl ModelProvider for AnthropicProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/v1/messages",
-                endpoint
-            );
+            let url = format!("{}/v1/messages", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
 
             let json_messages = messages
@@ -292,23 +292,23 @@ impl ModelProvider for AnthropicProvider {
                 .filter(|(message_type, _, _)| message_type != "system")
                 .map(|(message_type, content, attachment_list)| {
                     if attachment_list.len() > 0 {
-                        let content_array = vec![
-                            json!({
-                                "type": "text",
-                                "text": content
-                            })
-                        ];
-                        
+                        let content_array = vec![json!({
+                            "type": "text",
+                            "text": content
+                        })];
+
                         let mut images = attachment_list
                             .iter()
                             .filter(|a| a.attachment_type == AttachmentType::Image)
                             .map(|a| {
                                 let attachment_content = a.attachment_content.clone().unwrap();
-                                let re = Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)").unwrap();
+                                let re =
+                                    Regex::new(r"data:(?P<media_type>[^;]+);base64,(?P<data>.+)")
+                                        .unwrap();
                                 let caps = re.captures(&attachment_content).unwrap();
                                 let media_type = caps.name("media_type").unwrap().as_str();
                                 let data = caps.name("data").unwrap().as_str();
-                        
+
                                 json!({
                                     "type": "image",
                                     "source": {

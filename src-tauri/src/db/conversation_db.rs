@@ -503,30 +503,31 @@ impl ConversationDatabase {
         )?;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS message (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                parent_id INTEGER,
-                conversation_id INTEGER NOT NULL,
-                message_type TEXT NOT NULL,
-                content TEXT NOT NULL,
-                llm_model_id INTEGER,
-                llm_model_name TEXT,
-                created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-                start_time DATETIME,
-                end_time DATETIME,
-                token_count INTEGER
+                id              INTEGER
+                primary key autoincrement,
+                conversation_id INTEGER not null,
+                message_type    TEXT    not null,
+                content         TEXT    not null,
+                llm_model_id    INTEGER,
+                created_time    DATETIME default CURRENT_TIMESTAMP,
+                token_count     INTEGER,
+                parent_id       integer,
+                start_time      DATETIME,
+                finish_time     DATETIME,
+                llm_model_name  TEXT
             )",
             [],
         )?;
         conn.execute(
             "CREATE TABLE IF NOT EXISTS message_attachment (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                message_id INTEGER,
-                attachment_type INTEGER NOT NULL,
-                attachment_url TEXT,
+                id                 INTEGER
+                primary key autoincrement,
+                message_id         INTEGER,
+                attachment_type    INTEGER           not null,
+                attachment_url     TEXT,
                 attachment_content TEXT,
-                attachment_hash TEXT,
-                use_vector BOOLEAN NOT NULL DEFAULT 0,
-                token_count INTEGER
+                use_vector         BOOLEAN default 0 not null,
+                token_count        INTEGER
             )",
             [],
         )?;

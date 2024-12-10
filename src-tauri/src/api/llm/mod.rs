@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use anyhow::Result;
+use std::sync::Arc;
 
 use anthropic::AnthropicProvider;
 use cohere::CohereProvider;
@@ -11,15 +11,17 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::db::{
-    assistant_db::AssistantModelConfig, conversation_db::MessageAttachment, llm_db::{LLMProvider, LLMProviderConfig}
+    assistant_db::AssistantModelConfig,
+    conversation_db::MessageAttachment,
+    llm_db::{LLMProvider, LLMProviderConfig},
 };
 
 use super::llm_api::LlmModel;
 
 mod anthropic;
+mod cohere;
 mod ollama;
 mod openai;
-mod cohere;
 
 pub trait ModelProvider: Send + Sync {
     fn new(llm_provider_config: Vec<LLMProviderConfig>) -> Self

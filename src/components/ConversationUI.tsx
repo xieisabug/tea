@@ -1,6 +1,6 @@
-import { invoke } from "@tauri-apps/api/tauri";
-import { open } from "@tauri-apps/api/dialog";
-import { readBinaryFile } from "@tauri-apps/api/fs";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
 import React, {
     useCallback,
     useEffect,
@@ -621,7 +621,7 @@ function ConversationUI({
                     path.split("\\").pop() || path.split("/").pop() || "";
 
                 // 读取文件内容
-                const contents = await readBinaryFile(path);
+                const contents = await readFile(path);
 
                 // 如果是图片, 创建缩略图
                 let thumbnail,

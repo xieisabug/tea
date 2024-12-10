@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 
-use thiserror::Error;
 use serde::Serialize;
+use thiserror::Error;
 
 #[derive(Error, Debug, Serialize)]
 pub enum AppError {

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::{bail, Result};
 use reqwest::{
     header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION},
     Client,
@@ -7,9 +8,14 @@ use reqwest::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio_util::sync::CancellationToken;
-use anyhow::{Result, bail};
 
-use crate::{api::llm_api::LlmModel, db::{conversation_db::{AttachmentType, MessageAttachment}, llm_db::LLMProviderConfig}};
+use crate::{
+    api::llm_api::LlmModel,
+    db::{
+        conversation_db::{AttachmentType, MessageAttachment},
+        llm_db::LLMProviderConfig,
+    },
+};
 
 use super::ModelProvider;
 use futures::StreamExt;
@@ -64,31 +70,28 @@ impl ModelProvider for OpenAIProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/chat/completions",
-                endpoint
-            );
+            let url = format!("{}/chat/completions", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
 
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content, attachment_list)| {
                     if attachment_list.len() > 0 {
-                        let mut content_array = vec![
-                            json!({
-                                "type": "text",
-                                "text": content
-                            })
-                        ];
+                        let mut content_array = vec![json!({
+                            "type": "text",
+                            "text": content
+                        })];
                         let images = attachment_list
                             .iter()
                             .filter(|a| a.attachment_type == AttachmentType::Image)
-                            .map(|a| json!({
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": a.attachment_content.clone().unwrap()
-                                }
-                            }))
+                            .map(|a| {
+                                json!({
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": a.attachment_content.clone().unwrap()
+                                    }
+                                })
+                            })
                             .collect::<Vec<Value>>();
                         content_array.extend(images);
 
@@ -184,31 +187,28 @@ impl ModelProvider for OpenAIProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/chat/completions",
-                endpoint
-            );
+            let url = format!("{}/chat/completions", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
 
             let json_messages = messages
                 .iter()
                 .map(|(message_type, content, attachment_list)| {
                     if attachment_list.len() > 0 {
-                        let mut content_array = vec![
-                            json!({
-                                "type": "text",
-                                "text": content
-                            })
-                        ];
+                        let mut content_array = vec![json!({
+                            "type": "text",
+                            "text": content
+                        })];
                         let images = attachment_list
                             .iter()
                             .filter(|a| a.attachment_type == AttachmentType::Image)
-                            .map(|a| json!({
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": a.attachment_content.clone().unwrap()
-                                }
-                            }))
+                            .map(|a| {
+                                json!({
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": a.attachment_content.clone().unwrap()
+                                    }
+                                })
+                            })
                             .collect::<Vec<Value>>();
                         content_array.extend(images);
 
@@ -342,10 +342,7 @@ impl ModelProvider for OpenAIProvider {
                 .get("endpoint")
                 .unwrap_or(default_endpoint)
                 .trim_end_matches('/');
-            let url = format!(
-                "{}/models",
-                endpoint
-            );
+            let url = format!("{}/models", endpoint);
             let api_key = config_map.get("api_key").unwrap().clone();
             println!("OpenAI models endpoint : {}", url);
 

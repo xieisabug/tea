@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/tauri';
-import { confirm } from '@tauri-apps/api/dialog';
+import { invoke } from '@tauri-apps/api/core';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import { Conversation } from '../data/Conversation';
 
 interface DeleteConversationOptions {
@@ -23,7 +23,7 @@ function useConversationManager() {
     } = options;
 
     try {
-      const confirmed = await confirm(confirmMessage, { title: confirmTitle, type: 'warning' });
+      const confirmed = await confirm(confirmMessage, { title: confirmTitle, kind: 'warning' });
       if (!confirmed) return;
 
       await invoke("delete_conversation", { conversationId: +id });

@@ -12,10 +12,6 @@ mod state;
 mod template_engine;
 mod window;
 
-use std::collections::HashMap;
-use std::io::Cursor;
-use std::sync::Arc;
-
 use crate::api::ai_api::{ask_ai, cancel_ai, regenerate_ai};
 use crate::api::artifacts_api::run_artifacts;
 use crate::api::assistant_api::{
@@ -41,19 +37,20 @@ use crate::db::system_db::SystemDatabase;
 use crate::window::{
     create_ask_window, open_chat_ui_window, open_config_window, open_plugin_window,
 };
-use base64::{engine::general_purpose, Engine as _};
 use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::plugin_db::PluginDatabase;
 use db::system_db::FeatureConfig;
 use get_selected_text::get_selected_text;
-use screenshots::{image::ImageOutputFormat, Screen}; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
 use serde::{Deserialize, Serialize};
 use state::message_token::MessageTokenManager;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tauri::Emitter;
 use tauri::{
-    CustomMenuItem, GlobalShortcutManager, Manager, RunEvent, SystemTray, SystemTrayEvent,
-    SystemTrayMenu,
+    menu::{MenuBuilder, MenuItemBuilder},
+    Manager, RunEvent,
 };
 use tokio::sync::Mutex as TokioMutex;
 
@@ -118,44 +115,23 @@ async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String>
     })
 }
 
-fn get_screenshot() -> Result<String, String> {
-    let screens = Screen::all().unwrap();
-    if let Some(screen) = screens.get(0) {
-        // 捕获整个屏幕
-        let image = screen.capture().unwrap();
-
-        // 将图像转换为PNG格式
-        let mut png_data = Vec::new();
-        let _ = image
-            .write_to(&mut Cursor::new(&mut png_data), ImageOutputFormat::Png)
-            .unwrap();
-
-        // 将PNG数据转换为base64
-        let base64_image = general_purpose::STANDARD.encode(&png_data);
-
-        // 添加适当的data URI前缀
-        Ok(format!("data:image/png;base64,{}", base64_image))
-    } else {
-        Err("未获取到屏幕数据".to_string())
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let quit = CustomMenuItem::new("quit".to_string(), "Quit");
-    let show = CustomMenuItem::new("show".to_string(), "Show");
-    let tray_menu = SystemTrayMenu::new().add_item(show).add_item(quit);
-    let system_tray = SystemTray::new().with_menu(tray_menu);
-
     let app = tauri::Builder::default()
-        .system_tray(system_tray)
-        .on_system_tray_event(|app, event| match event {
-            SystemTrayEvent::LeftClick { .. } => {
-                if let Some(window) = app.get_window("main") {
-                    window.show().unwrap();
-                    window.set_focus().unwrap();
-                }
-            }
-            SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            let app_handle = app.handle();
+
+            // 系统托盘菜单和图标初始化
+            let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
+            let show = MenuItemBuilder::with_id("show", "显示").build(app)?;
+            let tray_menu = MenuBuilder::new(app).items(&[&show, &quit]).build()?;
+
+            let tray = app.tray_by_id("aipp").unwrap();
+            tray.set_menu(Some(tray_menu))?;
+            tray.on_menu_event(move |app, event| match event.id().as_ref() {
                 "quit" => {
                     app.exit(0);
                 }
@@ -163,11 +139,79 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     handle_open_ask_window(&app);
                 }
                 _ => {}
-            },
-            _ => {}
-        })
-        .setup(|app| {
-            let app_handle = app.handle();
+            });
+            let _ = tray.set_show_menu_on_left_click(true);
+
+            if !query_accessibility_permissions() {
+                println!("Please grant accessibility permissions to the app");
+            } else {
+                // 注册全局快捷键
+                #[cfg(desktop)]
+                {
+                    use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
+                    let ctrl_shift_i_shortcut =
+                        Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyI);
+                    let ctrl_shift_o_shortcut =
+                        Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyO);
+
+                    app.handle().plugin(
+                        tauri_plugin_global_shortcut::Builder::new()
+                            .with_shortcuts([ctrl_shift_i_shortcut, ctrl_shift_o_shortcut])?
+                            .with_handler(move |_app, shortcut, event| {
+                                println!("{:?}", shortcut);
+                                if shortcut == &ctrl_shift_i_shortcut {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
+                                            println!("CmdOrCtrl+Shift+I Pressed!");
+                                        }
+                                        ShortcutState::Released => {
+                                            println!(
+                                                "CmdOrCtrl+Shift+I pressed at time : {}",
+                                                &Local::now().to_string()
+                                            );
+                                            match get_selected_text() {
+                                                Ok(selected_text) => {
+                                                    println!(
+                                                        "Selected text: {}, at time: {}",
+                                                        selected_text.clone(),
+                                                        &Local::now().to_string()
+                                                    );
+                                                    let _ = _app.emit(
+                                                        "get_selected_text_event",
+                                                        selected_text.clone(),
+                                                    );
+                                                    let app_state = _app.try_state::<AppState>();
+                                                    *app_state
+                                                        .unwrap()
+                                                        .selected_text
+                                                        .blocking_lock() = selected_text;
+                                                }
+                                                Err(e) => {
+                                                    println!("Error getting selected text: {}", e);
+                                                }
+                                            }
+                                            handle_open_ask_window(_app);
+                                        }
+                                    }
+                                } else if shortcut == &ctrl_shift_o_shortcut {
+                                    match event.state() {
+                                        ShortcutState::Pressed => {
+                                            println!("CmdOrCtrl+Shift+O Pressed!");
+                                        }
+                                        ShortcutState::Released => {
+                                            println!(
+                                                "CmdOrCtrl+Shift+O pressed at time : {}",
+                                                &Local::now().to_string()
+                                            );
+                                            handle_open_ask_window(_app);
+                                        }
+                                    }
+                                }
+                            })
+                            .build(),
+                    )?;
+                }
+            }
 
             let system_db = SystemDatabase::new(&app_handle)?;
             let llm_db = LLMDatabase::new(&app_handle)?;
@@ -191,12 +235,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app.manage(initialize_state(&app_handle));
             app.manage(initialize_name_cache_state(&app_handle));
 
-            if app.get_window("main").is_none() {
+            if app.get_webview_window("main").is_none() {
                 create_ask_window(&app_handle)
-            }
-
-            if !query_accessibility_permissions() {
-                println!("Please grant accessibility permissions to the app")
             }
 
             Ok(())
@@ -249,59 +289,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build(tauri::generate_context!())
         .expect("error while running tauri application");
 
-    app.run(|app_handle, e| match e {
-        RunEvent::Ready => {
-            let app_handle_clone = app_handle.clone();
-            // Register global shortcut
-            // 快捷键的逻辑要理一下：
-            // 什么都没有的时候，快捷打开ask窗口
-            // ask窗口打开的时候，快捷打开chat_ui窗口（这一步现在是在js里做的）
-            // chat_ui窗口打开的时候，不会再打开任何窗口了
-            app_handle_clone
-                .global_shortcut_manager()
-                .register("CmdOrCtrl+Shift+I", move || {
-                    println!(
-                        "CmdOrCtrl+Shift+I pressed at time : {}",
-                        &Local::now().to_string()
-                    );
-
-                    match get_selected_text() {
-                        Ok(selected_text) => {
-                            println!(
-                                "Selected text: {}, at time: {}",
-                                selected_text.clone(),
-                                &Local::now().to_string()
-                            );
-
-                            app_handle_clone
-                                .emit_all("get_selected_text_event", selected_text.clone())
-                                .unwrap();
-
-                            let app_state = app_handle_clone.state::<AppState>();
-                            *app_state.selected_text.blocking_lock() = selected_text;
-                        }
-                        Err(e) => {
-                            println!("Error getting selected text: {}", e);
-                        }
-                    }
-
-                    handle_open_ask_window(&app_handle_clone);
-                })
-                .expect("Failed to register global shortcut");
-
-            let app_handle_clone = app_handle.clone();
-            app_handle_clone
-                .global_shortcut_manager()
-                .register("CmdOrCtrl+Shift+O", move || {
-                    println!(
-                        "CmdOrCtrl+Shift+O pressed at time : {}",
-                        &Local::now().to_string()
-                    );
-
-                    handle_open_ask_window(&app_handle_clone);
-                })
-                .expect("Failed to register global shortcut");
-        }
+    app.run(|_, e| match e {
         RunEvent::ExitRequested { api, .. } => {
             api.prevent_exit();
         }
@@ -312,8 +300,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn handle_open_ask_window(app_handle: &tauri::AppHandle) {
-    let ask_window = app_handle.get_window("ask");
-    let chat_ui_window = app_handle.get_window("chat_ui");
+    let ask_window = app_handle.get_webview_window("ask");
+    let chat_ui_window = app_handle.get_webview_window("chat_ui");
 
     match (ask_window, chat_ui_window) {
         (None, _) => {

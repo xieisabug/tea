@@ -1,7 +1,7 @@
 import IconButton from "./IconButton";
 import Setting from "../assets/setting.svg?react";
 import Experiment from "../assets/experiment.svg?react";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 
 function ChatUIInfomation() {
     const openConfig = async () => {
