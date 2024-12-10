@@ -37,18 +37,15 @@ use crate::db::system_db::SystemDatabase;
 use crate::window::{
     create_ask_window, open_chat_ui_window, open_config_window, open_plugin_window,
 };
-use base64::{engine::general_purpose, Engine as _};
 use chrono::Local;
 use db::conversation_db::ConversationDatabase;
 use db::database_upgrade;
 use db::plugin_db::PluginDatabase;
 use db::system_db::FeatureConfig;
 use get_selected_text::get_selected_text;
-use screenshots::{image::ImageOutputFormat, Screen}; // 需要在 Cargo.toml 中添加 `screenshots` 依赖
 use serde::{Deserialize, Serialize};
 use state::message_token::MessageTokenManager;
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::sync::Arc;
 use tauri::Emitter;
 use tauri::{
