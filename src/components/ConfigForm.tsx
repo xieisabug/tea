@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useForm } from "react-hook-form"
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { Controller, SubmitHandler, UseFormReturn } from "react-hook-form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import IconButton from "./IconButton";
 import Copy from "../assets/copy.svg?react";
@@ -7,13 +7,12 @@ import Delete from "../assets/delete.svg?react";
 import Edit from "../assets/edit.svg?react";
 import "../styles/ConfigForm.css";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Form, FormControl, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Button } from "./ui/button";
-import { Form } from "./ui/form";
 import { Textarea } from "./ui/textarea";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
-import { Label } from "./ui/label";
 
 interface ConfigField {
 	type:
@@ -29,11 +28,11 @@ interface ConfigField {
 	label: string;
 	className?: string;
 	options?: { value: string; label: string; tooltip?: string }[];
-	value: string | boolean;
+	value?: string | boolean;
 	tooltip?: string;
 	onChange?: (value: string | boolean) => void;
 	onBlur?: (value: string | boolean) => void;
-	customRender?: () => React.ReactNode;
+	customRender?: (fieldRenderData: any) => React.ReactNode;
 	onClick?: () => void; // 为按钮添加 onClick 处理函数
 }
 
@@ -46,13 +45,14 @@ interface ConfigFormProps {
 	enableExpand?: boolean;
 	// 是否默认展开
 	defaultExpanded?: boolean;
+	useFormReturn: UseFormReturn<any, any, undefined>;
 	/**
 	 * default 直接从上向下展示所有的配置项
 	 * prompt 会单独将prompt配置项放在右侧
 	 * provider 会单独将modelList配置项放在右侧
 	 */
 	layout?: "default" | "prompt" | "provider";
-	onSave?: () => void;
+	onSave?: SubmitHandler<any>;
 	onCopy?: () => void;
 	onDelete?: () => void;
 	onEdit?: () => void;
@@ -67,12 +67,34 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 	enableExpand = false,
 	defaultExpanded = true,
 	layout = "default",
+	useFormReturn,
 	onSave,
 	onCopy,
 	onDelete,
 	onEdit,
 	extraButtons,
 }) => {
+	// console.log("ConfigForm render");
+
+	// // 在组件顶部添加 props 变化追踪
+	// useEffect(() => {
+	// 	console.log("ConfigForm props changed", {
+	// 		title,
+	// 		description,
+	// 		config,
+	// 		classNames,
+	// 		enableExpand,
+	// 		defaultExpanded,
+	// 		layout,
+	// 		useFormReturn,
+	// 		onSave,
+	// 		onCopy,
+	// 		onDelete,
+	// 		onEdit,
+	// 		extraButtons,
+	// 	});
+	// }, [config, useFormReturn, onSave, onCopy, onDelete, onEdit, extraButtons]);
+
 	const [isExpanded, setIsExpanded] = useState<boolean>(defaultExpanded);
 	const contentRef = useRef<HTMLDivElement>(null);
 
@@ -117,94 +139,111 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 		}
 	}, []);
 
-	const renderFormField = (_: string, field: ConfigField) => {
-		switch (field.type) {
-			case "select":
-				return (
-					<Select
-						value={field.value as string}
-						onValueChange={(value: string) =>
-							field.onChange && field.onChange(value)
-						}
-					>
-						<SelectTrigger>
-							<SelectValue placeholder={field.label} />
-						</SelectTrigger>
-						<SelectContent>
+	const CustomFormField = React.memo(({ field, name }: { field: ConfigField, name: string }) => {
+		const renderField = (fieldRenderData: any) => {
+			switch (field.type) {
+				case "select":
+					return (
+						<Select
+							value={fieldRenderData.value}
+							onValueChange={fieldRenderData.onChange}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder={field.label} />
+							</SelectTrigger>
+							<SelectContent>
+								{field.options?.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					);
+				case "textarea":
+					return (
+						<Textarea
+							className={field.className}
+							{...fieldRenderData}
+						/>
+					);
+				case "input":
+				case "password":
+					return (
+						<Input
+							className={field.className}
+							type={field.type === "password" ? "password" : "text"}
+							{...fieldRenderData}
+						/>
+					);
+				case "checkbox":
+					return (
+						<Checkbox
+							className={field.className}
+							{...fieldRenderData}
+						/>
+					);
+				case "radio":
+					return (
+						<RadioGroup
+							className={field.className}
+							value={fieldRenderData.value}
+							defaultValue={fieldRenderData.value}
+							onValueChange={fieldRenderData.onChange}
+						>
 							{field.options?.map((option) => (
-								<SelectItem key={option.value} value={option.value}>
-									{option.label}
-								</SelectItem>
+								<FormItem className="flex items-center space-x-2">
+									<FormControl>
+										<RadioGroupItem value={option.value} id={option.value} />
+									</FormControl>
+									<FormLabel className="font-normal" htmlFor={option.value}>{option.label}</FormLabel>
+									{option.tooltip && (
+										<span className="tooltip-trigger" title={field.tooltip}>
+											?
+										</span>
+									)}
+								</FormItem>
 							))}
-						</SelectContent>
-					</Select>
-				);
-			case "textarea":
-				return (
-					<Textarea
-						className={field.className}
-						value={field.value as string}
-						onChange={(e) => field.onChange && field.onChange(e.target.value)}
-					/>
-				);
-			case "input":
-			case "password":
-				return (
-					<Input
-						className={field.className}
-						type={field.type}
-						value={field.value as string}
-						onChange={(e) => field.onChange && field.onChange(e.target.value)}
-						onBlur={(e) => field.onBlur && field.onBlur(e.target.value)}
-					/>
-				);
-			case "checkbox":
-				return (
-					<Checkbox
-						className={field.className}
-						checked={field.value as boolean}
-						onCheckedChange={(checked) => field.onChange && field.onChange(checked)}
-					/>
-				);
-			case "radio":
-				return (
-					<RadioGroup
-						className={field.className}
-						value={field.value as string}
-						onValueChange={(value: string) =>
-							field.onChange && field.onChange(value)
-						}
-					>
-						{field.options?.map((option) => (
-							<div key={option.value} className="flex items-center space-x-2">
-								<RadioGroupItem value={option.value} id={option.value} />
-								<Label htmlFor={option.value}>{option.label}</Label>
-								{option.tooltip && (
-									<span className="tooltip-trigger" title={field.tooltip}>
-										?
-									</span>
-								)}
-							</div>
-						))}
-					</RadioGroup>
-				);
-			case "static":
-				return <span className={field.className}>{field.value}</span>;
-			case "custom":
-				return field.customRender ? field.customRender() : null;
-			case "button":
-				return (
-					<Button className={field.className} onClick={() => {
-						field.onClick && field.onClick();
-					}}>{field.value as string}</Button>
-				);
-			default:
-				return null;
-		}
-	};
+						</RadioGroup>
+					);
+				case "static":
+					return <div className={field.className}>{field.value}</div>;
+				case "custom":
+					console.log("create custom")
+					const customElement = useMemo(() => {
+						return field.customRender ? field.customRender(fieldRenderData) : null;
+					}, [field.customRender, fieldRenderData]);
+					return customElement;
+				case "button":
+					return (
+						<Button type="button" className={field.className} onClick={() => {
+							console.log("ConfigForm button clicked", field.value);
+							field.onClick && field.onClick();
+						}}>{field.value as string}</Button>
+					);
+				default:
+					return null;
+			}
+		};
+
+		return (
+			<Controller
+				control={useFormReturn.control}
+				name={name}
+				render={({ field: fieldRenderData }: { field: any }) => (
+					<FormItem className="form-group">
+						<FormLabel>{field.label}</FormLabel>
+						<FormControl>
+							{renderField(fieldRenderData)}
+						</FormControl>
+						<FormMessage />
+					</FormItem>
+				)}
+			/>
+		);
+	});
 
 	const renderContent = () => {
-		console.log("config form ", config);
 		switch (layout) {
 			case "prompt":
 				return (
@@ -213,16 +252,12 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 							{Object.entries(config)
 								.filter((k) => k[0] !== "prompt")
 								.map(([key, field]) => (
-									<div className="form-group" key={key}>
-										<Label>{field.label}</Label>
-										{renderFormField(key, field)}
-									</div>
+									<CustomFormField name={key} field={field} key={key} />
 								))}
 						</div>
 						{config.prompt && (
 							<div className="assistant-config-prompts">
-								<Label htmlFor="prompt">{config.prompt.label}</Label>
-								{renderFormField("prompt", config.prompt)}
+								<CustomFormField name="prompt" field={config.prompt} />
 							</div>
 						)}
 					</div>
@@ -232,15 +267,12 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 					<div className="provider-config-item-form">
 						<div className="provider-config-item-form-property-container">
 							{Object.entries(config).map(([key, field]) => (
-								<div className="form-group" key={key}>
-									<Label>{field.label}</Label>
-									{renderFormField(key, field)}
-								</div>
+								<CustomFormField name={key} field={field} key={key} />
 							))}
 						</div>
 						{config.modelList && (
 							<div className="provider-config-item-form-model-list-container">
-								{renderFormField("modelList", config.modelList)}
+								<CustomFormField name="model_list" field={config.modelList} />
 							</div>
 						)}
 					</div>
@@ -249,17 +281,12 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 				return (
 					<div>
 						{Object.entries(config).map(([key, field]) => (
-							<div className="form-group" key={key}>
-								<Label>{field.label}</Label>
-								{renderFormField(key, field)}
-							</div>
+							<CustomFormField name={key} field={field} key={key} />
 						))}
 					</div>
 				);
 		}
 	};
-
-	const form = useForm();
 
 	return (
 		<Card className={classNames ? classNames + " config-window-container" : "config-window-container"}>
@@ -277,11 +304,11 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 			</CardHeader>
 
 			<CardContent ref={contentRef} className={`config-window-content ${isExpanded ? "expanded" : ""}`}>
-				<Form {...form}>
+				<Form {...useFormReturn}>
 					{renderContent()}
 					{onSave && (
 						<div>
-							<Button type="submit" onClick={onSave}>保存</Button>
+							<Button onClick={onSave}>保存</Button>
 						</div>
 					)}
 				</Form>
@@ -290,4 +317,4 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 	);
 };
 
-export default ConfigForm;
+export default React.memo(ConfigForm);

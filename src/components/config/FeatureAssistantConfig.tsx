@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "../../styles/FeatureAssistantConfig.css";
 import ConfigForm from "../ConfigForm";
 import { toast } from 'sonner';
+import { useForm } from "react-hook-form";
 
 interface ModelForSelect {
     name: string;
@@ -50,36 +51,82 @@ const FeatureAssistantConfig: React.FC = () => {
                 }
                 console.log("init featureConfig", featureConfig);
                 setFeatureConfig(new Map(featureConfig));
+
+                summaryFormReturnData.reset({
+                    model: `${featureConfig.get("conversation_summary")?.get("provider_id")}%%${featureConfig.get("conversation_summary")?.get("model_code")}`,
+                    summary_length: featureConfig.get("conversation_summary")?.get("summary_length") + "",
+                    prompt: featureConfig.get("conversation_summary")?.get("prompt") || "",
+                });
+
+                previewFormReturnData.reset({
+                    preview_type: featureConfig.get("preview")?.get("preview_type") || "service",
+                    nextjs_port: featureConfig.get("preview")?.get("nextjs_port") || "3001",
+                    nuxtjs_port: featureConfig.get("preview")?.get("nuxtjs_port") || "3002",
+                    auth_token: featureConfig.get("preview")?.get("auth_token") || "",
+                });
             },
         ).catch((e) => {
             toast.error('获取配置失败: ' + e);
         });
     }, []);
 
-    const handleConfigChange = (
-        feature_code: string,
-        key: string,
-        value: string | number | boolean,
-    ) => {
-        let newFeatureConfig = new Map(featureConfig);
-        if (!newFeatureConfig.has(feature_code)) {
-            newFeatureConfig.set(feature_code, new Map());
-        }
-        newFeatureConfig.get(feature_code)?.set(key, value.toString());
-        setFeatureConfig(newFeatureConfig);
-    };
+    const summaryFormReturnData = useForm({
+        defaultValues: {
+            model: `${featureConfig.get("conversation_summary")?.get("provider_id")}%%${featureConfig.get("conversation_summary")?.get("model_code")}`,
+            summary_length: featureConfig.get("conversation_summary")?.get("summary_length") + "",
+            prompt: featureConfig.get("conversation_summary")?.get("prompt") || "",
+        },
+    });
 
-    const handleSave = (feature_code: string) => {
-        console.log("save", feature_code, featureConfig.get(feature_code));
+    const handleSaveSummary = useCallback(() => {
+        if (!featureConfig.get("conversation_summary")?.has("provider_id")) {
+            toast.error("请选择一个模型");
+            return;
+        }
+        if (!featureConfig.get("conversation_summary")?.has("model_code")) {
+            toast.error("请选择一个模型");
+            return;
+        }
+        const summaryFormValues = summaryFormReturnData.getValues();
+        const [provider_id, model_code] = (summaryFormValues.model as string).split("%%");
+
         invoke("save_feature_config", {
-            featureCode: feature_code,
-            config: featureConfig.get(feature_code),
+            featureCode: "conversation_summary",
+            config: {
+                provider_id,
+                model_code,
+                summary_length: summaryFormValues.summary_length,
+                prompt: summaryFormValues.prompt,
+            }
         }).then(() => {
             toast.success('保存成功');
         });
-    };
+    }, [featureConfig, summaryFormReturnData]);
 
-    const summaryFormConfig = {
+    const previewFormReturnData = useForm({
+        defaultValues: {
+            preview_type: featureConfig.get("preview")?.get("preview_type") || "service",
+            nextjs_port: featureConfig.get("preview")?.get("nextjs_port") || "3001",
+            nuxtjs_port: featureConfig.get("preview")?.get("nuxtjs_port") || "3002",
+            auth_token: featureConfig.get("preview")?.get("auth_token") || "",
+        },
+    });
+
+    const handleSavePreview = useCallback(() => {
+        if (!featureConfig.get("preview")?.has("preview_type")) {
+            toast.error("请选择一个部署方式");
+            return;
+        }
+
+        invoke("save_feature_config", {
+            featureCode: "preview",
+            config: previewFormReturnData.getValues()
+        }).then(() => {
+            toast.success('保存成功');
+        });
+    }, [featureConfig, previewFormReturnData]);
+
+    const summaryFormConfig = useMemo(() => ({
         model: {
             type: "select" as const,
             label: "Model",
@@ -87,20 +134,6 @@ const FeatureAssistantConfig: React.FC = () => {
                 value: `${m.llm_provider_id}%%${m.code}`,
                 label: m.name,
             })),
-            value: `${featureConfig.get("conversation_summary")?.get("provider_id")}%%${featureConfig.get("conversation_summary")?.get("model_code")}`,
-            onChange: (value: string | boolean) => {
-                const [provider_id, model_code] = (value as string).split("%%");
-                handleConfigChange(
-                    "conversation_summary",
-                    "provider_id",
-                    provider_id,
-                );
-                handleConfigChange(
-                    "conversation_summary",
-                    "model_code",
-                    model_code,
-                );
-            },
         },
         summary_length: {
             type: "select" as const,
@@ -109,86 +142,65 @@ const FeatureAssistantConfig: React.FC = () => {
                 value: m.toString(),
                 label: m === -1 ? "所有" : m.toString(),
             })),
-            value:
-                featureConfig
-                    .get("conversation_summary")
-                    ?.get("summary_length") + "",
-            onChange: (value: string | boolean) =>
-                handleConfigChange(
-                    "conversation_summary",
-                    "summary_length",
-                    value,
-                ),
         },
         prompt: {
             type: "textarea" as const,
             label: "Prompt",
-            value:
-                featureConfig.get("conversation_summary")?.get("prompt") || "",
-            onChange: (value: string | boolean) =>
-                handleConfigChange("conversation_summary", "prompt", value),
         },
-    };
+    }), [models]);
 
-    const previewFormConfig = {
-        previewMode: {
-            type: "radio" as const,
-            label: "部署方式",
-            options: [
-                { value: "local", label: "本地" },
-                { value: "remote", label: "远程" },
-                { value: "service", label: "使用服务" },
-            ],
-            value:
-                featureConfig.get("preview")?.get("preview_type") || "service",
-            onChange: (value: string | boolean) =>
-                handleConfigChange("preview", "preview_type", value),
-        },
-        nextPort: {
-            type: "input" as const,
-            label: "Next.js端口",
-            value: featureConfig.get("preview")?.get("nextjs_port") || "3001",
-            onChange: (value: string | boolean) =>
-                handleConfigChange("preview", "nextjs_port", value),
-        },
-        nuxtPort: {
-            type: "input" as const,
-            label: "Nuxt.js端口",
-            value: featureConfig.get("preview")?.get("nuxtjs_port") || "3002",
-            onChange: (value: string | boolean) =>
-                handleConfigChange("preview", "nuxtjs_port", value),
-        },
-        authToken: {
-            type: "input" as const,
-            label: "Auth token",
-            value: featureConfig.get("preview")?.get("auth_token") || "",
-            onChange: (value: string | boolean) =>
-                handleConfigChange("preview", "auth_token", value),
-        },
-    };
+    const previewFormConfig = useMemo(() => {
+        return {
+            preview_type: {
+                type: "radio" as const,
+                label: "部署方式",
+                options: [
+                    { value: "local", label: "本地" },
+                    { value: "remote", label: "远程" },
+                    { value: "service", label: "使用服务" },
+                ],
+            },
+            nextjs_port: {
+                type: "input" as const,
+                label: "Next.js端口",
+            },
+            nuxtjs_port: {
+                type: "input" as const,
+                label: "Nuxt.js端口",
+            },
+            auth_token: {
+                type: "input" as const,
+                label: "Auth token",
+            },
+        };
+    }, []);
 
-    const handleOpenDataFolder = () => {
+    const handleOpenDataFolder = useCallback(() => {
         invoke("open_data_folder");
-    };
+    }, []);
 
-    const handleSyncData = () => {
+    const handleSyncData = useCallback(() => {
         toast.info('暂未实现，敬请期待');
-    };
+    }, []);
 
-    const dataFolderConfig = {
-        openDataFolder: {
-            type: "button" as const,
-            label: "数据文件夹",
-            value: "打开",
-            onClick: handleOpenDataFolder,
-        },
-        syncData: {
-            type: "button" as const,
-            label: "远程数据",
-            value: "同步",
-            onClick: handleSyncData,
-        },
-    };
+    const dataFolderConfig = useMemo(() => {
+        return {
+            openDataFolder: {
+                type: "button" as const,
+                label: "数据文件夹",
+                value: "打开",
+                onClick: handleOpenDataFolder,
+            },
+            syncData: {
+                type: "button" as const,
+                label: "远程数据",
+                value: "同步",
+                onClick: handleSyncData,
+            },
+        };
+    }, []);
+
+    const dataFolderFormReturnData = useForm({});
 
     return (
         <div className="feature-assistant-editor">
@@ -198,7 +210,8 @@ const FeatureAssistantConfig: React.FC = () => {
                 config={summaryFormConfig}
                 layout="prompt"
                 classNames="bottom-space"
-                onSave={() => handleSave("conversation_summary")}
+                onSave={handleSaveSummary}
+                useFormReturn={summaryFormReturnData}
             />
 
             <ConfigForm
@@ -207,7 +220,8 @@ const FeatureAssistantConfig: React.FC = () => {
                 config={previewFormConfig}
                 layout="default"
                 classNames="bottom-space"
-                onSave={() => handleSave("preview")}
+                onSave={handleSavePreview}
+                useFormReturn={previewFormReturnData}
             />
 
             <ConfigForm
@@ -216,6 +230,7 @@ const FeatureAssistantConfig: React.FC = () => {
                 config={dataFolderConfig}
                 layout="default"
                 classNames="bottom-space"
+                useFormReturn={dataFolderFormReturnData}
             />
         </div>
     );

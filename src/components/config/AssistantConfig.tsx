@@ -11,6 +11,7 @@ import { AssistantType } from '../../types/assistant';
 import { validateConfig } from '../../utils/validate';
 
 import "../../styles/AssistantConfig.css";
+import { useForm } from 'react-hook-form';
 
 interface ModelForSelect {
     name: string;
@@ -139,6 +140,19 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             invoke<AssistantDetail>("get_assistant", { assistantId: assistant.id })
                 .then((assistant: AssistantDetail) => {
                     setCurrentAssistant(assistant);
+                    form.reset({
+                        assistantType: assistant.assistant.assistant_type,
+                        model: assistant.model.length > 0 ? `${assistant.model[0].model_code}%%${assistant.model[0].provider_id}` : "-1",
+                        prompt: assistant.prompts[0].prompt,
+                        ...assistant.model_configs.reduce((acc, config) => {
+                            acc[config.name] = config.value_type === 'boolean' ? config.value == "true" : config.value;
+                            return acc;
+                        }, {} as Record<string, any>),
+                        ...Array.from(assistantTypeCustomField).reduce((acc, [key, objValue]) => {
+                            acc[key] = objValue.type === "checkbox" ? assistant.model_configs.find(config => config.name === key)?.value === "true" : assistant.model_configs.find(config => config.name === key)?.value ?? "";
+                            return acc;
+                        }, {} as Record<string, any>),
+                    })
                     setAssistantTypeCustomField(new Map<string, Record<string, any>>());
                     setAssistantTypeCustomLabel(new Map<string, string>());
                     assistantTypePluginMap.get(assistant.assistant.assistant_type)?.onAssistantTypeSelect(assistantTypeApi);
@@ -196,7 +210,9 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
     };
 
     // 保存助手
-    const handleAssistantFormSave = () => {
+    const handleAssistantFormSave = (values: any) => {
+        console.log(values);
+
         if (!currentAssistant) return;
 
         onSave(currentAssistant)
@@ -326,6 +342,8 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
         setCurrentAssistant(assistantDetail);
     };
 
+    const form = useForm();
+
     return (
         <div className="assistant-editor">
             <div className="flex flex-wrap gap-4 mb-4">
@@ -354,6 +372,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
                     onCopy={() => onCopy(currentAssistant.assistant.id)}
                     onDelete={openConfirmDeleteDialog}
                     onEdit={openUpdateFormDialog}
+                    useFormReturn={form}
                 />
             )}
             <ConfirmDialog

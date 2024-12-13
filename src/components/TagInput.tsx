@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent, ChangeEvent } from 'react';
+import React, { useState, KeyboardEvent, ChangeEvent, useCallback } from 'react';
 import '../styles/TagInput.css';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -16,16 +16,17 @@ interface TagInputProps {
 const TagInput: React.FC<TagInputProps> = ({ tags, placeholder, onAddTag, onRemoveTag }) => {
     const [inputValue, setInputValue] = useState<string>('');
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim() !== '') {
+            console.log("TagInput handleKeyDown", inputValue);
             onAddTag(inputValue.trim());
             setInputValue('');
         }
-    };
+    }, [inputValue, onAddTag]);
 
-    const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         setInputValue(e.target.value);
-    };
+    }, []);
 
     return (
         <div className="tag-input-container grid">
