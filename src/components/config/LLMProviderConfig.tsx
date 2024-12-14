@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import "../../styles/LLMProviderConfig.css";
 import { invoke } from "@tauri-apps/api/core";
 import LLMProviderConfigForm from "./LLMProviderConfigForm";
@@ -18,9 +18,10 @@ interface LLMProvider {
 }
 
 const LLMProviderConfig: React.FC = () => {
+    console.log("render llm provider config")
     const [LLMProviders, setLLMProviders] = useState<Array<LLMProvider>>([]);
 
-    const handleToggle = (index: number) => {
+    const handleToggle = useCallback((index: number) => {
         const newProviders = [...LLMProviders];
         newProviders[index].is_enabled = !newProviders[index].is_enabled;
         setLLMProviders(newProviders);
@@ -32,7 +33,7 @@ const LLMProviderConfig: React.FC = () => {
             description: LLMProviders[index].description,
             isEnabled: newProviders[index].is_enabled
         });
-    };
+    }, [LLMProviders]);
 
     const getLLMProviderList = useCallback(() => {
         invoke<Array<LLMProvider>>('get_llm_providers')
@@ -62,7 +63,7 @@ const LLMProviderConfig: React.FC = () => {
         setNewProviderDialogOpen(false);
     }, []);
 
-    const handleNewProviderSubmit = () => {
+    const handleNewProviderSubmit = useCallback(() => {
         invoke('add_llm_provider', {
             name: providerName,
             apiType: formApiType
@@ -76,7 +77,7 @@ const LLMProviderConfig: React.FC = () => {
         }).catch((e) => {
             toast.error('添加大模型提供商失败: ' + e);
         });
-    }
+    }, [providerName, formApiType, closeNewProviderDialog, getLLMProviderList]);
 
     const [confirmDialogIsOpen, setConfirmDialogIsOpen] = useState(false);
     const [deleteLLMProviderId, setDeleteLLMProviderId] = useState("");
@@ -92,31 +93,34 @@ const LLMProviderConfig: React.FC = () => {
         });
         closeConfirmDialog();
     }, [deleteLLMProviderId]);
-    const openConfirmDialog = (LLMPRoviderId: string) => {
+    const openConfirmDialog = useCallback((LLMProviderId: string) => {
         setConfirmDialogIsOpen(true)
-        setDeleteLLMProviderId(LLMPRoviderId);
-    }
+        setDeleteLLMProviderId(LLMProviderId);
+    }, []);
     const closeConfirmDialog = useCallback(() => {
         setConfirmDialogIsOpen(false)
     }, []);
 
+    const providerForms = useMemo(() => {
+        console.log("provider forms rerender")
+        return LLMProviders.map((provider, index) => (
+            <LLMProviderConfigForm
+                key={provider.id}
+                id={provider.id}
+                index={index}
+                apiType={provider.api_type}
+                name={provider.name}
+                isOffical={provider.is_official}
+                enabled={provider.is_enabled}
+                onToggleEnabled={handleToggle}
+                onDelete={openConfirmDialog}
+            />
+        ));
+    }, [LLMProviders, handleToggle, openConfirmDialog]);
+
     return (
         <div className="model-config">
-            {
-                LLMProviders.map((provider, index) => {
-                    return <LLMProviderConfigForm
-                        key={provider.id}
-                        id={provider.id}
-                        index={index}
-                        apiType={provider.api_type}
-                        name={provider.name}
-                        isOffical={provider.is_official}
-                        enabled={provider.is_enabled}
-                        onToggleEnabled={handleToggle}
-                        onDelete={openConfirmDialog}
-                    />
-                })
-            }
+            {providerForms}
             <FormDialog title='新增大模型提供商' isOpen={newProviderDialogOpen} onClose={closeNewProviderDialog} onSubmit={handleNewProviderSubmit}>
                 <form className='form-group-container'>
                     <div className='form-group'>

@@ -20,6 +20,19 @@ interface LLMProviderConfigFormProps {
 }
 
 const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, index, apiType, name, isOffical, enabled, onDelete, onToggleEnabled }) => {
+    useEffect(() => {
+        console.log('Current Props:', {
+            id,
+            index,
+            name,
+            apiType,
+            isOffical,
+            enabled,
+            onToggleEnabled: !!onToggleEnabled,
+            onDelete: !!onDelete
+        });
+    }, [id, index, name, apiType, isOffical, enabled, onToggleEnabled, onDelete]);
+
     const [tags, setTags] = useState<string[]>([]);
 
     const defaultValues = useMemo(() => ({
@@ -129,15 +142,17 @@ const LLMProviderConfigForm: React.FC<LLMProviderConfigFormProps> = ({ id, index
     const extraButtons = useMemo(() => (
         <Switch checked={enabled} onCheckedChange={() => onToggleEnabled(index)} />
     ), [enabled, onToggleEnabled, index]);
-    // 表单部分结束
 
+    const onDeleteMemo = useMemo(() => isOffical ? undefined : () => onDelete(id), [isOffical, onDelete, id]);
+
+    // 表单部分结束
     return (
         <ConfigForm
             key={id}
             title={name}
             config={configFields}
             classNames="bottom-space"
-            onDelete={isOffical ? undefined : () => onDelete(id)}
+            onDelete={onDeleteMemo}
             extraButtons={extraButtons}
             useFormReturn={form}
         />
