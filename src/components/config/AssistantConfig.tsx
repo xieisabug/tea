@@ -636,9 +636,7 @@ const AssistantConfig: React.FC<AssistantConfigProps> = ({ pluginList }) => {
             <ConfirmDialog
                 title="确认操作"
                 confirmText="该操作不可逆，确认执行删除助手操作吗？删除后，配置将会删除，并且该助手的对话将转移到 快速使用助手 ，且不可恢复。"
-                onConfirm={() => {
-                    handleDelete();
-                }}
+                onConfirm={handleDelete}
                 onCancel={closeConfirmDeleteDialog}
                 isOpen={confirmDeleteDialogIsOpen}
             />
