@@ -180,7 +180,8 @@ const ConfigForm: React.FC<ConfigFormProps> = ({
 					return (
 						<Checkbox
 							className={field.className}
-							{...fieldRenderData}
+							checked={fieldRenderData.value}
+							onCheckedChange={fieldRenderData.onChange}
 						/>
 					);
 				case "radio":
